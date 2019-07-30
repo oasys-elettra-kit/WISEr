@@ -6,13 +6,15 @@ Created on Mon Aug 08 16:10:57 2016
 :math:`y = m x + q`
 """
 from __future__ import division
-from LibWISEr.must import *
+import sys
+from must import *
 import matplotlib.pyplot as plt
-from LibWISEr.ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
+import ToolLib as tl
+from ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
 
 import Noise as Noise
-from LibWISEr import Rayman as rm, ToolLib as tl
-from LibWISEr.Rayman import FastResample1d, _MatchArrayLengths
+import Rayman as rm
+from Rayman import Range, FastResample1d, _MatchArrayLengths
 import numpy as np
 from numpy import pi
 

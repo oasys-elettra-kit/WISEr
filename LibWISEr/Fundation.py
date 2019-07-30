@@ -1,18 +1,20 @@
 '''
-Line Equation
+
 :math:`y = m x + q`
 '''
 
 from __future__ import division
-from LibWISEr.must import *
-from LibWISEr import Optics, Rayman as rm, ToolLib as tl
-from LibWISEr.ToolLib import  Debug
+from must import * 
+import Optics
+import Rayman as rm
+import ToolLib as tl
+from ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
 
-from LibWISEr.Optics import TypeOfAngle
+from Optics import TypeOfAngle
 
 
 #=============================
@@ -454,6 +456,7 @@ class Tree(object):
 # 	CLASS: OpticalElement
 #===========================================================================
 class OpticalElement(TreeItem):
+	import copy
 	'''
 	- If Name is None, then the name is automatically assigned.
 	'''

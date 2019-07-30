@@ -5,11 +5,12 @@ Created on Thu Jan 12 11:58:09 2017
 @author: Mic
 """
 from __future__ import division
+import numpy as np
 import scipy as sp
-from LibWISEr.must import *
-import inspect
-
-
+from numpy.linalg import norm
+from must import * 
+import inspect 
+from _ast import arg
 #================================================================
 #  ErrMsg
 #================================================================
@@ -26,6 +27,7 @@ class ErrMsg:
 #  CLASS Debug
 #================================================================		
 class Debug():
+	import inspect
 	On = True
 	_OldValue = True
 
@@ -397,7 +399,7 @@ def FitGaussian1d(y, x = None, PlotFigure=None):
 	[a, x0, sigma] : Amplitude, mean value, standard deviation 
 	'''
 	from scipy.optimize import curve_fit
-	from scipy import exp
+	from scipy import asarray as ar,exp
 	# HELPER FUNCTION
 	def gaus(x,a,x0,sigma):
 		return a*exp(-(x-x0)**2/(2*sigma**2))

@@ -12,11 +12,11 @@ Cose da sistemare
 from __future__ import division
 import numpy as np
 #import cmath as cm
-from numpy import sum, cos, sin, tan, pi, array, arange, polyval, dot, exp, real, sqrt
-from LibWISEr.ToolLib import Debug
+from numpy import sum, cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, dot, exp, arcsin, arccos, real, imag, sqrt
+from ToolLib import Debug
 from numba import jit, prange
 
-from  scipy import ndimage
+from scipy import ndimage
 import multiprocessing
 
 Amp = lambda x : abs(x) / max(abs(x))
