@@ -1,5 +1,5 @@
 '''
-
+Line Equation
 :math:`y = m x + q`
 '''
 
