@@ -3,13 +3,11 @@
 Created on Wed Jun 08 14:06:01 2016
 Huygens Fresnel Method Library
 @authors:
-
 Cose da sistemare
 - capire come chiamare gli assi del fascio gaussiano RhoZ ?
 - trovare denominazione comune xMir yMir, Mir_x MirX Mir_xy MirXY e salaminchia
 """
 #%%
-from __future__ import division
 import numpy as np
 #import cmath as cm
 from numpy import sum, cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, dot, exp, arcsin, arccos, real, imag, sqrt
@@ -33,24 +31,24 @@ def GetCentre(N):
     % il punto in cui compare la DC della trasformata di Fourier.
     % Ovviamente, il tutto è in base-1, compatibile con matlab.
     '''
-    return int(np.floor(N/2))
+    return int(np.floor(N / 2.))
 
 def ArgMax (X = np.empty(0)):
-    r,c = np.unravel_index(X.argmax(), X.shape)
-    return r,c
+    r, c = np.unravel_index(X.argmax(), X.shape)
+    return r, c
 
 def ArgMin (X = np.empty(0)):
-    r,c = np.unravel_index(X.argmin(), X.shape)
-    return r,c
+    r, c = np.unravel_index(X.argmin(), X.shape)
+    return r, c
 
 
 def MakeScreenXY_1d(XY0, L, N, Theta = 0, Normal = False ):
     if Normal == True:
-        Theta = Theta - pi/2
+        Theta = Theta - pi / 2.
 
-    if abs(Theta) == pi/2:
-        Det_y0 = XY0[1] - L/2
-        Det_y1 = XY0[1] + L/2
+    if abs(Theta) == pi / 2.:
+        Det_y0 = XY0[1] - L / 2.
+        Det_y1 = XY0[1] + L / 2.
         y = np.linspace(Det_y0, Det_y1,N)
         x = 0*y + XY0[0]
 
@@ -58,12 +56,12 @@ def MakeScreenXY_1d(XY0, L, N, Theta = 0, Normal = False ):
         m = tan(Theta)
         q = XY0[1] - XY0[0] * m
         p = array([m,q])
-        Det_x0 = XY0[0] - L/2 * cos(Theta)
-        Det_x1 = XY0[0] + L/2 * cos(Theta)
-        x = np.linspace(Det_x0, Det_x1,N)
-        y = polyval(p,x)
+        Det_x0 = XY0[0] - L / 2. * cos(Theta)
+        Det_x1 = XY0[0] + L / 2. * cos(Theta)
+        x = np.linspace(Det_x0, Det_x1, N)
+        y = polyval(p, x)
 
-    return x,y
+    return x, y
 
 def FastResample1d(*args):
     '''
@@ -106,25 +104,20 @@ def FastResample1d(*args):
 def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None,
                         AlgorithmType = 0):
     '''
-
         Parameters
         ------------
         X : 1d array
         UseCentreOfMass : if False, computes the HEW respect with the maximum
         TotalEnergy : if None, uses TotalEnergy = sum(X).
-
         Returns
         ------------
         Hew : the Half width energy of the array X (1d)
         Centre : the centre of mass or the maximum value of X
-
         Uses interpolation for sub-pixel accuracy: NO (not yet)
-
     '''
 
     ''' Stupid remarks
     The Hew of a Gaussian is 0.675
-
     '''
 
     TotalEnergy = sum(X) if TotalEnergy==None else TotalEnergy
@@ -139,24 +132,24 @@ def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None
         #================================================
         # Algoritmo binario
         #================================================
-        RHi = np.floor(len(X)/2) ;
-        RLow = 1 ;
+        RHi = np.floor(len(X) / 2)
+        RLow = 1
 
         # algoritmo intelligente, ma che non funziona
-        myR = int(np.floor(np.ceil(RHi + RLow)/2));
-        DeltaR = RHi-RLow ; # variabile di controllo
-        NIterations = 0 ;
+        myR = int(np.floor(np.ceil(RHi + RLow) / 2))
+        DeltaR = RHi - RLow # variabile di controllo
+        NIterations = 0
         while DeltaR > 1:
-            NIterations = NIterations + 1 ;
+            NIterations = NIterations + 1
             iStart = int(round(iCentre - myR))
             iEnd = int(round(iCentre + myR))+1
             if sum(X[iStart:iEnd]) < HalfEnergy:
-                RLow = myR;
+                RLow = myR
             else:
-                RHi = myR;
-            myR = np.ceil(RLow + RHi)/2;
-            DeltaR = RHi-RLow ;
-    elif AlgorithmType == 0 :
+                RHi = myR
+            myR = np.ceil(RLow + RHi) / 2
+            DeltaR = RHi-RLow
+    elif AlgorithmType == 0:
         #================================================
         # Algoritmo stupido
         #================================================
@@ -166,15 +159,15 @@ def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None
             myEnergy = sum(X[iCentre - iR : iCentre + iR])
             iR = iR + 1
         myR = iR
-    Diameter = 2*myR ;
+    Diameter = 2. * myR
     return Diameter * Step, iCentre * Step
 
 
 
 
 def Gauss1d(N, Sigma):
-    x = arange(0,N) - GetCentre(N)
-    y = exp(-0.5 *x**2 / Sigma**2)
+    x = arange(0, N) - GetCentre(N)
+    y = exp(-0.5 * x**2 / Sigma**2)
     return y
 
 
@@ -220,7 +213,7 @@ def XY_to_L(x,y):
     Dato un segmento di coordinate x,y, calcola la coordinata propria (solidale al segmento).
     L'origine della nuova coordinata L viene assunta a metà della lunghezza degli array di ingresso (che ha senso finché x,y definiscono un segmento di retta).
     '''
-    N2 = int(np.floor(len(x)/2))
+    N2 = int(np.floor(len(x) / 2))
     L = 0*x
     L[0:N2] = -1 * sqrt((x[0:N2] - x[N2])**2 + (y[0:N2] - y[N2])**2)
     L[N2:] = 1 * sqrt((x[N2:] - x[N2])**2 + (y[N2:] - y[N2])**2)
@@ -240,11 +233,11 @@ def xy_to_s(x,y):
     if (x is None) or (y is None):
         return None
 
-    N2 = int(np.floor(len(x)/2))
-    s0 = len(x)/2
+    N2 = int(np.floor(len(x) / 2))
+    s0 = len(x) / 2
     Steps = np.sqrt(np.diff(x)**2 + np.diff(y)**2)
-    s  = np.cumsum(Steps)
-    s = np.append(0,s) - s[int(len(s)/2)]
+    s = np.cumsum(Steps)
+    s = np.append(0, s) - s[int(len(s) / 2)]
     return s
 
 def PathLength(x,y):
@@ -265,7 +258,6 @@ def CartT(Vxy, NewOrigin = np.array([0,0]), Theta = 0 ):
 def CartChange(x,y, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
     '''
     Simple function for cartesian change of coordinates.
-
     Parameters
     ----------------------
     x : 1d array
@@ -278,7 +270,6 @@ def CartChange(x,y, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
         Rotation angle
     Deg : boolean (=false)
         Says if Angle is in degrees or radians (default)
-
     '''
     # degrees => radians conversion (if necessary)
     if (Angle !=0) and (Deg == True):
@@ -308,7 +299,6 @@ def CartChange_XY(XY, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
 def CartChange_Poly(P, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
     '''
     Returns the coefficients of the rotated polynomial in the
-
     Parameters
     ----------------------
     P : 1d-array
@@ -317,7 +307,6 @@ def CartChange_Poly(P, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
         [x,y] of the new origin
     Angle : scalr ( rad)
         Rotation Angle
-
     '''
     P = np.array(P)
     N =   len(P)-1 # degree of the polynomial
@@ -344,7 +333,6 @@ def CartChange_Poly(P, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
 def RotXY(x,y, Theta = 0, CentreOfRotation = np.array([0,0])):
     '''
     Rotates the arrays x (1d) and y (1d) of Theta AROUND the CentreOfRotation
-
     Parameters
     ----------------
     x : 1d array
@@ -355,17 +343,14 @@ def RotXY(x,y, Theta = 0, CentreOfRotation = np.array([0,0])):
         Rotation angle
     CentreOfRotation : [x,y]
         Point around which the rotation is performed.By default is set to [0,0]
-
     Returns
     -----------------
     x : rotated x
-
     y : rotated y
-
     Examples
     ----------------
     >>> import numpt as np
-    >>> RotXY(0,1,45 * np.pi/180)
+    >>> RotXY(0,1,45 * np.pi / 180.)
     >>> Out[12]: (array([-0.70710678]), array([ 0.70710678]))
     '''
     if Theta == 0:
@@ -424,12 +409,11 @@ def RotPoint(XY, Theta = 0, CentreOfRotation = np.array([0,0])):
 def RotVersor(V, Angle, Deg = False):
     '''
     Rotate the versor V = (Vx, Vy)
-
     '''
     if Deg== True:
-        Angle = Angle * np.pi/180
+        Angle = Angle * np.pi / 180.
 
-    if (Angle == 0) or np.linalg.norm(V)==0:
+    if (Angle == 0) or np.linalg.norm(V) == 0:
         return V
     else:
         U = RotXY(V[0], V[1], Angle)
@@ -475,7 +459,7 @@ class SphericalWave_1d(object):
     def EvalField(self, z = np.array(None), y = np.array(None) ):
         (z,y) = _MatchArrayLengths(z,y)
         R = sqrt((y - self.OriginZY[1])**2 + (z - self.OriginZY[0])**2)
-        return 1/R * 	np.exp(1j*self.EvalPhase(z,y))
+        return 1 / R * np.exp(1j*self.EvalPhase(z, y))
 '''
     #================================================
     # 	Eval
@@ -503,7 +487,7 @@ class SourceType():
 #  	FUN: HuygensIntegral_1d_Kernel_Mule
 # ==============================================================================
 def HuygensIntegral_1d_Kernel_Mule(Lambda, Ea, xa, ya, xb, yb, bStart = None, bEnd=None):
-    k = 2*pi/Lambda
+    k = 2. * pi / Lambda
     if bStart == None:
         bEnd = np.size(xb)
         bStart = 0
@@ -520,7 +504,7 @@ def HuygensIntegral_1d_Kernel_Mule(Lambda, Ea, xa, ya, xb, yb, bStart = None, bE
     # loop on items within the segment of B
     for (i, xbi) in enumerate(xb[bStart : bEnd]):
         ybi = yb[i+bStart]
-        EbTok_Mule[:,i] =  1./(Lambda)**0.5*(Ea * 						# field complex amplitude
+        EbTok_Mule[:,i] =  1. / (Lambda)**0.5*(Ea * 						# field complex amplitude
                     exp(1j*k*(sqrt((xa - xbi)**2 + (ya - ybi)**2))) # huygens spherical wave
                     )
     # per ogni colonna di EbTok_Mule, la ordino e quindi sommo
@@ -538,16 +522,16 @@ def HuygensIntegral_1d_Kernel_Mule(Lambda, Ea, xa, ya, xb, yb, bStart = None, bE
 #==============================================================================
 # 	FUN: HuygensIntegral_1d_Kernel
 #==============================================================================
-@jit(nopython=True, nogil=True, parallel=True)
-def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), bEnd=np.int64(0)):
+@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
+def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     """
     Parameters
     --------------------
-    Lambda : float
+    wl : float
         Wavelength (m)
-    Ea : N x M complex array
+    Ea : 1d complex array
         Electromagnetic Field
-    xa, ya : 1darray float
+    xa, ya : 1d array float
         Coordinates of the start plane
     xb, yb : 1d array float
         Coordinates of the final plane
@@ -555,20 +539,18 @@ def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), b
         Start index on the start plane
     bEnd : int
         End index on the final plane
-
     The computation is performed on the elements
     xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
     """
 
-    k = 2. * pi / Lambda
+    k = 2. * pi / wl
 
-    if bStart == -1:
-        bStart = 0
-        bEnd = np.prod(np.int64(xb.shape))
+    bStart = 0
+    bEnd = np.prod(np.int64(xb.shape))
 
     EbTokN = bEnd - bStart
-    EbTok = np.empty(EbTokN, dtype=np.complex128)
-    RList = np.empty(EbTokN, dtype=np.float64)
+    EbTok = np.zeros(EbTokN, dtype=np.complex128)
+    RList = np.zeros(EbTokN, dtype=np.float64)
 
     # loop on items within the segment of B
     for i in prange(0, EbTokN):
@@ -581,7 +563,7 @@ def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), b
 
         RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
 
-        EbTok[i] = 1. / sqrt(Lambda) * sum(Ea / RList * exp(-1j * k * RList))
+        EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
 
     return EbTok
 
@@ -612,11 +594,11 @@ def _MatchArrayLengths (x,y):
     '''
     IsArray = lambda t : True if type(t) == np.ndarray else False
 
-    if IsArray(x) and not IsArray(y) :
-        y = np.array(x) * 0 + y
+    if IsArray(x) and not IsArray(y):
+        y = np.array(x) * 0. + y
         return (x,y)
     elif IsArray(y) and not IsArray(x):
-        x = np.array(y) * 0 +x
+        x = np.array(y) * 0. + x
         return (x,y)
     else:
         return (x,y)
@@ -725,8 +707,6 @@ def ComputeSamplingA(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 
     z:distance b|w start and arrival planes
     L0,L1: lenght of start and arrival planes
     Theta0, Theta1: orientation of start and arivval planes
-
-
     '''
     Debug.print('Compute sampling',2)
     Debug.pv('Lambda',3)
@@ -745,8 +725,6 @@ def ComputeSamplingB(Lambda, z, L0, L1,  Alpha0, Alpha1, OversamplingFactor = 1 
     z:distance b|w start and arrival planes
     L0,L1: lenght of start and arrival planes
     Alpha0, Alpha1: incidence angles
-
-
     '''
     Debug.print('Compute sampling',2)
     Debug.pv('Lambda',3)
