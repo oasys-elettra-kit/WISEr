@@ -1621,13 +1621,24 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 # FUN: GetNSamples_OpticalElement
 #==========================================
 def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : OpticalElement) -> int:
-	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
-	L0 = oe0.CoreOptics.L
-	L1 = oe1.CoreOptics.L
-	Theta0 = oe0.CoreOptics.VersorNorm.Angle
-	Theta1 = oe1.CoreOptics.VersorNorm.Angle 
-	return rm.ComputeSampling(Lambda, z, L0, L1, Theta0, Theta1)	
-		
+	'''
+	:param Lambda: wavelength
+	:param oe0: optical element 1
+	:param oe1: optical element 2
+	:return: sampling
+
+	Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
+	'''
+
+	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre) # distance between the elements
+	L0 = oe0.CoreOptics.L # Size of element 1
+	L1 = oe1.CoreOptics.L # Size of element 2
+	Theta1 = oe1.CoreOptics.VersorNorm.Angle # Grazing incidence angle
+
+	N = 4. * pi * L0 * L1 * sin(Theta1) / (Lambda * z) # Sampling
+
+	return N
+
 def MeasureDistance(oe0: OpticalElement, oe1: OpticalElement) -> float:
 	""" Computes the distance b|w the centres of two optical Elements.
 	
