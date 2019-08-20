@@ -7,14 +7,14 @@ Created on Mon Aug 08 16:10:57 2016
 """
 from __future__ import division
 import sys
-from must import *
+from LibWISEr.must import *
 import matplotlib.pyplot as plt
-import ToolLib as tl
-from ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
+import LibWISEr.ToolLib as tl
+from LibWISEr.ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
 
-import Noise as Noise
-import Rayman as rm
-from Rayman import Range, FastResample1d, _MatchArrayLengths
+import LibWISEr.Noise as Noise
+import LibWISEr.Rayman as rm
+from LibWISEr.Rayman import Range, FastResample1d, _MatchArrayLengths
 import numpy as np
 from numpy import pi
 
@@ -2209,9 +2209,9 @@ class Mirror(OpticsNumerical):
 
 
 		if self.ComputationSettings.UseIdeal == True:
-			xLab, yLab =  self.GetXY_IdealMirror(N)
+			xLab, yLab = self.GetXY_IdealMirror(N)
 		else:
-			xLab, yLab =  self.GetXY_MeasuredMirror(N)
+			xLab, yLab = self.GetXY_MeasuredMirror(N)
 
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
@@ -2281,7 +2281,7 @@ class Mirror(OpticsNumerical):
 		'''
 
 		# --- carica dati da file, se serve ----
-		if h is None and File!= '':
+		if h is None and File != '':
 			h = np.loadtxt(File) * AmplitudeScaling
 
 		self._FigureErrors.append(h)

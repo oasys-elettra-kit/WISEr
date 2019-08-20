@@ -4,17 +4,17 @@
 '''
 
 from __future__ import division
-from must import * 
-import Optics
-import Rayman as rm
-import ToolLib as tl
-from ToolLib import  Debug
+from LibWISEr.must import *
+import LibWISEr.Optics as Optics
+import LibWISEr.Rayman as rm
+import LibWISEr.ToolLib as tl
+from LibWISEr.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
 
-from Optics import TypeOfAngle
+from LibWISEr.Optics import TypeOfAngle
 
 
 #=============================
@@ -537,7 +537,7 @@ class OpticalElement(TreeItem):
 	def GetNSamples(self, Lambda = None):
 		'''
 		Returns the proper number of samples to use for ThisOpticalElement in 
-		propagation the field as UpstreamElement(0) ----> ThisElement(1).
+		propagating the field at UpstreamElement(0) ----> ThisElement(1).
 		
 		If (self.ComputationSettings.UseCustomSampling == True), then the N of samples
 		set by the user is used.
@@ -592,14 +592,8 @@ class OpticalElement(TreeItem):
 	#==========================================
 	@staticmethod
 	def GetNSamples_2Body(Lambda: float, oe0 , oe1) -> int:
-		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
-		L0 = oe0.CoreOptics.L
-		L1 = oe1.CoreOptics.L
-		Theta0 = oe0.CoreOptics.VersorNorm.Angle
-		Theta1 = oe1.CoreOptics.VersorNorm.Angle 
-#		Alpha0 = oe0.CoreOptics.Angle
-		return rm.ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, oe1.ComputationSettings.OversamplingFactor)		
-#		return rm.ComputeSampling(Lambda, z, L0, L1, Alpha0, Alpha1, oe1.ComputationSettings.OversamplingFactor)		
+		return GetNSamples_OpticalElement(Lambda, oe0, oe1)
+
 	#===========================================
 	# PROP: IsSource
 	#==========================================
@@ -1631,11 +1625,11 @@ def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : Optica
 	'''
 
 	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre) # distance between the elements
-	L0 = oe0.CoreOptics.L # Size of element 1
-	L1 = oe1.CoreOptics.L # Size of element 2
-	Theta1 = oe1.CoreOptics.VersorNorm.Angle # Grazing incidence angle
+	L0 = oe0.CoreOptics.L # Size of element 0
+	L1 = oe1.CoreOptics.L # Size of element 1
+	# oe1.CoreOptics.AngleGrazingNominal is the grazing angle on the second element (el. 1)
 
-	N = 4. * pi * L0 * L1 * sin(Theta1) / (Lambda * z) # Sampling
+	N = 4. * pi * L0 * L1 * sin(oe1.CoreOptics.AngleGrazingNominal) / (Lambda * z) # Sampling
 
 	return N
 

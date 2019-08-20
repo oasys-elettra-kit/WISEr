@@ -9,7 +9,7 @@ Cose da sistemare
 """
 #%%
 from numpy import sum, cos, sin, tan, pi, array, arange, size, polyval, polyfit, dot, exp, real, imag, sqrt, prod, zeros, floor, unravel_index, empty, linspace, ceil, amin, amax, diff, cumsum, append, deg2rad, column_stack, linalg, sort, complex, concatenate, nan, inf, ndarray
-from ToolLib import Debug
+from LibWISEr.ToolLib import Debug
 from numba import jit, prange
 from numba import int64, float64, complex128
 
@@ -480,44 +480,6 @@ class SourceType():
     GAUSSIAN_TEM00 = 1
 
 
-
-
-# ==============================================================================
-#  	FUN: HuygensIntegral_1d_Kernel_Mule
-# ==============================================================================
-def HuygensIntegral_1d_Kernel_Mule(Lambda, Ea, xa, ya, xb, yb, bStart = None, bEnd=None):
-    k = 2. * pi / Lambda
-    if bStart == None:
-        bEnd = size(xb)
-        bStart = 0
-
-    EaN = len(Ea)
-    EbTokN = bEnd - bStart
-
-    EbTok = 1j*zeros(EbTokN)
-
-    # initialize MULE buffer
-
-    EbTok_Mule = 1j*zeros([EaN, EbTokN])
-
-    # loop on items within the segment of B
-    for (i, xbi) in enumerate(xb[bStart : bEnd]):
-        ybi = yb[i+bStart]
-        EbTok_Mule[:,i] =  1. / (Lambda)**0.5*(Ea * 						# field complex amplitude
-                    exp(1j*k*(sqrt((xa - xbi)**2 + (ya - ybi)**2))) # huygens spherical wave
-                    )
-    # per ogni colonna di EbTok_Mule, la ordino e quindi sommo
-    # lungo una riga di EbTok_Mule ci sono i pixel del piano di arrivo
-    # lungo una colonna, ci sono i singoli contributi dei campi
-    # SPERAVO CHE SERVISSE AD AUMENTARE LA PRECISIONE; MA INVECE NON FA NULLA
-    for i in range(0,int(EbTokN)):
-        Re = real(EbTok_Mule[:,i])
-        Im = imag(EbTok_Mule[:,i])
-        ReSum =sum(sort(Re))
-        ImSum = sum(sort(Im))
-        EbTok[i] = complex(ReSum, ImSum)
-    return EbTok
-
 #==============================================================================
 # 	FUN: HuygensIntegral_1d_Kernel
 #==============================================================================
@@ -618,14 +580,6 @@ def _wrapper_HuygensIntegral_1d_Kernel(parameters):
     xb = float64(xb)
     yb = float64(yb)
 
-    if Verbose:
-        print('Lambda', type(Lambda), Lambda.shape())
-        print('Ea', type(Ea), Ea.shape())
-        print('xa', type(xa), xa.shape())
-        print('ya', type(ya), ya.shape())
-        print('xb', type(xb), xb.shape())
-        print('yb', type(yb), yb.shape())
-
     # Convert to int
     bStart = int64(bStart)
     bEnd = int64(bEnd)
@@ -696,9 +650,6 @@ def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose
 # 	FUN: HuygensIntegral_1d
 #==============================================================================
 HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
-
-def SamplingCalculator(Lambda, z, L0, L1,  Theta0, Theta1):
-    return ComputeSampling(Lambda, z, L0, L1,  Theta0, Theta1)
 
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = True):
     '''

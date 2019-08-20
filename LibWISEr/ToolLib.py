@@ -8,7 +8,7 @@ from __future__ import division
 import numpy as np
 import scipy as sp
 from numpy.linalg import norm
-from must import * 
+from LibWISEr.must import *
 import inspect 
 from _ast import arg
 #================================================================
