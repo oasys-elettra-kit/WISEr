@@ -284,7 +284,7 @@ class OpticsNumerical(Optics):
 		#ad hoc correction: multiply by transmission function before propagation
 		E0 = E0 * self.TransmissionFunction(x0,y0)
 
-		E1 = rm.HuygensIntegral_1d_MultiPool(Lambda, E0, x0, y0, x1, y1, NPools = np.int(NPools))
+		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
 
 		return E1
 
@@ -391,7 +391,7 @@ class OpticsNumerical(Optics):
 		x0, y0 = self.GetXY(N)
 		Debug.Print('Calcolo Campi: N  = %d' % N)
 		Debug.pr('Lambda')
-		E1 = rm.HuygensIntegral_1d_MultiPool(Lambda, E0, x0, y0, x1, y1, NPools = 1)
+		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
 
 		return E1
 
