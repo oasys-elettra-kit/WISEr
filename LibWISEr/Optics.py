@@ -204,6 +204,28 @@ class OpticsAnalytical(Optics):
 		pass
 
 #==============================================================================
+#	 CLASS ABSTRACT: OpticsEfficiency
+#==============================================================================
+class opticsEfficiency(Optics):
+	"""
+	A selection of functions to calculate efficiency of the optical element:
+	- reflectivity
+	- transmitivity
+	"""
+
+	def parratt(self, wl, n, d, sigma):
+		"""
+		:param wl: wavelength in m
+		:param n: refractive index for X-rays at the wavelength
+		:param d: thickness of layers
+		:param sigma: roughness of the layers
+		:return: reflectivity of the multilayer
+		"""
+
+		
+
+
+#==============================================================================
 #	 CLASS ABSTRACT: OpticsNumerical
 #==============================================================================
 class OpticsNumerical(Optics):
