@@ -7,7 +7,7 @@ Created on Mon Mar 20 11:56:47 2017
 A fictiously large KB system is used in order to avoid large diffraction effects
 and to allow for Gaussian fitting of the intensity, instead of HEW (half-energy
 width).
-
++
 """
 import importlib
 import numpy as np

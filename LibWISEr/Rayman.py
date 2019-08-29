@@ -12,7 +12,6 @@ from numpy import sum, cos, sin, tan, pi, array, arange, size, polyval, polyfit,
 from LibWISEr.ToolLib import Debug
 from numba import jit, prange
 from numba import int64, float64, complex128
-from numba import cuda
 
 from scipy import ndimage
 import multiprocessing
@@ -484,9 +483,6 @@ class SourceType():
 #==============================================================================
 # 	FUN: HuygensIntegral_1d_Kernel
 #==============================================================================
-
-#import yaml
-
 @jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
 def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     """
@@ -500,22 +496,27 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
         Coordinates of the start plane
     xb, yb : 1d array float
         Coordinates of the final plane
+    bStart : int
+        Start index on the start plane
+    bEnd : int
+        End index on the final plane
+    The computation is performed on the elements
+    xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
     """
 
     k = 2. * pi / wl
 
-    EbTokN = xb.shape[0]
+    bStart = 0
+    bEnd = prod(int64(xb.shape))
 
+    EbTokN = bEnd - bStart
     EbTok = zeros(EbTokN, dtype=complex128)
     RList = zeros(EbTokN, dtype=float64)
 
-    assert(EbTok.shape == RList.shape)
-    assert(RList.shape == xa.shape)
-    assert(RList.shape == ya.shape)
-
+    # loop on items within the segment of B
     for i in prange(0, EbTokN):
-        xbi = xb[i]
-        ybi = yb[i]
+        xbi = xb[i + bStart]
+        ybi = yb[i + bStart]
         # Preliminary normalisation
         # 17/01/2017
         # Normalization = self.L * self.(Alpha)/(Lambda * )
@@ -523,9 +524,7 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
 
         RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
 
-        EbTok[i] = sum(Ea / RList * exp(-1j * k * RList))
-
-    EbTok = 1. / sqrt(wl) * EbTok
+        EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
 
     return EbTok
 
@@ -564,6 +563,93 @@ def _MatchArrayLengths (x,y):
         return (x,y)
     else:
         return (x,y)
+
+#==============================================================================
+# 	WRAPPER
+#==============================================================================
+def _wrapper_HuygensIntegral_1d_Kernel(parameters):
+
+    # Unpack the parameters
+    Lambda, Ea, xa, ya, xb, yb, bStart, bEnd = parameters
+
+    # Convert to float
+    Lambda = float64(Lambda)
+    Ea = complex128(Ea)
+    xa = float64(xa)
+    ya = float64(ya)
+    xb = float64(xb)
+    yb = float64(yb)
+
+    # Convert to int
+    bStart = int64(bStart)
+    bEnd = int64(bEnd)
+
+    return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart, bEnd)
+
+#==============================================================================
+# 	WRAPPER ARGUMENTS
+#==============================================================================
+def _wrapper_args_HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, NPools):
+    N = size(xb)
+    r = linspace(0,N, NPools+1) ; r = array([floor(ri) for ri in r]) ;
+    #args_StartStop = list(zip([x for x in r], r[1:]))
+    args_StartStop = list(zip(r[0:], r[1:]))
+    #args_StartStop  = (len(r)-1) * [(r[0], r[1])] # toglier
+    args =  [[Lambda, Ea, xa, ya, xb, yb] + list(myArg) for myArg in args_StartStop]
+    return (args, args_StartStop)
+
+#==============================================================================
+# 	FUN: HuygensIntegral_1d_MultiPool
+#==============================================================================
+def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose = True):
+
+    (xa, ya) = _MatchArrayLengths(xa,ya)
+    (xb, yb) = _MatchArrayLengths(xb,yb)
+    # Convert to float
+    Lambda = float64(Lambda)
+    Ea = complex128(Ea)
+    xa = float64(xa)
+    ya = float64(ya)
+    xb = float64(xb)
+    yb = float64(yb)
+
+    if Verbose:
+        # multi pool
+        print(30 * '=-.');
+        print('\n')
+        print('HuygensIntegral_1d_MultiPool')
+        print('N0:=%d' % len(xa))
+        print('N1:=%d' % len(xb))
+        print('NPools = %d' % NPools)
+        # print('--------------------------------')
+        # print('Lambda', type(Lambda), np.shape(Lambda))
+        # print('Ea', type(Ea), np.shape(Ea))
+        # print('xa', type(xa), np.shape(xa))
+        # print(xa)
+        # print('ya', type(ya), np.shape(ya))
+        # print(ya)
+        # print('xb', type(xb), np.shape(xb))
+        # print(xb)
+        # print('yb', type(yb), np.shape(yb))
+        # print(yb)
+
+    if NPools > 1:
+        p = multiprocessing.Pool(NPools)
+        (args, argsStartStop) = _wrapper_args_HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, NPools)
+        res = p.map(_wrapper_HuygensIntegral_1d_Kernel, args)
+        p.close()
+#		return argsStartStop # toglire
+        if size(res) > 1:
+            return concatenate(res)
+        else:
+            return res
+    else: #single thread
+        return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb)
+
+#==============================================================================
+# 	FUN: HuygensIntegral_1d
+#==============================================================================
+HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
 
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = True):
     '''
@@ -661,89 +747,3 @@ def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = T
 #				Det_s = xy_to_s(Det_x, Det_y)
 #				return E1, Det_s
 #'''
-
-'''
-NOT NEEDED ANYMORE, BUT STILL KEPT HERE!
-#==============================================================================
-# 	FUN: HuygensIntegral_1d_MultiPool
-#==============================================================================
-def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose = True):
-
-    (xa, ya) = _MatchArrayLengths(xa,ya)
-    (xb, yb) = _MatchArrayLengths(xb,yb)
-    # Convert to float
-    Lambda = float64(Lambda)
-    Ea = complex128(Ea)
-    xa = float64(xa)
-    ya = float64(ya)
-    xb = float64(xb)
-    yb = float64(yb)
-
-    if Verbose:
-        # multi pool
-        print(30 * '=-.');
-        print('\n')
-        print('HuygensIntegral_1d_MultiPool')
-        print('N0:=%d' % len(xa))
-        print('N1:=%d' % len(xb))
-        print('NPools = %d' % NPools)
-        # print('--------------------------------')
-        # print('Lambda', type(Lambda), np.shape(Lambda))
-        # print('Ea', type(Ea), np.shape(Ea))
-        # print('xa', type(xa), np.shape(xa))
-        # print(xa)
-        # print('ya', type(ya), np.shape(ya))
-        # print(ya)
-        # print('xb', type(xb), np.shape(xb))
-        # print(xb)
-        # print('yb', type(yb), np.shape(yb))
-        # print(yb)
-
-    if NPools > 1:
-        p = multiprocessing.Pool(NPools)
-        (args, argsStartStop) = _wrapper_args_HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, NPools)
-        res = p.map(_wrapper_HuygensIntegral_1d_Kernel, args)
-        p.close()
-#		return argsStartStop # toglire
-        if size(res) > 1:
-            return concatenate(res)
-        else:
-            return res
-    else: #single thread
-        return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb)
-
-#==============================================================================
-# 	WRAPPER
-#==============================================================================
-def _wrapper_HuygensIntegral_1d_Kernel(parameters):
-
-    # Unpack the parameters
-    Lambda, Ea, xa, ya, xb, yb, bStart, bEnd = parameters
-
-    # Convert to float
-    Lambda = float64(Lambda)
-    Ea = complex128(Ea)
-    xa = float64(xa)
-    ya = float64(ya)
-    xb = float64(xb)
-    yb = float64(yb)
-
-    # Convert to int
-    bStart = int64(bStart)
-    bEnd = int64(bEnd)
-
-    return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart, bEnd)
-
-#==============================================================================
-# 	WRAPPER ARGUMENTS
-#==============================================================================
-def _wrapper_args_HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, NPools):
-    N = size(xb)
-    r = linspace(0,N, NPools+1) ; r = array([floor(ri) for ri in r]) ;
-    #args_StartStop = list(zip([x for x in r], r[1:]))
-    args_StartStop = list(zip(r[0:], r[1:]))
-    #args_StartStop  = (len(r)-1) * [(r[0], r[1])] # toglier
-    args =  [[Lambda, Ea, xa, ya, xb, yb] + list(myArg) for myArg in args_StartStop]
-    return (args, args_StartStop)
-
-'''

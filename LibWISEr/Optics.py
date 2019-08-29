@@ -101,6 +101,17 @@ class OPTICS_INFO:
 					  'XYStart', 'XYCentre', 'XYEnd']
 
 
+	
+#=============================
+#     ENUM: OPTICS_ORIENTATION
+#=============================
+class OPTICS_ORIENTATION:
+	Isotropic = 0
+	Vertical = 2
+	Horizontal = 2**2
+	Any = 2**3
+
+
 #==============================================================================
 #	 CLASS: Optics
 #==============================================================================
@@ -116,7 +127,7 @@ class Optics(object):
 		calling the GetXY function (if the option "UseSmallDisplacements" is selected).
 
 		The displacements are intendet to be applied after the "nominal construction" of the
-		beamline, and affects the result of GetXY funciton only.
+		beamline, and affects the result of GetXY function only.
 
 		The displacements are defined along the direction of RayInNominal and can be
 
@@ -130,6 +141,7 @@ class Optics(object):
 			self.Rotation = 0.0
 			self.Long= 0.0
 			self.Trans= 0.0
+			self.Orientation = OPTICS_ORIENTATION.Any
 
 	#=================================================
 	#CLASS (INTERNAL):  _ComputationSettings [Optics]
@@ -163,6 +175,24 @@ class Optics(object):
 		self.XY = np.array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
+
+	#================================
+	# PROP: Orientation
+	#================================
+	@property
+	def Orientation(self) -> OPTICS_ORIENTATION:
+		'''
+		Created for: handling the succession of Vertical and Horizontal items in a beamline,
+		and in the the pertinent field propagation.
+		
+		This property is queried by the 1d propagation system in order to know which o.e. couple
+		together.
+		 
+		'''
+		return self._Orientation
+	@Orientation.setter
+	def Orientation(self, Value):
+		self._Orientation = Value
 
 
 	#================================================
@@ -5027,8 +5057,6 @@ class TransmissionMask(MirrorPlane):
 SourceGaussian_1d = SourceGaussian
 SourcePoint_1d = SourcePoint
 
-
-
 #=============================
 #     ENUM: OPTICS_CLASSES
 #=============================
@@ -5036,3 +5064,7 @@ class OPTICS_TYPE:
 	Dummy = 0
 	MirrorPlane = MirrorPlane
 	EllipticalMirror = MirrorElliptic
+
+
+	
+	
