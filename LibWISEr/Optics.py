@@ -97,7 +97,7 @@ class OPTICS_INFO:
 	__TypeDescr = "Type Description"
 	__Behaviour = OPTICS_BEHAVIOUR.Mirror
 	__IsAnalytic = False
-	__PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
+	__PropList = ['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 					  'XYStart', 'XYCentre', 'XYEnd']
 
 
@@ -116,7 +116,6 @@ class OPTICS_ORIENTATION:
 #	 CLASS: Optics
 #==============================================================================
 class Optics(object):
-
 
 	#================================================================
 	#CLASS (INTERNAL):  _ClassSmallDisplacements
@@ -141,7 +140,7 @@ class Optics(object):
 			self.Rotation = 0.0
 			self.Long= 0.0
 			self.Trans= 0.0
-			self.Orientation = OPTICS_ORIENTATION.Any
+
 
 	#=================================================
 	#CLASS (INTERNAL):  _ComputationSettings [Optics]
@@ -175,6 +174,7 @@ class Optics(object):
 		self.XY = np.array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
+		self.Orientation = OPTICS_ORIENTATION.Any
 
 	#================================
 	# PROP: Orientation
@@ -243,16 +243,48 @@ class opticsEfficiency(Optics):
 	- transmitivity
 	"""
 
-	def parratt(self, wl, n, d, sigma):
+	def reflectivity(self, wl, n, sigma):
 		"""
+		Calculate reflectivity using Fresnel optical equations
+
 		:param wl: wavelength in m
 		:param n: refractive index for X-rays at the wavelength
-		:param d: thickness of layers
 		:param sigma: roughness of the layers
 		:return: reflectivity of the multilayer
 		"""
 
-		
+		def ref(pn, sld, dn, sigma):  # Calculates upward and downward moving neutron amplitudes, following Boris' memo
+
+			phi = np.zeros(len(pn) - 1, dtype=np.complex_)
+			phi[1:] = pn[1:-1] * dn
+
+			r_fresnel = (pn[:-1] - pn[1:]) / (pn[:-1] + pn[1:]) * np.exp(-2. * pn[:-1] * pn[1:] * sigma ** 2.)
+			t_fresnel = 2. * pn[:-1] / (pn[:-1] + pn[1:]) * np.exp((pn[:-1] - pn[1:]) ** 2. * sigma ** 2. / 2.)
+
+			X = np.zeros(len(sld), dtype=np.complex_)
+			t = np.ones(len(sld), dtype=np.complex_)
+			X_tilde = np.zeros(len(sld), dtype=np.complex_)
+			r = np.zeros(len(sld), dtype=np.complex_)
+			r_tilde = np.zeros(len(sld), dtype=np.complex_)
+
+			for n in reversed(range(0, len(sld) - 1)):
+				X[n] = (r_fresnel[n] + X[n + 1]) / (1. + X[n + 1] * r_fresnel[n]) * np.exp(2. * 1j * phi[n])
+				X_tilde[n] = (r_fresnel[n] + X[n + 1]) / (1. + X[n + 1] * r_fresnel[n]) * np.exp(1j * phi[n])
+
+			r[0] = X[0]
+			r_tilde[0] = X_tilde[0]
+			for i in range(1, len(sld)):
+				t[i] = t_fresnel[i - 1] * t[i - 1] * (np.exp(1j * phi[i - 1])) / (1. + r_fresnel[i - 1] * X[i])
+				r[i] = t[i] * X[i]
+				r_tilde[i] = t[i] * X_tilde[i]
+
+			# t[1:] = t[1:] * np.exp((pn[:-1] - pn[1:])**2. * sigma**2. / 2.)
+			# r[1:] = r[1:] * np.exp(-2. * pn[:-1] * pn[1:] * sigma**2.)
+
+			return {'ratio': X, 'down': t, 'up': r, 'r_tilde': r_tilde}
+
+		return abs(R)**2
+
 
 
 #==============================================================================
@@ -316,7 +348,7 @@ class OpticsNumerical(Optics):
 	#================================
 	# EvalField(N)
 	#================================
-	def EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
+	def EvalField(self, x1, y1, Lambda, E0, NPools = 1,  Options = ['HF']):
 		'''
 		Helper function (forwards)
 		Propagates the field E0 from this optical element (x0,y0) onto the plane
@@ -427,7 +459,7 @@ class OpticsNumerical(Optics):
 	#================================
 	# FieldForwards(N)
 	#================================
-	def FieldForwards(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
+	def FieldForwards(self, x1, y1, Lambda, E0, NPools = 1,  Options = ['HF']):
 		'''
 		Helper function (forwards)
 		Propagates the field E0 from this optical element (x0,y0) onto the plane
@@ -823,7 +855,7 @@ class SourcePoint(object):
  	#================================
 	# EvalField(N)
 	#================================
-	def EvalField(self, x1, y1, Lambda,  NPools = 3,  **kwargs):
+	def EvalField(self, x1, y1, Lambda,  NPools=1,  **kwargs):
 		'''
 		Helper function.
 		Propagates the field E0 from this optical element (x0,y0) onto the plane
@@ -1136,7 +1168,7 @@ class SourceGaussian(OpticsAnalytical):
  	#================================
 	# EvalField(N)
 	#================================
-	def EvalField(self, x1, y1, Lambda,  NPools = 3,  **kwargs):
+	def EvalField(self, x1, y1, Lambda,  NPools = 1,  **kwargs):
 		'''
 		Helper function.
 		Propagates the field E0 from this optical element (x0,y0) onto the plane

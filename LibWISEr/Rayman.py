@@ -647,6 +647,7 @@ def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose
         # print('yb', type(yb), np.shape(yb))
         # print(yb)
 
+    NPools = 1 # Disable NPools (in order to make it numba compliant, 20190830)
     if NPools > 1:
         p = multiprocessing.Pool(NPools)
         (args, argsStartStop) = _wrapper_args_HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, NPools)
