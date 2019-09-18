@@ -54,6 +54,7 @@ class OPTICS_BEHAVIOUR:
 	Source = 'source'
 	Mirror = 'mirror'
 	Focus = 'focus'
+	Slit = 'slit'
 	Split = 'split'
 
 def DiffractionMinimum(Lambda, D, z, Alpha = 0):
@@ -232,60 +233,6 @@ class OpticsAnalytical(Optics):
 		''' Evaluates the Field in the laboratory raference frame
 		'''
 		pass
-
-#==============================================================================
-#	 CLASS ABSTRACT: OpticsEfficiency
-#==============================================================================
-class opticsEfficiency(Optics):
-	"""
-	A selection of functions to calculate efficiency of the optical element:
-	- reflectivity
-	- transmitivity
-	"""
-
-	def reflectivity(self, wl, n, sigma):
-		"""
-		Calculate reflectivity using Fresnel optical equations
-
-		:param wl: wavelength in m
-		:param n: refractive index for X-rays at the wavelength
-		:param sigma: roughness of the layers
-		:return: reflectivity of the multilayer
-		"""
-
-		def ref(pn, sld, dn, sigma):  # Calculates upward and downward moving neutron amplitudes, following Boris' memo
-
-			phi = np.zeros(len(pn) - 1, dtype=np.complex_)
-			phi[1:] = pn[1:-1] * dn
-
-			r_fresnel = (pn[:-1] - pn[1:]) / (pn[:-1] + pn[1:]) * np.exp(-2. * pn[:-1] * pn[1:] * sigma ** 2.)
-			t_fresnel = 2. * pn[:-1] / (pn[:-1] + pn[1:]) * np.exp((pn[:-1] - pn[1:]) ** 2. * sigma ** 2. / 2.)
-
-			X = np.zeros(len(sld), dtype=np.complex_)
-			t = np.ones(len(sld), dtype=np.complex_)
-			X_tilde = np.zeros(len(sld), dtype=np.complex_)
-			r = np.zeros(len(sld), dtype=np.complex_)
-			r_tilde = np.zeros(len(sld), dtype=np.complex_)
-
-			for n in reversed(range(0, len(sld) - 1)):
-				X[n] = (r_fresnel[n] + X[n + 1]) / (1. + X[n + 1] * r_fresnel[n]) * np.exp(2. * 1j * phi[n])
-				X_tilde[n] = (r_fresnel[n] + X[n + 1]) / (1. + X[n + 1] * r_fresnel[n]) * np.exp(1j * phi[n])
-
-			r[0] = X[0]
-			r_tilde[0] = X_tilde[0]
-			for i in range(1, len(sld)):
-				t[i] = t_fresnel[i - 1] * t[i - 1] * (np.exp(1j * phi[i - 1])) / (1. + r_fresnel[i - 1] * X[i])
-				r[i] = t[i] * X[i]
-				r_tilde[i] = t[i] * X_tilde[i]
-
-			# t[1:] = t[1:] * np.exp((pn[:-1] - pn[1:])**2. * sigma**2. / 2.)
-			# r[1:] = r[1:] * np.exp(-2. * pn[:-1] * pn[1:] * sigma**2.)
-
-			return {'ratio': X, 'down': t, 'up': r, 'r_tilde': r_tilde}
-
-		return abs(R)**2
-
-
 
 #==============================================================================
 #	 CLASS ABSTRACT: OpticsNumerical
@@ -5034,9 +4981,42 @@ class Detector(MirrorPlane):
 
 
 #==============================================================================
+#	 CLASS ABSTRACT: OpticsEfficiency
+#==============================================================================
+class OpticsEfficiency(Mirror):
+	"""
+	A selection of functions to calculate efficiency of the optical element:
+	- reflectivity
+	- transmitivity
+	"""
+
+	def __init__(self):
+		super().__init__()
+
+	def Reflectivity(self, n, k):
+		"""
+		Calculate reflectivity using Fresnel optical equations, Peatman, p. 119, 120
+
+		:param n: refractive index for X-rays at the wavelength
+		:param k: extinction coefficient for X-rays at a wavelength
+		:return: reflectivity of the multilayer
+		"""
+
+		theta = pi / 2. - self.AngleGrazingNominal
+
+		a = sqrt(0.5 * ((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 + n**2 - k**2 - sin(theta)**2)
+		b = sqrt(0.5 * ((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 - n**2 - k**2 - sin(theta)**2)
+
+		R_s = ((a - cos(theta))**2 + b**2) / ((a + cos(theta))**2 + b**2) # Polarization, perpendicular to incidence plane
+		R_p = R_s * ((a - sin(theta) * tan(theta))**2 + b**2) / ((a + sin(theta) * tan(theta))**2 + b**2) # Polarization, parallel to incidence plane
+
+		return R_s, R_p
+
+
+#==============================================================================
 #	 CLASS: TransmissionFunction
 #==============================================================================
-class TransmissionMask(MirrorPlane):
+class Slits(MirrorPlane):
 	'''
 	This class is introduced to cover the following needs:
 		1 - introduce slits\apertures etc in a generic position along the optical axis (e.g. between the source and a mirror)
@@ -5047,7 +5027,7 @@ class TransmissionMask(MirrorPlane):
 		.GetXY returns (x,y)
 		.GetT returns the transmission function
 
-		The spatial/alignmkent behaviour of TransmissionMask  is the same as MirrorPlane.
+		The spatial/alignment behaviour of TransmissionMask  is the same as MirrorPlane.
 
 		The behaviour is described by the TransmissionFunction, which must be defined in more specific classes
 		(e.g. TransmsssionSlits, TransmissionSphericalWave, etc.	)
@@ -5062,25 +5042,314 @@ class TransmissionMask(MirrorPlane):
 		If TransmissionMask.ComputationSettings.Action = 'Propagate' then
 		a) the position of the TransmissionMask is computed as that of a plane mirror
 		b) the computation of the field is computed via Huygens Fresnel.
-
-
-
-
 	'''
-  	#================================
-	# Settings CLASS
-	#================================
-	class __ClassComputationSettings:
-		DictAction = {'downstream' : 0, 'upstream' : 1, 'propagate' : 2}
-		def __init__(self):
-			self.Action = 0
-	#================================
-	# FUN: __init__
-	#================================
-	def __init__(self):
-		super().__init__()
 
-	pass
+	_TypeStr = 'PM'
+	_TypeDescr = "Slits"
+	_Behaviour = OPTICS_BEHAVIOUR.Slits
+	_IsAnalytic = False
+	_PropList = ['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
+				 'XYStart', 'XYCentre', 'XYEnd']
+
+	# ================================
+	#  FUN: __init__
+	# ================================
+	def __init__(self, L=None, AngleGrazing=pi/2., XYLab_Centre=[0, 0], AngleIn=0):
+		super().__init__()
+		'''
+        Parameters
+        ---------------------
+        XYLab_Centre : [x,y]
+            Coordinates of the centre of the mirror
+        AngleIn: float (radians)
+            Angle of the input ray in the laboratory reference frame.
+        AngleGrazing : angle, radians
+            Grazing angle which must be preserved between the mirror and the InputAngleLab.
+            It is used to compute MirrorAngle
+        '''
+		# BUILDING
+		if CheckArg([L, AngleGrazing]):
+			self._L = L
+			self._AngleGrazingNominal = AngleGrazing
+			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
+		else:
+			ErrMsg.InvalidInputSet
+
+		self._UpdateParameters_Lines()
+		self._UpdateParameters_XYStartEnd()
+
+	# ================================
+	#  FUN: __str__
+	# ================================
+	def __str__(self):
+		#		PropList = ['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
+		#					  'XYStart', 'XYCentre', 'XYEnd']
+		StrList = ['%s=%s' % (PropName, getattr(self, PropName)) for PropName in MirrorPlane._PropList]
+		return 'Plane mirror\n' + 20 * '-' + '\n' + '\n'.join(StrList) + '\n' + 20 * '-'
+
+
+	# ================================
+	#  PROP EXTENSION: XYCentre
+	# ================================
+	def XYCentre(self, value):
+		super.XYCentre = value
+		self._UpdateParameters_XYStartEnd()
+
+	# ==============================
+	#  PROP: L
+	# ================================
+	@property
+	def L(self):
+		return self._L
+
+	@L.setter
+	def L(self, value):
+		self._L = value
+		self._UpdateParameters_XYStartEnd()
+
+	# ================================
+	#  PROP: AngleInputLabNominal
+	# ================================
+	@property
+	def AngleInputLabNominal(self):
+		'''
+		Angle (in the Lab reference) of the incident beam.
+		Computed using: AngleLab and AngleGrazingNominal
+		Depends on Mirror type.
+
+		'''
+		return self.AngleLab - pi / 2 - self.AngleGrazingNominal
+
+	#	#================================
+	#	#  PROP: AngleGrazing
+	#	#================================
+	#	@property
+	#	def AngleGrazing(self):
+	#		return self._AngleGrazing
+	#	@AngleGrazing.setter
+	#	def AngleGrazing(self):
+	#		raise ValueError('AngleGrazing non se pol set')
+
+	#	#================================
+	#	#  PROP: AngleTan
+	#	#================================
+	#	@property
+	#	def AngleTan(self):
+	#		return self._AngleTan
+	#
+	# ================================
+	#  PROP: AngleNorm
+	# ================================
+	@property
+	def AngleNorm(self):
+		return self._AngleNorm
+
+	# ================================
+	#  PROP: Line_Tan
+	# ================================
+	@property
+	def Line_Tan(self):
+		"""
+		Line object, containing the tangent to the mirror
+		"""
+		return self._Line_Tan
+
+	# ================================
+	#  PROP: XYStart
+	# ================================
+	@property
+	def XYStart(self):
+		return self._XYLab_Start
+
+	# ================================
+	#  PROP: XYEnd
+	# ================================
+	@property
+	def XYEnd(self):
+		return self._XYLab_End
+
+	# ================================
+	# GetXY_IdealMirror(N)
+	# ================================
+	def GetXY_IdealMirror(self, N=100):
+		'''
+		Return the coordinates of the ideal mirror.
+
+		Return
+		--------------------
+		x : np.array
+			x points
+		y : np.array
+			y:point
+		'''
+		N = int(N)
+		if (self.XYStart[0] != self.XYEnd[0]):
+			x = np.linspace(self.XYStart[0], self.XYEnd[0], N)
+			y = self.Line_Tan.m * x + self.Line_Tan.q
+		else:  # handles the case of vertical mirror
+			x = np.float(self.XYStart[0]) + np.zeros(N)
+			y = np.linspace(self.XYStart[1], self.XYEnd[1], N)
+		return x, y
+
+	"""
+	 #================================
+	# GetXY
+	#================================
+	def GetXY(self, N, Options =['ideal'] ):
+		'''
+		Main User-interface function for getting the x,y points of the mirror
+		in the laboratory reference frame.
+
+		Options can be
+		- 'ideal' : the ideal mirror profile is used (default)
+		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
+		 "perturbations" around the nominal configuration.
+		- 'figure error' : a figure error is added to the mirror profile, if possible
+		- 'roughness' : a roughness profile is added to the mirror profile, if possible
+		'''
+		if 'ideal' in Options:
+			return self.GetXY_IdealMirror(N)
+		else:
+			print("Mirror.GetXY: Option set not implemented. \n Options = %s" % str(Options))
+	"""
+
+	# ================================
+	# Get_LocalTangentAngle
+	# ================================
+	def Get_LocalTangentAngle(self, x0, y0, ProperFrame=False):
+		return self.VersorTan.Angle
+
+	# ================================
+	# SetXYAngle_Centre
+	# ================================
+	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle=TypeOfAngle.InputNominal, **kwargs):
+		'''
+		Set the element XYCentre and orientation angle.
+		CHECK CONTROLLARE: non mi ricordo più che cosa siano gli angoli
+		'''
+
+		self.XYCentre = XYLab_Centre
+
+		if WhichAngle == TypeOfAngle.Surface:  # Angle is the Normal to the surface
+			self.AngleLab = Angle
+
+		elif WhichAngle == TypeOfAngle.InputNominal:  # Angle is the angle of the input beam
+			self.AngleTanLab = Angle + self.AngleGrazingNominal
+
+		self._UpdateParameters_XYStartEnd()
+		self._UpdateParameters_Lines()
+
+	#		AngleTan = AngleIn + self.AngleGrazing
+	# Defines: Versos, AngleNorm, AngleTan
+	#		UV = UnitVector(Angle = AngleTan + pi/2) # Old definition: when the primary variable was VersorNorm and not VersorTan
+	#		self.VersorNorm = UV
+	# self.VersorTan = UnitVector(Angle = AngleTan) # attempt of new definition, but it is not safe
+
+	# ================================
+	# SetXYA_IdealMirror(N)
+	# ================================
+	#	def GetXY_IdealMirror(self, N = 100  ):
+
+	# ================================
+	# FUN: _UpdateParameters_XYStartEnd
+	# ================================
+	def _UpdateParameters_XYStartEnd(self):
+		# Uses: _XYLab_Centre, _VersorNorm
+		# Defines: XYStart, XYEnd
+		# Called: in __init__
+		# According to the y component of .VersorNorm, I define the
+		# start and end points of the mirror.
+
+		#		XY_a = self._XYLab_Centre + self.L/2 * self.VersorNorm.vNorm
+		#		XY_b = self._XYLab_Centre - self.L/2 * self.VersorNorm.vNorm
+
+		XY_a = self.XYCentre + self.L / 2 * self.VersorNorm.vNorm
+		XY_b = self.XYCentre - self.L / 2 * self.VersorNorm.vNorm
+
+		if XY_a[0] < XY_b[1]:
+			self._XYLab_Start = XY_a
+			self._XYLab_End = XY_b
+		elif XY_a[0] >= XY_b[1]:
+			self._XYLab_Start = XY_b
+			self._XYLab_End = XY_a
+
+	# ================================
+	# FUN: _UpdateParameters_Lines
+	# ================================
+	def _UpdateParameters_Lines(self):
+		# Uses: XYCentre, _AngleTan
+		# Called: in init, When XYCentre is changed;
+		# 	 	 	in SetXYAngle_Centre
+		pass
+
+	#		m = np.tan(self.AngleTanLab)
+	#		q = self.XYCentre[1] - m * self.XYCentre[0]
+	#		self._Line_Tan = Line(m, q)
+
+	# ================================
+	# PROP _Line_Tan
+	# ================================
+	@property
+	def _Line_Tan(self):
+		'''
+		Line tan is the line tangent to the mirror surface, viz the equation
+		of the mirror itself
+		'''
+		m = np.tan(self.AngleTanLab)
+		q = self.XYCentre[1] - m * self.XYCentre[0]
+		return Line(m, q)
+
+	# ================================================
+	#	GetRayOutNominal
+	#	INTERFACE FUNCTION
+	# 	(called in Fundation.OpticalElement)
+	# ================================================
+
+	# ================================
+	# PROP: GetRayInNominal
+	# ================================
+	@property
+	def RayInNominal(self):
+		v = UnitVector(Angle=self.AngleInputLabNominal).v
+		return Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
+
+	#================================
+	# PROP: RayOutNominal
+	#================================
+	@property
+	def RayOutNominal(self):
+		# RayOutNominal == RayInNominal
+		v = UnitVector(Angle=self.AngleInputLabNominal).v
+		return Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
+
+	#================================
+	# FUN: Paint
+	#================================
+	def Paint(self, FigureHandle= None, N = 100, Length = 1, ArrowWidth = 1, Color = 'm', **kwargs):
+		'''
+		Paint the object (somehow... this is a prototype) in the specified figure.
+		N is the number of samples.
+		'''
+		# Paint the mirror
+		Fig = plt.figure(FigureHandle)
+		FigureHandle = Fig.number
+		x_mir, y_mir = self.GetXY_IdealMirror(N)
+		plt.plot(x_mir, y_mir, Color + '.')
+		# mark the mirror centre
+		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
+		# paint the normal versor
+		self.VersorNorm.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
+		# paint the inputray
+		self.RayInNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'g', Shift = True)
+		# paint the output ray
+		self.RayOutNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'c')
+		return FigureHandle
+	#================================
+	#  Draw
+	#================================
+	def Draw(self, N=100):
+		x,y  = geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle,N)
+		return x,y
 
 
 #==============================================================================
@@ -5098,5 +5367,4 @@ class OPTICS_TYPE:
 	EllipticalMirror = MirrorElliptic
 
 
-	
-	
+
