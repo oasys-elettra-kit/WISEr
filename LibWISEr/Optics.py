@@ -54,7 +54,7 @@ class OPTICS_BEHAVIOUR:
 	Source = 'source'
 	Mirror = 'mirror'
 	Focus = 'focus'
-	Slit = 'slit'
+	Slits = 'slits'
 	Split = 'split'
 
 def DiffractionMinimum(Lambda, D, z, Alpha = 0):
