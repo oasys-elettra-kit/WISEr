@@ -297,8 +297,8 @@ def UnitVectorNormal(v, Sign = +1):
 	'''
 	nx,ny = RotXY(v[0], v[1], Sign * np.pi/2)
 
-	nx = 0 if abs(nx) < 1e-16 else nx[0]
-	ny = 0 if abs(ny) < 1e-16 else ny[0]
+	nx = 0 if abs(nx) < 1e-15 else nx[0]
+	ny = 0 if abs(ny) < 1e-15 else ny[0]
 	return np.array([nx,ny])
 #================================
 #  UnitVectorReflect
@@ -1138,7 +1138,10 @@ class Line(object):
 	@Angle.setter
 	def Angle(self, Val):
 		self.Angle = Val
-		self._m = np.tan(Val)
+		if Val%(pi/2.) == 0.:
+			self._m = 1e-16
+		else:
+			self._m = np.tan(Val)
 
 	#======================
 	#	 m

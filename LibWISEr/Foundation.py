@@ -69,7 +69,7 @@ class ComputationSettingsForOpticalElement(object):
 		Numerical= 'numerical'
 		Analytical= 'analytical'
 		Ignore = 'ignore'
-		AnaltyticalSource = 'analytical source'
+		AnalyticalSource = 'analytical source'
 	
 	def __init__(self, Ignore = False):
 		self.Ignore = Ignore
@@ -501,7 +501,7 @@ class OpticalElement(TreeItem):
 		self._IsSource = IsSource
 		self.PositioningDirectives = PositioningDirectives
 		self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
-		
+
 		self.Results = ComputationResults()
 		
 		
@@ -669,6 +669,7 @@ class OpticalElement(TreeItem):
 	@ComputationSettings.setter
 	def ComputationSettings(self,value):
 		self._ComputationSettings = value
+
 
 	#================================================
 	#	PROP: ComputationResults (get,set)
@@ -926,7 +927,7 @@ class BeamlineElements(Tree):
 			N = 0
 		
 		PropInfo.oeLast = self.FirstItem
-		
+
 		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
 
 #		oeStart = self.FirstItem if oeStart == None else oeStart
@@ -1024,7 +1025,7 @@ class BeamlineElements(Tree):
 				# oeLast is Numerical
 				#----------------------------------------------
 				else:
-					Action = 'Evaluating numerical Huygens Fresnel (on oeThis)'
+					Action = 'Evaluating numerical Huygens Fresnel (on oeThis): ' + oeThis.Name
 					Debug.print('Action: ' + Action, Ind)
 
 					# oeThis --> xThis, yThis
@@ -1234,7 +1235,7 @@ class BeamlineElements(Tree):
 				# oeLast is Numerical
 				#----------------------------------------------				
 				else:
-					Action = 'Evaluating numerical Huygens Fresnel (on oeThis)'
+					Action = 'Evaluating numerical Huygens Fresnel (on oeThis): ' + oeThis.Name
 					Debug.print('Action: ' + Action, Ind)
 					
 					# oeThis --> xThis, yThis 
@@ -1552,12 +1553,14 @@ class BeamlineElements(Tree):
 		oeList = self.GetFromTo(oeStart, oeEnd)
 		oeListOriented = []
 		for _ in oeList:
+			# print(_.Name, _.CoreOptics.Orientation, (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Any or
+			# 	_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Isotropic) or (_.CoreOptics.Orientation == Orientation))
 			if (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Any or
-				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Isotropic) or Orientation:
+				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Isotropic) or (_.CoreOptics.Orientation == Orientation):
 				oeListOriented.append(_)
 		
-		oeStart = oeList[0]
-		return oeList, oeStart, oeEnd
+		oeStart = oeListOriented[0]
+		return oeListOriented, oeStart, oeEnd
 	#================================================
 	#  FUN: MeasureOpticalPath
 	#================================================

@@ -10,6 +10,7 @@ from LibWISEr.must import *
 import matplotlib.pyplot as plt
 import LibWISEr.ToolLib as tl
 from LibWISEr.ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
+from abc import abstractmethod
 
 import LibWISEr.Noise as Noise
 import LibWISEr.Rayman as rm
@@ -318,10 +319,16 @@ class OpticsNumerical(Optics):
 
 		return E1
 
+	@abstractmethod
+	def GetXY(self):
+		"""
+        Abstract method to write a message.
+        Raises: NotImplementedError
+        """
+		raise NotImplementedError("You should implement GetXY.")
 
 	'''
 	The two master variables are XYOrigin as AngleLab
-	
 	'''
 	#================================
 	# PROP: XYCentre
@@ -2527,7 +2534,7 @@ class MirrorPlane(Mirror):
  	#================================
 	# GetXY_IdealMirror(N)
 	#================================
-	def GetXY_IdealMirror(self, N = 100  ):
+	def GetXY_IdealMirror(self, N = 100, ReferenceFrame = 'self', L = None):
 		'''
 		Return the coordinates of the ideal mirror.
 
@@ -5011,7 +5018,6 @@ class OpticsEfficiency(Mirror):
 
 		return R_s, R_p
 
-
 #==============================================================================
 #	 CLASS: TransmissionFunction
 #==============================================================================
@@ -5054,8 +5060,21 @@ class Slits(OpticsNumerical):
 	#  FUN: __init__
 	# ================================
 	def __init__(self, L=None, AngleGrazing=pi/2., XYLab_Centre=[0, 0], AngleIn=0):
-		super().__init__()
+		super().__init__()  # No roughness, no small displacements, no figure error from super
 		'''
+		Init:
+		Optics
+		self.XY = np.array([XPosition, YPosition])
+		self.SmallDisplacements = Optics._SmallDisplacements()
+		self.ComputationSettings = Optics._ComputationSettings()
+		self.Orientation = OPTICS_ORIENTATION.Any
+		
+		OpticsNumerical
+		self._Transformation_List = [ [], [], [] ]
+		self.AngleLab = 0
+		self._XYLab_Centre = np.array([0,0])
+		self.ComputationSettings = OpticsNumerical._ComputationSettings()
+				
         Parameters
         ---------------------
         XYLab_Centre : [x,y]
@@ -5074,6 +5093,7 @@ class Slits(OpticsNumerical):
 		else:
 			ErrMsg.InvalidInputSet
 
+		self.SmallDisplacements = False
 		self._UpdateParameters_Lines()
 		self._UpdateParameters_XYStartEnd()
 
@@ -5107,6 +5127,8 @@ class Slits(OpticsNumerical):
 		'''
 		N = int(N)
 		if (self.XYStart[0] != self.XYEnd[0]):
+			#if self.AngleTanLab%(pi / 2.) == 0.:
+
 			x = np.linspace(self.XYStart[0], self.XYEnd[0], N)
 			y = self.Line_Tan.m * x + self.Line_Tan.q
 		else:  # handles the case of vertical mirror
@@ -5169,7 +5191,7 @@ class Slits(OpticsNumerical):
 	# ================================
 	@property
 	def L(self):
-		return self._L
+			return self._L
 
 	@L.setter
 	def L(self, value):
@@ -5257,8 +5279,8 @@ class Slits(OpticsNumerical):
 		#		XY_a = self._XYLab_Centre + self.L/2 * self.VersorNorm.vNorm
 		#		XY_b = self._XYLab_Centre - self.L/2 * self.VersorNorm.vNorm
 
-		XY_a = self.XYCentre + self.L / 2 * self.VersorNorm.vNorm
-		XY_b = self.XYCentre - self.L / 2 * self.VersorNorm.vNorm
+		XY_a = self.XYCentre + self.L / 2. * self.VersorNorm.vNorm
+		XY_b = self.XYCentre - self.L / 2. * self.VersorNorm.vNorm
 
 		if XY_a[0] < XY_b[1]:
 			self._XYLab_Start = XY_a
@@ -5309,7 +5331,7 @@ class Slits(OpticsNumerical):
 	@property
 	def RayOutNominal(self):
 		v = UnitVector(Angle=self.AngleInputLabNominal).v
-		return Ray(vx=-v[0], vy=-v[1], XYOrigin=self.XYCentre)
+		return Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
 
 	# ================================
 	# FUN: Paint
@@ -5343,7 +5365,6 @@ class Slits(OpticsNumerical):
 # ================================
 #  _Draw
 # ================================
-
 
 #==============================================================================
 #	 REDUNDANCIES
