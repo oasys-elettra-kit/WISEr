@@ -734,6 +734,23 @@ class OpticalElement(TreeItem):
 		return sum(Distances) + self.DistanceFromParent
 
 	#================================================
+	#	FUNC: GetParent
+	#================================================
+
+	def GetParent(self, SameOrientation = False):
+		if SameOrientation == True:
+			for oe in self.UpstreamItemList:
+				if ((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
+						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Isotropic) or
+						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.Any)):
+					GetParentResult = oe
+					break
+		else:
+			GetParentResult = self.Parent
+
+		return GetParentResult
+
+	#================================================
     #     UpdatePreOutput
     #================================================
 		'''
@@ -822,16 +839,17 @@ class BeamlineElements(Tree):
 
 		# places an item respect with its parent (if there is any)
 		# improve 101
-		oeRecoveryList = [] 
+
+		oeRecoveryList = []
 		oeList = self.ItemList
-		k = 0 
+		k = 0
 		kTot = len(oeList)
 		for oeY in oeList:
 			k +=1
 			Debug.print('%d/%d -  Positioning "%s"' % (k,kTot, oeY.Name),3)
-			
+
 			if oeY.PositioningDirectives != None:
-				
+
 				# Who is the reference element?
 				#----------------------------------------------------------------
 				if oeY.PositioningDirectives.ReferTo == 'upstream':
@@ -846,13 +864,129 @@ class BeamlineElements(Tree):
 					oeX = oeY.Parent										# even if oeY.Parent = None, that's ok. The function will handle it.
 				#----------------------------------------------------------------
 
-				PositioningDirectives_UpdatePosition(oeY, oeX)
+				self.ApplyPositioningDirectives(oeY)
 			else:
 				oeRecoveryList.append(oeY)
 
 		# AD HOC for OpticsNuemricalDependent oe
 		for oe in oeRecoveryList:
 			oe.CoreOptics.Refresh()
+
+	# ================================================
+	#     PositioningDirectives_UpdatePosition
+	# ================================================
+	@staticmethod
+	def ApplyPositioningDirectives(oeY: OpticalElement):
+		'''
+			This function replaces PositioningDirectives_UpdatePosition(oeY, oeX)
+			in calculating the XY positions of the optical elements along the
+			beamline. Starting from the current optical element oeY.PositioningDirectives,
+			all the features are calculated according to the previous oes.
+
+			Parameters
+			------------------
+			oeY : OpticalElement
+				The optical element to place
+
+
+			Notice
+			------------------
+			- If PositioningDirectives has ReferTo='absolute', oeX is not used
+			- If PositioningDirectives has ReferTo='locked' then the positioning of the present element is not computed.
+				This shall be used for elements whose position has already been computed in another BeamlineElements object,
+				and you don't want to recompute all the sequence.
+				I introduced this when I do the focus sweep, keeping an optical element fixed ('locked') and moving the screen
+				only.
+			- If PositioningDirectives has flag=UseFollowing, oeX is supposed to be the subsequent	optical element respect with oeY.
+			- According to the type of oeY and oeX, different strategies for computing the positioning may be used.
+
+			Developer note
+			------------------
+			This function, in order to work, expects that some (or all) of the following member
+			functions are defined in the object OpticalElement.CoreOptics
+			(This object is typically an instance of Optics.MirrorPlane, Optics.EllipticalMirror,
+			Optics.SourceGaussian, etc...)
+
+			(ni = Not Implemented yet)
+
+			- XYCentre
+
+			- SetXYAngle_Centre
+			- SetXYAngle_UpstreamFocus
+			- SetXYA_DownstreamFocus (ni)
+
+
+		'''
+		Pd = oeY.PositioningDirectives
+
+		if oeY.IsSource == False:
+			oeX = oeY.Parent if oeY.Parent != None else 'None' # Get XY coordinates from the oeX
+			oeXSameOrientation = oeY.GetParent(SameOrientation=True)
+
+		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
+		# We don't know what this does exactly...
+		# -------------------------------------------
+		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
+			pass
+
+		# ABSOLUTE POSITIONING
+		# -------------------------------------------
+		elif Pd.ReferTo == posdir_.ReferTo.AbsoluteReference:
+
+			# set position
+			Debug.print(Pd.XYCentre, 5)
+
+			oeY.CoreOptics.SetXYAngle_Centre(Pd.XYCentre, Pd.Angle, WhichAngle=Pd.WhichAngle)
+
+		# Reference = PREVIOUS ELEMENT or DOWNSTREAM ELEMENT or SOURCE
+		# -----------------------------------------------------------------
+		elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
+
+			RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # the incident ray
+
+			# ........................................
+			#  put centre Distance away from centre
+			# ........................................
+			if Pd.What == 'centre' and Pd.Where == 'centre':
+
+				# Set position
+				newXYCentre = oeXSameOrientation.CoreOptics.XYCentre + Pd.Distance * tl.Normalize(RayIn.v)
+				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+
+			#			Debug.print('oeY.RayIn:= ' + str(oeY.CoreOptics.RayOutNominal.v), _DebugTab+1)
+
+			# ........................................
+			#  put upstreamfocus into centre
+			# ........................................
+			elif Pd.What == 'upstream focus' and Pd.Where == 'centre':
+				# Set position
+				oeY.CoreOptics.SetXYAngle_UpstreamFocus(oeXSameOrientation.XYCentre, RayIn.Angle)
+
+			# ........................................
+			#  put centre into downstream focus
+			# ........................................
+			elif Pd.What == 'centre' and Pd.Where == 'downstream focus':
+				# It is equivalent to put 'centre' into 'centre' with distance
+				# equal to f2. e.g. oeX: detector, oeY: KB mirror
+
+				# Set position
+				# hwired
+				v = oeX.RayOutNominal.UnitVectorAtOrigin.v
+				# newXYCentre = oeX.CoreOptics.XYCentre + (Pd.Distance + oeX.CoreOptics.f2) * oeX.RayOutNominal.v
+				# newXYCentre = oeX.CoreOptics.XYCentre + oeX.CoreOptics.f2 * v
+				newXYCentre = oeX.CoreOptics.XYCentre + (Pd.Distance + oeX.CoreOptics.f2) * v
+				tmp_ = np.linalg.norm(newXYCentre - oeX.CoreOptics.XYF2)
+
+				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle)
+
+			else:
+				print('fottiti')
+
+		else:
+			# NOT IMPLEMENTED :-)
+			print('PositioningDirectives.PARSE =: \t%s\n\t Code not implemented yet :-)' % Pd.ReferTo)
+			pass
+		Debug.print('<\end Parse>', 4)
 
 	#================================================
 	#  FUN: GetSamplingList
@@ -930,6 +1064,8 @@ class BeamlineElements(Tree):
 
 		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
 
+		print(oeList)
+
 #		oeStart = self.FirstItem if oeStart == None else oeStart
 #		oeEnd = self.LastItem if oeEnd == None else oeEnd
 #		#Picking just a subportion of oeList, if required by oeStart, oeEnd
@@ -991,7 +1127,7 @@ class BeamlineElements(Tree):
 					# Dummy? (Analytic Branch)
 					#----------------------------------------------
 					if Dummy == True:
-						oeThis.Results.Field  = 0
+						oeThis.Results.Field = 0
 						xThis = None
 						yThis = None
 					else:
@@ -1047,7 +1183,7 @@ class BeamlineElements(Tree):
 					# Dummy? (Huygens branch)
 					#----------------------------------------------
 					if Dummy == True:
-						oeThis.Results.Field= 0
+						oeThis.Results.Field = 0
 						xThis = None
 						yThis = None
 
@@ -1065,7 +1201,7 @@ class BeamlineElements(Tree):
 												xThis,
 												yThis,
 												Lambda = Lambda,
-												E0 = PropInfo.oeLast.Results.Field ,
+												E0 = PropInfo.oeLast.Results.Field,
 												NPools = 1)
 
 
@@ -1560,6 +1696,8 @@ class BeamlineElements(Tree):
 				oeListOriented.append(_)
 		
 		oeStart = oeListOriented[0]
+		oeEnd = oeListOriented[-1]
+
 		return oeListOriented, oeStart, oeEnd
 	#================================================
 	#  FUN: MeasureOpticalPath
@@ -1812,8 +1950,7 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 			tmp_ = np.linalg.norm(newXYCentre - oeX.CoreOptics.XYF2)
 			 
 
-			oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle)      
-		
+			oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle)
 
 		else:
 			print('fottiti')
@@ -1964,7 +2101,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize = 50e-6, AngleInNominal = 
 	t = BeamlineElements()
 	t.Append(oeFocussing)
 	t.Append(d)
-	t.ComputationSettings.NPools = NPools
+	t.ComputationSettings.NPools = 1
 
 	
 	# Buffer
