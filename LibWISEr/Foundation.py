@@ -941,61 +941,34 @@ class BeamlineElements(Tree):
         # -----------------------------------------------------------------
         elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
 
-            RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # the incident ray
+            RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # The incident ray
+            LastXY = oeXSameOrientation.CoreOptics.XYCentre # XY position of the same orientation
 
             # ........................................
             #  put centre Distance away from centre
             # ........................................
             if Pd.What == 'centre' and Pd.Where == 'centre':
 
-                # Treat detectors differently
+                # Treat detectors differently, they are a special case which are always in focus
                 if ('detector' in oeY.Name) or ('detector' in oeX.Name):
-                    newXYCentre = oeXSameOrientation.CoreOptics.XYCentre + Pd.Distance * tl.Normalize(RayIn.v)
+                    newXYCentre = LastXY + Pd.Distance * tl.Normalize(RayIn.v)
                     oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
                 else:
-                    # Focal distance is given as input distance
-                    print(oeX.Name, oeY.Name)
-                    print(oeX.CoreOptics.XYCentre, Pd.Distance, tl.Normalize(RayIn.v))
-                    newXYCentre = oeX.CoreOptics.XYCentre + Pd.Distance * tl.Normalize(RayIn.v)
-                    # SOMETHING IS WRONG SOMEWHERE HERE WITH COMPUTATION OF DISTANCES, they don't match...
+                    # If a normal optical element is given, first calculate the distance to the oeXSameOrientation.
+                    # Then the newXYCentre can be calculated from the distance.
+                    realDistance = Pd.Distance
+
+                    oePrevious = oeX
+                    oeLastSame = oeXSameOrientation
+
+                    # Compute the distance correctly. Only the last arm is given as a parameter in Pd.Distance
+                    while oePrevious != oeLastSame:
+                        realDistance = oePrevious.DistanceFromParent + realDistance
+                        oePrevious = oePrevious.Parent
+
+                    newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
                     oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-
-
-
-
-                # First, set position to the nearest optical element with the same orientation, but a distance away from
-                # the previous element.
-
-                # The two detectors are fictive, so set the position of the second detector at the same position as the
-                # first
-
-
-
-                #     newXYCentre = oeX.CoreOptics.XYCentre
-                #     oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-                #
-                #     if (oeY.PositioningDirectives.Distance != oeX.PositioningDirectives.Distance):
-                #         # Assume that focal distances were added for each detector orientation
-                #
-                #     else:
-                #
-                #
-                #
-            # else:
-            #     oePrevious = oeX
-            #     oeSameOrientation = oeXSameOrientation
-            #     realDistance = Pd.Distance
-            #
-            #     while oePrevious != oeSameOrientation:
-            #         oePrevious = oePrevious.Parent
-            #         realDistance = oePrevious.DistanceFromParent + realDistance
-            #
-            #     # Set position
-            #     newXYCentre = oePrevious.CoreOptics.XYCentre + realDistance * tl.Normalize(RayIn.v)
-            #     oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-
-            #			Debug.print('oeY.RayIn:= ' + str(oeY.CoreOptics.RayOutNominal.v), _DebugTab+1)
 
             # ........................................
             #  put upstream focus into centre
@@ -1009,6 +982,7 @@ class BeamlineElements(Tree):
                         oeSource = oeSource.Parent
 
                     # Which RayIn, of the source or the previous element?
+                    # There could be a problem when an element is added somewhere in between with ReferTo == 'source'.
                     oeY.CoreOptics.SetXYAngle_UpstreamFocus(oeSource.XYCentre, oeSource.CoreOptics.RayOutNominal.Angle)
 
                 else:
@@ -1756,7 +1730,10 @@ class BeamlineElements(Tree):
         oeThis = oeStart
         while True:
 
-            oeNext = oeThis.Children[0]  # The following element
+            if oeThis.IsSource == True:
+                oeNext = self.ItemList[1]
+            else:
+                oeNext = oeThis.Children[0]  # The following element
             print(oeThis.Name)
             print(oeNext.Name)
             if oeNext == None:

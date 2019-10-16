@@ -3594,7 +3594,7 @@ class MirrorElliptic(Mirror):
 
 		self._Transformation_Clear()
 		self._Transformation_Add(0,
-								-self._XYProp_Centre+XYMirrorCentreNew,
+								-self._XYProp_Centre + XYMirrorCentreNew,
 								XYMirrorCentreNew)
 		self._Transformation_Add(TotalAngle,
 								[0,0] ,
