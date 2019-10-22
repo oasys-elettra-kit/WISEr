@@ -5001,7 +5001,12 @@ class OpticsEfficiency(Mirror):
 
 	def Reflectivity(self, n, k):
 		"""
-		Calculate reflectivity using Fresnel optical equations, Peatman, p. 119, 120
+		Calculate reflectivity using Fresnel optical equations, Peatman, p. 119, 120. Peatman's definition is:
+		widetilde(n) = n + ik
+		CXRO parameters are delta and beta, with the following definition:
+		widetilde(n) = (1-delta) - i beta
+
+		Therefore, one must take n=(1-delta) and k=-beta.
 
 		:param n: refractive index for X-rays at the wavelength
 		:param k: extinction coefficient for X-rays at a wavelength
@@ -5010,10 +5015,10 @@ class OpticsEfficiency(Mirror):
 
 		theta = pi / 2. - self.AngleGrazingNominal
 
-		a = sqrt(0.5 * ((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 + n**2 - k**2 - sin(theta)**2)
-		b = sqrt(0.5 * ((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 - n**2 - k**2 - sin(theta)**2)
+		a = sqrt(0.5 * (((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 + (n**2 - k**2 - sin(theta)**2)))
+		b = sqrt(0.5 * (((n**2 - k**2 - sin(theta)**2)**2 + 4. * n**2 * k**2)**0.5 - (n**2 - k**2 - sin(theta)**2)))
 
-		R_s = ((a - cos(theta))**2 + b**2) / ((a + cos(theta))**2 + b**2) # Polarization, perpendicular to incidence plane
+		R_s = ((a - cos(theta))**2 + b**2) / ((a + cos(theta))**2 + b ** 2)  # Polarization, perpendicular to incidence plane
 		R_p = R_s * ((a - sin(theta) * tan(theta))**2 + b**2) / ((a + sin(theta) * tan(theta))**2 + b**2) # Polarization, parallel to incidence plane
 
 		return R_s, R_p
