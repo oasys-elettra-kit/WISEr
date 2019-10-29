@@ -492,55 +492,53 @@ class OpticalElement(TreeItem):
 	'''
     __NameCounter = {}
 
-    # ================================================
-    #     __init__
-    # ================================================
-    def __init__(self, Element=None, Name=None, IsSource=False,
-                 PositioningDirectives=None,
-                 ComputationSettings=None,
-                 *kwargs):
-        # self.ChainControl = ChainControlObject()
-        TreeItem.__init__(self)
-        self._IsSource = IsSource
-        self.PositioningDirectives = PositioningDirectives
-        self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
+	# ================================================
+	#     __init__
+	# ================================================
+	def __init__(self, CoreOpticsElement=None, Name=None, IsSource=False,
+				 PositioningDirectives=None,
+				 ComputationSettings=None,
+				 *kwargs):
+		# self.ChainControl = ChainControlObject()
+		TreeItem.__init__(self)
+		self._IsSource = IsSource
+		self.PositioningDirectives = PositioningDirectives
+		self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
+		self.Results = ComputationResults()
 
-        self.Results = ComputationResults()
+		# Item is a class of Optics. Object is created (not recommended)
+		if inspect.isclass(CoreOpticsElement):
+			Class = CoreOpticsElement
+			CoreOpticsElement = Class()
+		else:
+			pass
 
-        # Item is a class of Optics. Object is created (not recommended)
-        if inspect.isclass(Element):
-            Class = Element
-            Element = Class()
-        else:
-            pass
+		if CoreOpticsElement == None:
+			print('OpticalElement(....): a None object is passed as element. Be careful')
+			self.CoreOptics = None
+			self.__Type = 'None'
+			self.__TypeStr = 'nn'
 
-        if Element == None:
-            print('OpticalElement(....): a None object is passed as element. Be careful')
-            self.CoreOptics = None
-            self.__Type = 'None'
-            self.__TypeStr = 'nn'
+		else:
+			self.CoreOptics = CoreOpticsElement  # contains a link to an Optics object
+			self.__Type = type(self.CoreOptics)
+			self.__TypeStr = self.CoreOptics._TypeStr
+			print(self.__TypeStr)
 
-        else:
-            self.CoreOptics = Element  # contains a link to an Optics object
-            self.__Type = type(self.CoreOptics)
-            self.__TypeStr = self.CoreOptics._TypeStr
-            print(self.__TypeStr)
+		self.Name = (Name if Name != None else self.__GetNewName())
+		self.RayIn = None
+		self.RayOut = None
 
-        self.Name = (Name if Name != None else self.__GetNewName())
-        self.RayIn = None
-        self.RayOut = None
+		self.__NOutput = 0  # Abstract: N of output beams.
+		#		self.x = 0
 
-        self.__NOutput = 0  # Abstract: N of output beams.
-        #		self.x = 0
-
-        # If Element has 'absolute' positioning, then its position is refreshed immediately.
-        # There are 2 good reasons:
-        # 1. there is no need to wait for the other beamline elements to be deployed
-        # 2. another element may need the position of this element for its further 'absolute' positioning.
-        if PositioningDirectives.ReferTo == 'absolute':
-            PositioningDirectives_UpdatePosition(self, None)
-
-    # ================================================
+		# If Element has 'absolute' positioning, then its position is refreshed immediately.
+		# There are 2 good reasons:
+		# 1. there is no need to wait for the other beamline elements to be deployed
+		# 2. another element may need the position of this element for its further 'absolute' positioning.
+		if PositioningDirectives.ReferTo == 'absolute':
+			PositioningDirectives_UpdatePosition(self, None)
+	# ================================================
     #     __str__
     # ================================================
     def __str__(self):
