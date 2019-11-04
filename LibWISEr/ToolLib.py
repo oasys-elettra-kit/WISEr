@@ -133,8 +133,8 @@ def SamplingAlongLine(Theta, XYCentre, Length, NSamples = None, Step = None):
 	a railw)
 	Either the total Length or the Number of samples NSamples must be specified
 		
-    Parameters
-    ----------
+	Parameters
+	----------
 	Theta : 
 		angle (radians)
 	XYCentre :  2d array
@@ -364,13 +364,13 @@ def FitSphericalWave1d(Phi,s, Lambda):
 	y_m = np.mean(y)
 
 	def calc_R(xc, yc):
-	    """ calculate the distance of each 2D points from the center (xc, yc) """
-	    return sqrt((x-xc)**2 + (y-yc)**2)
+		""" calculate the distance of each 2D points from the center (xc, yc) """
+		return sqrt((x-xc)**2 + (y-yc)**2)
 	
 	def f_2(c):
-	    """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
-	    Ri = calc_R(*c)
-	    return Ri - Ri.mean()
+		""" calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
+		Ri = calc_R(*c)
+		return Ri - Ri.mean()
 	
 	center_estimate = x_m, y_m
 	center_2, ier = optimize.leastsq(f_2, center_estimate)
@@ -444,7 +444,7 @@ def L_2_XY(f, L, XStart,  Sign = +1, Tolerance = 1e-3, GuessStep = 1e-4, iMax = 
 	For a given function y = f(x) and a starting point XStart,
 	it finds the point XEnd such that the length of the curve
 	f(x) from XStart to XEnd equals L
- 	
+
 	We have originally written it for accurately finding the XStart, XEnd points of 
 	an elliptic mirror.
 	
@@ -721,7 +721,7 @@ class geom:
 
 	#================================
 	#  PointsToLine
-    #================================
+	#================================
 	@staticmethod
 	def PointsToLine(x0,y0,x1,y1):
 		'''
@@ -744,8 +744,8 @@ class geom:
 #		return m,q
 
 	#================================
-    #  StepAlongLine
-    #================================
+	#  StepAlongLine
+	#================================
 	@staticmethod
 	def StepAlongLine(step, m,q, x0 = 0 , sign = +1):
 		'''
@@ -764,8 +764,8 @@ class geom:
 		return x,y
 
 	 #================================
-    #  StepAlongDirection
-    #================================
+	#  StepAlongDirection
+	#================================
 	@staticmethod
 	def StepAlongDirection(x0 , y0, step, angle,  sign = +1):
 		'''
@@ -804,8 +804,8 @@ class geom:
 			x,y = geom.StepAlongLine(step, m,q,x0, sign)
 		return x,y
 	#================================
-    #  IntersectLine
-    #================================
+	#  IntersectLine
+	#================================
 	@staticmethod
 	def IntersectLine(Poly1,Poly2):
 		'''
@@ -901,8 +901,8 @@ class geom:
 		return R*np.cos(an), R*np.sin(an)
 
 	#================================
-    #  DrawSegment
-    #================================
+	#  DrawSegment
+	#================================
 	@staticmethod
 	def DrawSegment(x0,y0,x1,y1, N=2):
 		'''
@@ -918,8 +918,8 @@ class geom:
 		return x,y
 
 	#================================
-    #  DrawSegmentCentred
-    #================================
+	#  DrawSegmentCentred
+	#================================
 	@staticmethod
 	def DrawSegmentCentred(L, x0, y0, Angle, N=2):
 		xEnd,yEnd =     geom.StepAlongDirection(L/2, Angle, x0,y0, sign=+1)
@@ -1551,7 +1551,7 @@ class Ray(Vector):
 		else:
 			print('Ray.__init__ : a wrong combination of arguments was used')
 			raise ValueError('A very specific bad thing happened')
- 			# Update further parameters (common procedure)
+			# Update further parameters (common procedure)
 			 
 		#self.XYOrigin = [0,0] if XYOrigin == None else XYOrigin
 		self.XYOrigin = [0,0] if XYOrigin is None else XYOrigin
@@ -1691,7 +1691,7 @@ class Ray_seminuovo(object):
 		else:
 			print('Ray.__init__ : a wrong combination of arguments was used')
 			raise ValueError('A very specific bad thing happened')
- 			# Update further parameters (common procedure)
+			# Update further parameters (common procedure)
 		self._vNorm = UnitVectorNormal(self.v)
 
 	#======================

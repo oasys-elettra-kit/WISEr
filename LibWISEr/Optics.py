@@ -24,13 +24,13 @@ Conventions:
 ----------------
 
 RF : stands for "reference frame"
-XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element. 
+XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element.
 
 XYKLab : couple of (x,y) coordinates expressed in the RF of the laboratory
- 
+
 AngleGrazing : is the "grazing angle" (see wikipedia), and it is typically taken from the central point of an optical element.
 	In this sense it is independent on the laboratory RF.
-	
+
 AngleIn : "In" stands for Input, and designate the angle of the input beam (in the laboratory RF)
 
 AngleOut : The same as AngleIn, but for the Output beam
@@ -102,7 +102,7 @@ class OPTICS_INFO:
 					  'XYStart', 'XYCentre', 'XYEnd']
 
 
-	
+
 #=============================
 #     ENUM: OPTICS_ORIENTATION
 #=============================
@@ -171,11 +171,11 @@ class Optics(object):
 	#===============================
 	#	 CLASS: __init__ [Optics]
 	#===============================
-	def __init__(self, XPosition = 0 , YPosition = 0):
+	def __init__(self, XPosition = 0 , YPosition = 0, Orientation = OPTICS_ORIENTATION.Any):
 		self.XY = np.array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
-		self.Orientation = OPTICS_ORIENTATION.Any
+		self.Orientation = Orientation
 
 	#================================
 	# PROP: Orientation
@@ -185,10 +185,10 @@ class Optics(object):
 		'''
 		Created for: handling the succession of Vertical and Horizontal items in a beamline,
 		and in the the pertinent field propagation.
-		
+
 		This property is queried by the 1d propagation system in order to know which o.e. couple
 		together.
-		 
+
 		'''
 		return self._Orientation
 	@Orientation.setter
@@ -216,8 +216,8 @@ class OpticsAnalytical(Optics):
 	''' Implements optics which can be (totally, unically or mostly) described
 	analytically (e.g. gaussian sources, theoretical diffraction grating, etc).
 	'''
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 	#================================================
 	#	 EvalField_XYSelf
 	#================================================
@@ -247,8 +247,8 @@ class OpticsNumerical(Optics):
 	#================================================================
 	class _ComputationSettings(Optics._ComputationSettings):
 
-		def __init__(self, Ignore = False):
-			super().__init__()
+		def __init__(self, Ignore = False, **kwargs):
+			super().__init__(**kwargs)
 			self.UseSmallDisplacements = False
 			self.UseRoughness = False
 			self.UseFigureError = False
@@ -282,10 +282,10 @@ class OpticsNumerical(Optics):
 			return self.__str__()
 
 	#================================
-	#FUN:  __init__
+	#FUN:  __init__ OpticsNumerical
 	#================================
-	def __init__(self):
-		super().__init__()
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
 		self._Transformation_List = [ [], [], [] ]
 		self.AngleLab = 0
 		self._XYLab_Centre = np.array([0,0])
@@ -322,9 +322,9 @@ class OpticsNumerical(Optics):
 	@abstractmethod
 	def GetXY(self):
 		"""
-        Abstract method to write a message.
-        Raises: NotImplementedError
-        """
+		Abstract method to write a message.
+		Raises: NotImplementedError
+		"""
 		raise NotImplementedError("You should implement GetXY.")
 
 	'''
@@ -643,7 +643,7 @@ class OpticsNumerical(Optics):
 #			>>> _Transformation_Update_XYPropToXYLab_Point(a)
 #		'''
 #
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N, Options =[], **kwargs ):
@@ -651,7 +651,7 @@ class OpticsNumerical(Optics):
 		ABSTRACT
 		'''
 		pass
- 	#================================
+	#================================
 	# RayInNominal
 	#================================
 	@property
@@ -661,7 +661,7 @@ class OpticsNumerical(Optics):
 		'''
 		pass
 
- 	#================================
+	#================================
 	# RayOutNominal
 	#================================
 	@property
@@ -706,7 +706,7 @@ class OpticsNumerical(Optics):
 
 		return
 
- 	#=================
+	#=================
 
 #==============================================================================
 #	 CLASS: SourcePoint
@@ -805,7 +805,7 @@ class SourcePoint(object):
 		R = np.sqrt((x-self.XYCentre[0])**2 + (y-self.XYCentre[1])**2)
 		return 1. / R * np.exp(1j * k * R)
 
- 	#================================
+	#================================
 	# EvalField(N)
 	#================================
 	def EvalField(self, x1, y1, Lambda,  NPools=1,  **kwargs):
@@ -870,7 +870,7 @@ class _old(OpticsAnalytical):
 
 
 
- 	#================================
+	#================================
 	# SetXYAngle_Centre
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, AngleIn ):
@@ -955,7 +955,7 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	#	 __init__
 	#================================================
-	def __init__(self, Lambda, Waist0, XYOrigin=[0,0], AnglePropagation=0):
+	def __init__(self, Lambda, Waist0, XYOrigin=[0,0], AnglePropagation=0,**kwargs):
 		'''
 		Defines a purely gaussian source (M factor =1).
 
@@ -964,7 +964,7 @@ class SourceGaussian(OpticsAnalytical):
 		Waist0 : Waist size in the equation of the electromagnetic field (not the Intensity!)
 
 		'''
-		super().__init__()
+		super().__init__(**kwargs)
 
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
@@ -1118,7 +1118,7 @@ class SourceGaussian(OpticsAnalytical):
 		return Norm * A *	np.exp(1j * self.Phase(z, r))
 
 
- 	#================================
+	#================================
 	# EvalField(N)
 	#================================
 	def EvalField(self, x1, y1, Lambda,  NPools = 1,  **kwargs):
@@ -1719,7 +1719,7 @@ class Segment(OpticsNumerical):
 		return self._XYLab_End
 
 
- 	#================================
+	#================================
 	# GetXY_IdealMirror(N)
 	#================================
 	def GetXY_Segment(self, N = 100  ):
@@ -1739,7 +1739,7 @@ class Segment(OpticsNumerical):
 
 		return x,y
 
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N, Options =['ideal'] ):
@@ -1751,7 +1751,7 @@ class Segment(OpticsNumerical):
 	def Get_LocalTangentAngle(self, x0, y0, ProperFrame = False):
 		return self.VersorTan.Angle
 
- 	#================================
+	#================================
 	# SetXYAngle_Centre
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, AngleIn ):
@@ -1960,8 +1960,8 @@ class Mirror(OpticsNumerical):
 	#================================
 	# __init__
 	#================================
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 
 
 		self.Options = Mirror._ClassOptions()
@@ -2222,7 +2222,7 @@ class Mirror(OpticsNumerical):
 
 		return Mir_xx, Mir_yy
 
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N):
@@ -2401,8 +2401,8 @@ class MirrorPlane(Mirror):
 	#================================
 	#  FUN: __init__
 	#================================
-	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0):
-		super().__init__()
+	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0, **kwargs):
+		super().__init__(**kwargs)
 		'''
 		Parameters
 		---------------------
@@ -2531,7 +2531,7 @@ class MirrorPlane(Mirror):
 		return self._XYLab_End
 
 
- 	#================================
+	#================================
 	# GetXY_IdealMirror(N)
 	#================================
 	def GetXY_IdealMirror(self, N = 100, ReferenceFrame = 'self', L = None):
@@ -2556,7 +2556,7 @@ class MirrorPlane(Mirror):
 
 
 	"""
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N, Options =['ideal'] ):
@@ -2567,7 +2567,7 @@ class MirrorPlane(Mirror):
 		Options can be
 		- 'ideal' : the ideal mirror profile is used (default)
 		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration. 
+		 "perturbations" around the nominal configuration.
 		- 'figure error' : a figure error is added to the mirror profile, if possible
 		- 'roughness' : a roughness profile is added to the mirror profile, if possible
 		'''
@@ -2582,7 +2582,7 @@ class MirrorPlane(Mirror):
 	def Get_LocalTangentAngle(self, x0, y0, ProperFrame = False):
 		return self.VersorTan.Angle
 
- 	#================================
+	#================================
 	# SetXYAngle_Centre
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle =  TypeOfAngle.InputNominal, **kwargs ):
@@ -2607,7 +2607,7 @@ class MirrorPlane(Mirror):
 #		self.VersorNorm = UV
 		# self.VersorTan = UnitVector(Angle = AngleTan) # attempt of new definition, but it is not safe
 
- 	#================================
+	#================================
 	# SetXYA_IdealMirror(N)
 	#================================
 #	def GetXY_IdealMirror(self, N = 100  ):
@@ -2746,7 +2746,8 @@ class MirrorElliptic(Mirror):
 			  MirXMid = None,
 			  XYOrigin = np.array([0,0]),
 			  RotationAngle = 0,
-			  Face = 'down'):
+			  Face = 'down',
+			  **kwargs):
 
 		'''
 		Parameters - Set 1
@@ -2784,7 +2785,7 @@ class MirrorElliptic(Mirror):
 			in order to set it.
 		'''
 
-		super(MirrorElliptic, self).__init__()
+		super(MirrorElliptic, self).__init__(**kwargs)
 		#Mirror.__init__(self)
 		self._FigureErrors = []
 		self._FigureErrorSteps = []
@@ -3346,7 +3347,7 @@ class MirrorElliptic(Mirror):
 		return yOut
 
 	"""
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N, Options =['ideal'] ):
@@ -3360,14 +3361,14 @@ class MirrorElliptic(Mirror):
 		Options can be
 		- 'ideal' : the ideal mirror profile is used (default)
 		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration. 
+		 "perturbations" around the nominal configuration.
 		- 'figure error' : a figure error is added to the mirror profile, if possible
 		- 'roughness' : a roughness profile is added to the mirror profile, if possible
 		'''
 
 		if self.ComputationSettings.UseIdeal == True:
 			return self.GetXY_IdealMirror(N)
-		
+
 		if self.ComputationSettings.UseSmallDisplacements:
 			pass
 			else:
@@ -3435,7 +3436,7 @@ class MirrorElliptic(Mirror):
 
 			 @TODO: define N of samples along the MirrorElliptic (ma serve?)
 
-			 	L : is used by GetXY_MeasuredMirror, where L is not the nominal one, but the one computed from the
+				L : is used by GetXY_MeasuredMirror, where L is not the nominal one, but the one computed from the
 			figure error.
 
 		'''
@@ -4023,8 +4024,8 @@ class MirrorElliptic(Mirror):
 	@property
 	def RayOutNominal(self):
 		'''
-       Return the nominal outcoming ray. Uses the member attributes
-       of the object for the computation.
+	   Return the nominal outcoming ray. Uses the member attributes
+	   of the object for the computation.
 		'''
 		RayOut = Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
 				  x1 = self.XYF2[0], y1 = self.XYF2[1])
@@ -4101,7 +4102,7 @@ class MirrorSpheric(Mirror):
 	# INIT
 	#================================
 	def __init__(self, R, Alpha = None, L = None, XSelf_Centre = None,
-			  MirXMid = None, XYOrigin = np.array([0,0]), RotationAngle = 0):
+			  MirXMid = None, XYOrigin = np.array([0,0]), RotationAngle = 0,**kwargs):
 		'''
 
 		Parameters
@@ -4488,7 +4489,7 @@ class MirrorSpheric(Mirror):
 			x,y = self._Transformation_XYPropToXYLab(x,y)
 		return [x,y]
 
- 	#================================
+	#================================
 	# GetXY
 	#================================
 	def GetXY(self, N, Options =['ideal'] ):
@@ -4929,8 +4930,8 @@ class MirrorSpheric(Mirror):
 	@property
 	def RayOutNominal(self):
 		'''
-       Return the nominal outcoming ray. Uses the member attributes
-       of the object for the computation.
+	   Return the nominal outcoming ray. Uses the member attributes
+	   of the object for the computation.
 		'''
 		RayOut = Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
 				  x1 = self.XYF2[0], y1 = self.XYF2[1])
@@ -4996,8 +4997,8 @@ class OpticsEfficiency(Mirror):
 	- transmitivity
 	"""
 
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 
 	def Reflectivity(self, n, k):
 		"""
@@ -5073,23 +5074,23 @@ class Slits(OpticsNumerical):
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
 		self.Orientation = OPTICS_ORIENTATION.Any
-		
+
 		OpticsNumerical
 		self._Transformation_List = [ [], [], [] ]
 		self.AngleLab = 0
 		self._XYLab_Centre = np.array([0,0])
 		self.ComputationSettings = OpticsNumerical._ComputationSettings()
-				
-        Parameters
-        ---------------------
-        XYLab_Centre : [x,y]
-            Coordinates of the centre of the mirror
-        AngleIn: float (radians)
-            Angle of the input ray in the laboratory reference frame.
-        AngleGrazing : angle, radians
-            Grazing angle which must be preserved between the mirror and the InputAngleLab.
-            It is used to compute MirrorAngle
-        '''
+
+		Parameters
+		---------------------
+		XYLab_Centre : [x,y]
+			Coordinates of the centre of the mirror
+		AngleIn: float (radians)
+			Angle of the input ray in the laboratory reference frame.
+		AngleGrazing : angle, radians
+			Grazing angle which must be preserved between the mirror and the InputAngleLab.
+			It is used to compute MirrorAngle
+		'''
 		# BUILDING
 		if CheckArg([L, AngleGrazing]):
 			self._L = L
