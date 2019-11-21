@@ -10,30 +10,28 @@ from LibWISEr.must import *
 import matplotlib.pyplot as plt
 from LibWISEr.ToolLib import UnitVector, Ray, Line, CheckArg, geom, ErrMsg, Debug
 
-import Noise as Noise
+import LibWISEr.Noise as Noise
 from LibWISEr import Rayman as rm, ToolLib as tl
 from LibWISEr.Rayman import FastResample1d, _MatchArrayLengths
 import numpy as np
 from numpy import pi
-
+from enum import Enum
 '''
 
 Conventions:
 ----------------
 
 RF : stands for "reference frame"
-XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element. 
+XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element.
 
 XYKLab : couple of (x,y) coordinates expressed in the RF of the laboratory
- 
+
 AngleGrazing : is the "grazing angle" (see wikipedia), and it is typically taken from the central point of an optical element.
 	In this sense it is independent on the laboratory RF.
-	
+
 AngleIn : "In" stands for Input, and designate the angle of the input beam (in the laboratory RF)
 
 AngleOut : The same as AngleIn, but for the Output beam
-
-
 
 '''
 
@@ -90,13 +88,22 @@ class TypeOfXY:
 #===============================
 #	 CLASS: OPTICS_INFO
 #===============================
-class OPTICS_INFO:
+class OPTICS_INFO(Enum):
 	__TypeStr = 'ts'
 	__TypeDescr = "Type Description"
 	__Behaviour = OPTICS_BEHAVIOUR.Mirror
 	__IsAnalytic = False
 	__PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 					  'XYStart', 'XYCentre', 'XYEnd']
+
+#=============================
+#     ENUM: OPTICS_ORIENTATION
+#=============================
+class OPTICS_ORIENTATION(Enum):
+	ISOTROPIC = 0
+	VERTICAL = 2
+	HORIZONTAL = 2**2
+	ANY = 2**3
 
 
 #==============================================================================
@@ -134,10 +141,10 @@ class Optics(object):
 	#=================================================
 	class _ComputationSettings:
 		#===============================
-		#	 CLASS: __init__
+		#	 CLASS: __init__[ComputationSettings]
 		#===============================
 		def __init__(self, Ignore = False):
-			self.UseSmallDisplacements = False
+			self.UseSmallDisplacements = True
 
 		#===============================
 		#	 CLASS: __str__
@@ -157,11 +164,11 @@ class Optics(object):
 	#===============================
 	#	 CLASS: __init__ [Optics]
 	#===============================
-	def __init__(self, XPosition = 0 , YPosition = 0):
+	def __init__(self, XPosition = 0 , YPosition = 0, Orientation = OPTICS_ORIENTATION.ANY):
 		self.XY = np.array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
-
+		self.Orientation = Orientation
 
 	#================================================
 	#	 FUN: PaintMiniature
@@ -183,8 +190,8 @@ class OpticsAnalytical(Optics):
 	''' Implements optics which can be (totally, unically or mostly) described
 	analytically (e.g. gaussian sources, theoretical diffraction grating, etc).
 	'''
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 	#================================================
 	#	 EvalField_XYSelf
 	#================================================
@@ -214,9 +221,9 @@ class OpticsNumerical(Optics):
 	#================================================================
 	class _ComputationSettings(Optics._ComputationSettings):
 
-		def __init__(self, Ignore = False):
-			super().__init__()
-			self.UseSmallDisplacements = False
+		def __init__(self, Ignore = False,**kwargs):
+			super().__init__(**kwargs)
+			self.UseSmallDisplacements = True
 			self.UseRoughness = False
 			self.UseFigureError = False
 
@@ -249,10 +256,10 @@ class OpticsNumerical(Optics):
 			return self.__str__()
 
 	#================================
-	#FUN:  __init__
+	#FUN:  __init__[OpticsNumerical]
 	#================================
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 		self._Transformation_List = [ [], [], [] ]
 		self.AngleLab = 0
 		self._XYLab_Centre = np.array([0,0])
@@ -289,7 +296,7 @@ class OpticsNumerical(Optics):
 
 	'''
 	The two master variables are XYOrigin as AngleLab
-	
+
 	'''
 	#================================
 	# PROP: XYCentre
@@ -916,7 +923,7 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	#	 __init__
 	#================================================
-	def __init__(self, Lambda, Waist0, XYOrigin = [0,0], AnglePropagation = 0 ):
+	def __init__(self, Lambda, Waist0, XYOrigin = [0,0], AnglePropagation = 0, **kwargs):
 		'''
 		Defines a purely gaussian source (M factor =1).
 
@@ -925,7 +932,7 @@ class SourceGaussian(OpticsAnalytical):
 		Waist0 : Waist size in the equation of the electromagnetic field (not the Intensity!)
 
 		'''
-		super().__init__()
+		super().__init__(**kwargs)
 
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
@@ -1919,10 +1926,10 @@ class Mirror(OpticsNumerical):
 			self.USE_ROUGHNESS = False
 
 	#================================
-	# __init__
+	# __init__[Mirror]
 	#================================
-	def __init__(self):
-		super().__init__()
+	def __init__(self,**kwargs):
+		super().__init__(**kwargs)
 
 
 		self.Options = Mirror._ClassOptions()
@@ -1960,7 +1967,7 @@ class Mirror(OpticsNumerical):
 		return self._AngleGrazingNominal
 
 	#================================
-	# GetSampling(N)
+	# GetSampling(N) [Mirror]
 	#================================
 	def GetXY_Sampling(self, N , L):
 		'''
@@ -1992,12 +1999,20 @@ class Mirror(OpticsNumerical):
 	#================================
 	# GetXY_IdealMirror(N) [class: mirror]
 	#================================
-	def GetXY_IdealMirror(self, N, Sign = +1):
+	def GetXY_IdealMirror(self, N, Sign = +1, ReferenceFrame = None, L = None):
 		'''
 			Vecchia versione. Volevo sostituirla con una nuova che andasse bene per tutti
 			(specchi piani ed ellittici).
 			Per il momento ho solo fatto un gran casino.
 			La ripesco dal backup.
+
+			Notice
+			-----
+
+			ReferenceFrame : Unused.
+					Possible free parameter from Optics.GetXY_IdealMirror
+
+			L: Unused
 
 		'''
 		x = np.linspace(self.XYStart[0], self.XYEnd[0], N)
@@ -2064,21 +2079,30 @@ class Mirror(OpticsNumerical):
 			Coordinates of the mirror.
 
 		'''
-
+		N = int(N)
 		# carico il figure error e, se necessario, lo ricampiono
 		#-----------------------------------------------------------------
 		if len(self._FigureErrors)-1 >= iFigureError:
+
 			hFigErr  = self.FigureErrors[iFigureError]
 			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
 			self._L = LMeasured  # serve davvero?
 			hFigErr  = FastResample1d(hFigErr - np.mean(hFigErr  ), N)
 		else:
-			hFigErr   = np.zeros(N)
+			hFigErr   = np.zeros(int(N))
 			LMeasured = self.L
 
-		# Get the ideal ellipse (in the self- Reference frame)
+		# Get the ideal mirror (in the self- Reference frame)
 		# -----------------------------------------------------------------
 		Mir_x, Mir_y = self.GetXY_IdealMirror(N, ReferenceFrame = 'self', L = LMeasured)
+		#HACK: GetXY_IdealMirror and ReferenceFrame
+		'''ReferenceFrame is something that was originally used only in EllipticalMirror
+		Are we sure that we want to keep it as generic parameter in optics?
+		What for Otics which do not need it? (e.g. PlaneMirror)
+			=> Use None? good candidate
+			=> Improve polimorfism?
+			=> Use **kwargs ?
+		'''
 
 		# aggiungo la roughness (se richiesto, rigenero il noise pattern)
 		#-----------------------------------------------------------------
@@ -2093,17 +2117,20 @@ class Mirror(OpticsNumerical):
 			myResidual = hFigErr + hRoughness
 		else:
 			myResidual = hFigErr
-
+		#HINT: LastResidualUsed
 		self.LastResidualUsed = myResidual
+		self.LastFigureErrorUsed = myResidual
+		self.LastFigureErrorUsedIndex = iFigureError
 
-
-		# I Project the figure error on the Ellipse
+		# I Project the figure error on the Mirror Surface
 		# -----------------------------------------------------------------
 		ThetaList = self.Get_LocalTangentAngle(Mir_x, Mir_y)
 		Mir_xx = Mir_x + myResidual * sin(ThetaList)
 		Mir_yy = Mir_y + myResidual * cos(ThetaList)
 
 		if Reference == 'lab':
+			# Notice: This transformation is an IDENTITY by default. Only for specific
+			# classes (e.g. MirrorElliptic) it really does something
 			Mir_xx, Mir_yy = self._Transformation_XYPropToXYLab(Mir_xx, Mir_yy)
 
 		return Mir_xx, Mir_yy
@@ -2170,7 +2197,8 @@ class Mirror(OpticsNumerical):
 			myResidual = hFigErr
 
 		self.LastResidualUsed = myResidual
-
+		self.LastFigureErrorUsed = myResidual
+		self.LastFigureErrorUsedIndex = iFigureError
 
 		# I Project the figure error on the Ellipse
 		# -----------------------------------------------------------------
@@ -2184,7 +2212,7 @@ class Mirror(OpticsNumerical):
 		return Mir_xx, Mir_yy
 
  	#================================
-	# GetXY
+	# GetXY [Mirror]
 	#================================
 	def GetXY(self, N):
 		'''
@@ -2265,9 +2293,12 @@ class Mirror(OpticsNumerical):
 	#================================
 	# FigureErrorLoad
 	#================================
-	def FigureErrorLoad(self, h: float = None, Step: float = 1e-3, File: str = '', AmplitudeScaling : float =1):
+	def FigureErrorLoad(self, h: float = None, Step: float = 1e-3, File: str = '', AmplitudeScaling : float =1,
+						 Append : bool = True):
 		'''
 		Appends a 1darray to the list of Figure Errors.
+
+		If Append = False, clear the existing list of FigureErrors.
 
 		Parameters
 		--------------------
@@ -2278,9 +2309,15 @@ class Mirror(OpticsNumerical):
 		@ToRepair: adjustment of mirror length
 		'''
 
-		# --- carica dati da file, se serve ----
+		# Read data from file
 		if h is None and File!= '':
 			h = np.loadtxt(File) * AmplitudeScaling
+		else:
+			h = h * AmplitudeScaling
+
+		if not Append:
+			# empties the buffer
+			self._FigureErrors = []
 
 		self._FigureErrors.append(h)
 		self._FigureErrorSteps.append(Step)
@@ -2296,7 +2333,7 @@ class Mirror(OpticsNumerical):
 		self._FigureErrors.remove(i)
 
 	#================================
-	# _AddResidualToMirrorElliptic
+	# FigureErrorAddToIdealProfile [Mirror]
 	#================================
 	def FigureErrorAddToIdealProfile(self, myResidual):
 		'''Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che è ciò che accate se Options.)
@@ -2304,7 +2341,12 @@ class Mirror(OpticsNumerical):
 		-------------------
 		- GetXY_IdealMirror(N)
 		- .Get_LocalTangentAngle
+
+		Design notes
+		-----
+		Based on: _AddResidualToMirrorElliptic
 		'''
+
 		N = size(myResidual)
 		[Mir_x, Mir_y] = self.GetXY_IdealMirror(N) # already in the lab frame
 
@@ -2360,10 +2402,10 @@ class MirrorPlane(Mirror):
 					  'XYStart', 'XYCentre', 'XYEnd']
 
 	#================================
-	#  FUN: __init__
+	#  FUN: __init__[MirroPlane]
 	#================================
-	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0):
-		super().__init__()
+	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0,**kwargs):
+		super().__init__(**kwargs)
 		'''
 		Parameters
 		---------------------
@@ -2495,7 +2537,7 @@ class MirrorPlane(Mirror):
  	#================================
 	# GetXY_IdealMirror(N)
 	#================================
-	def GetXY_IdealMirror(self, N = 100  ):
+	def GetXY_IdealMirror(self, N = 100, ReferenceFrame = None, L = None  ):
 		'''
 		Return the coordinates of the ideal mirror.
 
@@ -2505,6 +2547,17 @@ class MirrorPlane(Mirror):
 			x points
 		y : np.array
 			y:point
+
+		ReferenceFrame : None
+
+			Unused. Kept because MirrorElliptic.GetXY_IdealMirror has it.
+			Probably it denotes a bad design. The
+			call in Optics.GetXY_MeasuredMirror should not use it, but it does.
+
+		L : None
+
+			Unused
+
 		'''
 		N = int(N)
 		if (self.XYStart[0]!= self.XYEnd[0]):
@@ -2528,7 +2581,7 @@ class MirrorPlane(Mirror):
 		Options can be
 		- 'ideal' : the ideal mirror profile is used (default)
 		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration. 
+		 "perturbations" around the nominal configuration.
 		- 'figure error' : a figure error is added to the mirror profile, if possible
 		- 'roughness' : a roughness profile is added to the mirror profile, if possible
 		'''
@@ -2538,13 +2591,13 @@ class MirrorPlane(Mirror):
 			print("Mirror.GetXY: Option set not implemented. \n Options = %s" % str(Options))
 	"""
 	#================================
-	# Get_LocalTangentAngle
+	# Get_LocalTangentAngle [MirrorPlane]
 	#================================
 	def Get_LocalTangentAngle(self, x0, y0, ProperFrame = False):
 		return self.VersorTan.Angle
 
  	#================================
-	# SetXYAngle_Centre
+	# SetXYAngle_Centre [MirrorPlane]
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle =  TypeOfAngle.InputNominal, **kwargs ):
 		'''
@@ -2661,6 +2714,7 @@ class MirrorPlane(Mirror):
 		plt.plot(x_mir, y_mir, Color + '.')
 		# mark the mirror centre
 		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
+		plt.axis('equal')
 		# paint the normal versor
 		self.VersorNorm.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
 		# paint the inputray
@@ -2707,7 +2761,8 @@ class MirrorElliptic(Mirror):
 			  MirXMid = None,
 			  XYOrigin = np.array([0,0]),
 			  RotationAngle = 0,
-			  Face = 'down'):
+			  Face = 'down',
+			  **kwargs):
 
 		'''
 		Parameters - Set 1
@@ -2745,14 +2800,14 @@ class MirrorElliptic(Mirror):
 			in order to set it.
 		'''
 
-		super(MirrorElliptic, self).__init__()
+		super(MirrorElliptic, self).__init__(**kwargs)
 		#Mirror.__init__(self)
 		self._FigureErrors = []
 		self._FigureErrorSteps = []
 		self._Roughness = Noise.RoughnessMaker()
 		self.Options = MirrorElliptic._ClassOptions()
 		self.LastRoughnessUsed = np.array([])
-		self.LastResidualUsed = np.array([])
+		self.LastResidualUsed = np.array([])  #@todo tbdisc: LastFigureErrorUsed instead
 
 
 		self.XYOrigin = XYOrigin
@@ -3321,14 +3376,14 @@ class MirrorElliptic(Mirror):
 		Options can be
 		- 'ideal' : the ideal mirror profile is used (default)
 		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration. 
+		 "perturbations" around the nominal configuration.
 		- 'figure error' : a figure error is added to the mirror profile, if possible
 		- 'roughness' : a roughness profile is added to the mirror profile, if possible
 		'''
 
 		if self.ComputationSettings.UseIdeal == True:
 			return self.GetXY_IdealMirror(N)
-		
+
 		if self.ComputationSettings.UseSmallDisplacements:
 			pass
 			else:
@@ -4556,6 +4611,8 @@ class MirrorSpheric(Mirror):
 			myResidual = hFigErr
 
 		self.LastResidualUsed = myResidual
+		self.LastFigureErrorUsed = myResidual
+		self.LastFigureErrorUsedIndex = iFigureError
 		# proiezione del FigError sull'ellisse
 		# -----------------------------------------------------------------
 		Mir_x, Mir_y = self.GetXY_IdealMirror(N)

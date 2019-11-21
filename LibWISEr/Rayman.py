@@ -725,9 +725,8 @@ def ComputeSamplingA(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 
     z:distance b|w start and arrival planes
     L0,L1: lenght of start and arrival planes
     Theta0, Theta1: orientation of start and arivval planes
-
-
     '''
+	
     Debug.print('Compute sampling',2)
     Debug.pv('Lambda',3)
     Debug.pv('z',3)
@@ -764,6 +763,8 @@ def ComputeSamplingB(Lambda, z, L0, L1,  Alpha0, Alpha1, OversamplingFactor = 1 
 
 def SamplingCalculator(Lambda, z, L0, L1,  Theta0, Theta1):
     return ComputeSampling(Lambda, z, L0, L1,  Theta0, Theta1)
+
+
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=np.inf, Verbose = True):
     '''
     [iqLim, TextOutput, OUT] =
