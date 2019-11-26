@@ -16,11 +16,13 @@ import LibWISEr.Rayman as rm
 import LibWISEr.Foundation as Fundation
 import LibWISEr.Optics as Optics
 import LibWISEr.ToolLib as tl
+import LibWISEr.Noise as Noise
 from LibWISEr.must import *
-from LibWISEr.Fundation import OpticalElement
+from LibWISEr.Foundation import OpticalElement
+
 from numpy import array
 import csv
-import FermiSource as Fermi
+import LibWISEr.FermiSource as Fermi
 
 importlib.reload(Fundation)
 importlib.reload(Optics)

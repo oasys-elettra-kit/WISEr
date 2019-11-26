@@ -698,6 +698,19 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 #================================
 #  SlitCreate
 #================================
+
+def MirrorArray(x, Factor = +1):
+	'''
+	given x = [0,1,2]
+
+	returns y = [2,1,0,1,2] if MakeNegate = False or
+		y = [2,1,0,1,2] if MakeNegate = True
+	'''
+
+	x = np.array(x)
+	return np.hstack(( Factor*x[-1:0:-1], x[:-1]))
+def PowerSpectrum(x):
+	return abs(np.fft.fft(x, norm = 'ortho'))**2
 def SlitCreate(SizeN, NSlits = 1, SlitKernel = [1]):
 	'''
 	This function was first created for simulating the diffraction from 2 or more slits.
