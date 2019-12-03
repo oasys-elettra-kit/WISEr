@@ -15,7 +15,6 @@ import LibWISEr.ToolLib as tl
 Gauss1d =  lambda x ,y : None
 from scipy import interpolate as interpolate
 
-
 class PsdFuns:
 	'''
 		Ensemble of possible Psd Functions.
