@@ -60,7 +60,24 @@ class PsdFuns:
 
 
 
+#============================================================================
+#	FUN: 	MakeFrequencies
+#============================================================================
+def MakeFrequencies(L,N, IsWaveNumber = True):
+	'''
+	Returns the (Spatial) frequencies corrisponding to a signal of length(or duration)
+	L with N samples.
 
+	q = 1/L *  np.arange(0,N//2+1)
+
+	If IsWaveNumber = True,
+
+	q = 2*pi/L *  np.arange(0,N//2+1)
+	'''
+	a = 2*np.pi if IsWaveNumber == True else 1
+	dq = a / L
+	qRange = dq * np.arange(0,N//2+1)
+	return qRange
 #============================================================================
 #	FUN: 	PsdAnalytic2Noise
 #============================================================================
@@ -84,17 +101,18 @@ def PsdAnalytic2Noise(L,N, PsdFun, PsdArgs):
 		Parameters for PsdFun
 	'''
 
-	dq = 2*np.pi / L # minimum max-wavelength <=> min frequency
-	qRange = dq * np.arange(0,N//2+1)
+#	dq = 2*np.pi / L # minimum max-wavelength <=> min frequency
+#	qRange = dq * np.arange(0,N//2+1)
+	qRange = MakeFrequencies(L,N)
 #	x = np.arange(0, N//2+1, dx)
 	yHalf = PsdFun(qRange, *PsdArgs)
-	NoiseSignal = PsdArray2Noise(yHalf, IsHalfBandwidth = True, ZeroDC = True )
+	NoiseSignal = PsdNumeric2Noise(yHalf, IsHalfBandwidth = True, ZeroDC = True )
 	return NoiseSignal, yHalf
 
 #============================================================================
-#	FUN: 	PsdArray2Noise
+#	FUN: 	PsdNumeric2Noise
 #============================================================================
-def PsdArray2Noise(PsdArray, IsHalfBandwidth = True, ZeroDC = True, Real = True):
+def PsdNumeric2Noise(PsdArray, IsHalfBandwidth = True, ZeroDC = True, Real = True):
 	'''
 	Generates a noise pattern whose Power Spectral density is given by Psd.
 
