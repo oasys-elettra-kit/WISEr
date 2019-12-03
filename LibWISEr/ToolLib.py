@@ -11,7 +11,7 @@ from collections import namedtuple
 from LibWISEr.Units import Units
 import inspect
 import logging
-
+from scipy.signal import square
 
 #================================================================
 #  ErrMsg
@@ -23,7 +23,6 @@ class ErrMsg:
 
 	def InvalidInputSet(More=''):
 		raise ValueError('Ivalid input parameter set used.' % More)
-
 
 #================================================================
 #  CLASS Debug
@@ -2031,9 +2030,28 @@ class Metrology:
 		plt.title(Item.Name + TitleStr)
 		plt.grid('on')
 #		plt.legend('oe:'+ OpticalElement.Name)
-
-
-
-
 		return None
+
+
+
+#
+#	def RectangularGrating(L, NumberOfPoints, LinesPerMillimiter, GrooveHeight, DutyCycle = 0.5, L0=0.):
+#	    #square(t, duty=0.5)
+#
+#	    # L in metres, convert linesPerMm to linesPerM
+#		LinesPerMeter = LinesPerMillimiter * 1e3
+#	    # Create x-axis, must be strictly positive for consistent result
+#	    x = np.linspace(0., L, num=NumberOfPoints)
+#
+#	    # Initialize grating parameter
+#	    GratingParameter = 2. * np.pi * LinesPerMeter * x
+#	    # Generate a grating
+#
+#		 GratingProfile = ((square(GratingParameter) + 1.) / 2.) * GrooveHeight
+#
+#	    if L0 != 0:
+#	        xTemp = np.linspace(-L/2., L/2., num=NumberOfPoints)
+#	        GratingProfile[np.abs(xTemp)>=L0/2.] = 0.
+#
+#	    return GratingProfile
 

@@ -81,18 +81,20 @@ def MakeFrequencies(L,N, IsWaveNumber = True):
 #============================================================================
 #	FUN: 	PsdAnalytic2Noise
 #============================================================================
-def PsdAnalytic2Noise(L,N, PsdFun, PsdArgs):
+def PsdAnalytic2Noise(L0,N0, PsdFun, PsdArgs, q1Min = None, q1Max = None, qIsWaveNumber = True):
 	'''
 		Generates a noise pattern based an the Power spectral density returned
-		by PsdFun
+		by PsdFun. The Bandwidth can be specified using qMin and qMax, which are the
+		spatial frequencies. The explicit specification of the bandwidth is **strongly** recommended.
 
 	Parameters
 	-----
-	L : float
+	L0 : float
 		Material length of the windows signal (e.g. length, or time duration)
 
-	N : integer
-		Number of samples
+	N0 : integer
+		Number of samples.
+		It must be ** N < qMax/qMin**
 
 	PsdFun : function
 		Function used to evaluate the Power Spectral Density
@@ -100,14 +102,30 @@ def PsdAnalytic2Noise(L,N, PsdFun, PsdArgs):
 	*PsdArgsm **kwPsdargs
 		Parameters for PsdFun
 	'''
+	piFact = 2 * np.pi if qIsWaveNumber == True else 1
+	N0 = N0/2
 
 #	dq = 2*np.pi / L # minimum max-wavelength <=> min frequency
 #	qRange = dq * np.arange(0,N//2+1)
-	qRange = MakeFrequencies(L,N)
+
+	q0Min = (np.pi * 2 / L0)
+	q0Max = (np.pi * N0 / L0)
+
+	q1Min = q1Min if q1Min is not None else q0Min
+	q1Max = q1Max if q1Max is not None else q0Max
+	N1 = q1Max/q1Min
+	q1Range = np.linspace(q1Min,q1Max,N1)
+	q0Range = np.linspace(q0Min, q0Max, N0)
+
+	iq1 = int(np.floor(q1Min/q0Min))
+
 #	x = np.arange(0, N//2+1, dx)
-	yHalf = PsdFun(qRange, *PsdArgs)
-	NoiseSignal = PsdNumeric2Noise(yHalf, IsHalfBandwidth = True, ZeroDC = True )
-	return NoiseSignal, yHalf
+	y1Half = PsdFun(qRange, *PsdArgs)
+	y0Half = np.zeros(N0)
+	y0Half[iq1: iq1 + len(y1Half)] = y1Half
+
+	NoiseSignal = PsdNumeric2Noise(y0Half, IsHalfBandwidth = True, ZeroDC = True )
+	return NoiseSignal, y0Half
 
 #============================================================================
 #	FUN: 	PsdNumeric2Noise
@@ -417,6 +435,7 @@ class RoughnessMaker(object):
 #		else: # general calse
 #			y = self.PsdType(N,dx, *self.PsdParams)
 #		return y
+
 	Generate = MakeProfile
 	#======================================================================
 	# 	FUN: NumericPsdSetXY
@@ -542,3 +561,8 @@ class RoughnessMaker(object):
 		print('fMin data= %0.1e m^-1 = %0.2e um^-1' % (_min, (_min * 1e6) ))
 
 		return StrMsg
+#============================================================================
+#	FUN: 	HewScatteringContribution
+#============================================================================
+def HewScatteringContribution (Lambda, GrazingAngle, Kn,n):
+	return (Kn/(n-1)) **(1/(n-1)) * (np.sin(GrazingAngle)/Lambda) **(3-n)/(n-1)

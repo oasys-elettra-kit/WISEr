@@ -1875,9 +1875,6 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 		pass
 	Debug.print ('<\end Parse>',4)
 
-
-
-
 	#================================================
 	#  FUN: ComputeCaustics
 	#================================================
