@@ -30,6 +30,7 @@ from LibWISEr.Foundation import OpticalElement
 import importlib
 reload(Optics)
 reload(Foundation)
+reload(rm)
 
 ###############################################################################
 Lambda = 2e-9
@@ -103,7 +104,7 @@ if __name__ == '__main__':
 		s_k.SmallDisplacements.Long = DeltaSource
 		s_k.SmallDisplacements.Rotation = 0
 		s_k.ComputationSettings.UseSmallDisplacements = True
-		s.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Any
+		s.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
 
 		# # PM(h)
 		# # ------------------------------------------------------------
@@ -138,7 +139,7 @@ if __name__ == '__main__':
 								  PlaceWhere='centre'),
 							  Name='kb_v')
 		kb_v.ComputationSettings.UseFigureError = UseFigureError
-		kb_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Vertical
+		kb_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.VERTICAL
 
 		# Figure ERROR
 
@@ -158,7 +159,7 @@ if __name__ == '__main__':
 								  PlaceWhere='centre'),
 							  Name='kb_h')
 		kb_h.ComputationSettings.UseFigureError = UseFigureError
-		kb_h.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Horizontal
+		kb_h.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL
 
 		# Figure ERROR
 
@@ -176,11 +177,11 @@ if __name__ == '__main__':
 							 PositioningDirectives = Foundation.PositioningDirectives(
 								 ReferTo = 'upstream',
 								 PlaceWhat = 'centre',
-								 PlaceWhere = 'centre',
+								 PlaceWhere = 'downstream focus',
 								 Distance = f2_v),
 							 Name = 'detector_v')
 
-		d_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Vertical
+		d_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.VERTICAL
 
 		# detector (h)
 		# ------------------------------------------------------------
@@ -189,17 +190,17 @@ if __name__ == '__main__':
 							 PositioningDirectives=Foundation.PositioningDirectives(
 								 ReferTo='upstream',
 								 PlaceWhat='centre',
-								 PlaceWhere='centre',
+								 PlaceWhere='downstream focus',
 								 Distance=f2_h),
 							 Name='detector_h')
 
-		d_h.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Horizontal
+		d_h.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL
 
 		# Assemblamento beamline
 		#------------------------------------------------------------
 		t = None
 		t = Foundation.BeamlineElements()
-		t.ComputationSettings.OrientationToCompute = [Optics.OPTICS_ORIENTATION.Vertical, Optics.OPTICS_ORIENTATION.Horizontal]
+		t.ComputationSettings.OrientationToCompute = [Optics.OPTICS_ORIENTATION.VERTICAL, Optics.OPTICS_ORIENTATION.HORIZONTAL]
 		t.Append(s)
 		t.Append(kb_v)
 		t.Append(kb_h)
@@ -207,8 +208,6 @@ if __name__ == '__main__':
 		t.Append(d_h)
 
 		t.RefreshPositions()
-
-		print(t)
 
 		# Calculation of the field on the detector
 		# Impose N Pools
@@ -258,132 +257,132 @@ if __name__ == '__main__':
 		plt.legend()
 
 
-# 		(a,x0,sigma) = tl.FitGaussian1d(y,x)
-# 		sigma_um = sigma
-# 		exp_sigma_um = s.CoreOptics.Waist0 / sqrt(2) / kb.CoreOptics.M *1e6
-# 		print('simulated sigma = %0.3f um' % sigma_um)
-# 		print('expected sigma = %0.3f um' % exp_sigma_um)
-# 		print('simulated/expected = %0.3f' % (sigma_um/exp_sigma_um))
-# 		print('MOLTO BENE')
-#
-# #%% ----- Figura: campo sui kb
-# 		#
-# 		plt.figure(9)
-# 		plt.gcf().clear()
-# 		x = kb.Results.S * 1e3
-# 		y = abs(kb.Results.Field)
-# 		y = y/max(y)
-# 		plt.plot(x, y)
-# 		plt.xlabel('mm')
-# 		plt.title('@ kb')
-#
-	# #%% Caustica per ogni Sorgent
-	# 	if DoCaustics  :
-	# 		# La defocus list andrebbe ricalcolata in base al delta source
-	# 		if NDeltaFocus > 1:
-	# 			DefocusList = np.linspace(DeltaFocusOffset - RangeOfDeltaFocus/2, DeltaFocusOffset+RangeOfDeltaFocus/2, NDeltaFocus )
-	# 		else:
-	# 			DefocusList = np.array([0])
-	#
-	# 		DefocusList_mm = DefocusList * 1e3
-	# 		tic1 = time.time()
-	# 		# pr.enable()
-	# 		ResultList, Hew_,Sigma_, More = Fundation.FocusSweep(kb, DefocusList, DetectorSize = DetectorSize, NPools = NPools)
-	# 		# pr.disable()
-	# 		toc1 = time.time()
-	# 		SourceResults.append(ResultList)
-	# 		N = len(ResultList)
-	# 		Hew__.append(Hew_)
-	#
-	# 		Sigma__.append(Sigma_)
-	#
-	# 		NumericWaist, FittedWaist = tl.FindWaist(Hew_, DefocusList_mm, Threshold = 1e-15)
-	# 		SpotPosition1_.append(NumericWaist[0])
-	# 		SpotSize1_.append(NumericWaist[1])
-	# 		SpotPosition2_.append(FittedWaist[0]) # miglior candidato
-	# 		SpotSize2_.append(FittedWaist[1])
-	#
-	# 		NumericWaist, FittedWaist = tl.FindWaist(Sigma_, DefocusList_mm, Threshold = 1e-15)
-	# 		SpotPosition3_.append(NumericWaist[0])
-	# 		SpotSize3_.append(NumericWaist[1])
-	# 		SpotPosition4_.append(FittedWaist[0])
-	# 		SpotSize4_.append(FittedWaist[1])
-	#
-	# 		#----- figura campo caustica
-	# 		#Plotta il campo sui detector a varie distanze durante il calcolo
-	# 		if 1==1:
-	# 			#Fig23
-	# 			plt.figure(23)
-	# 			plt.gcf().clear()
-	# 			for Res in ResultList:
-	# 				x = Res.S *1e6
-	# 				y = abs(Res.Field)
-	#
-	# 				plot(x,y )
-	# 				plt.title('Intensità su detector (per caustica) - DeltaSource %0.2fm' % DeltaSource)
-	# 				plt.xlabel('um')
-	#
-	# 		#%%----- Figura: Caustica (hew)
-	#
-	# 		plt.figure(33)
-	# 		plt.gcf().clear()
-	# 		#-- serie dati: hew
-	# 		plot(DefocusList_mm, Hew_,'.')
-	# 		#-- serie dati: sigma
-	# 		plot(DefocusList_mm, 2*0.68* Sigma_,'x')
-	# 		#-- serie dati: punto di minimo (1)
-	# 		plot(SpotPosition1_[iSource], SpotSize1_[iSource],'o')
-	# 		plot(SpotPosition2_[iSource], SpotSize2_[iSource],'x')
-	# 		plot(SpotPosition3_[iSource], SpotSize3_[iSource],'*') # cagare
-	# 		plot(SpotPosition4_[iSource], SpotSize4_[iSource],'.')
-	#
-	# 		plt.xlabel('focus shift (mm)')
-	# 		plt.ylabel('Hew')
-	# 		plt.legend(['Hew', '0.68 * 2 Sigma'])
-	# 		plt.title('Grafico Caustica')
-	#
-	# toc2 = time.time()
-	# #%%----- Figura: Spostamento Sorgente
-	#
-	# plt.figure(34)
-	# plt.gcf().clear()
-	#
-	# #------ Hew, raw
-	# y = DeltaSourceList
-	# x = SpotPosition1_
-	# plot(x, y,'x')
-	# #------ Hew, spline
-	# y = DeltaSourceList
-	# x = SpotPosition2_
-	# plot(x, y,'x')
-	# #------ Gaussiana, raw
-	# y = DeltaSourceList
-	# x = SpotPosition3_
-	# plot(x, y,'o')
-	#
-	# #------ Gaussiana, spline
-	# y = DeltaSourceList
-	# x = np.array(SpotPosition4_)
-	# x = x*1e-3
-	# plot(x, y,'*')
-	# # ------ Gaussiana, spline=> FIT
-	# # p = np.polyfit(x,y,1)
-	# # xnew = np.linspace(-5e-3,0)
-	# # ynew = polyval(p,xnew)
-	# # plot(xnew,ynew,'--')
-	# # #------- Teoria dell M^2
-	# # ynew2 = polyval([M**2,0], xnew)
-	# # plot(xnew, ynew2, '-')
-	#
-	# plt.xlabel('defocus (mm)')
-	# plt.ylabel('Sorgente (m)')
-	# plt.legend(['data', 'interp' , 'ds = M^2 df', 'gauss (spline)', 'interp'])
-	# plt.title('Spostamento sorgente')
-	# plt.grid()
-	# plt.show()
-	#
-	# # pr.print_stats(sort='tottime')
-	#
-	# print('Field calculation: {:.3f} s'.format(toc - tic))
-	# print('Focus sweep (N = {:d}): {:.3f} s'.format(NDeltaFocus, toc1 - tic1))
-	# print('Total time of calculation: {:.3f} s'.format(toc2-tic))
+		(a,x0,sigma) = tl.FitGaussian1d(y_v,x_v)
+		sigma_um = sigma
+		exp_sigma_um = s.CoreOptics.Waist0 / sqrt(2) / kb_v.CoreOptics.M *1e6
+		print('simulated sigma = %0.3f um' % sigma_um)
+		print('expected sigma = %0.3f um' % exp_sigma_um)
+		print('simulated/expected = %0.3f' % (sigma_um/exp_sigma_um))
+		print('MOLTO BENE')
+
+#%% ----- Figura: campo sui kb
+		#
+		plt.figure(9)
+		plt.gcf().clear()
+		x = kb_v.Results.S * 1e3
+		y = abs(kb_v.Results.Field)
+		y = y/max(y)
+		plt.plot(x, y)
+		plt.xlabel('mm')
+		plt.title('@ kb')
+
+	#%% Caustica per ogni Sorgent
+		if DoCaustics:
+			# La defocus list andrebbe ricalcolata in base al delta source
+			if NDeltaFocus > 1:
+				DefocusList = np.linspace(DeltaFocusOffset - RangeOfDeltaFocus/2, DeltaFocusOffset+RangeOfDeltaFocus/2, NDeltaFocus )
+			else:
+				DefocusList = np.array([0])
+
+			DefocusList_mm = DefocusList * 1e3
+			tic1 = time.time()
+			# pr.enable()
+			ResultList, Hew_,Sigma_, More = Foundation.FocusSweep(kb_v, DefocusList, DetectorSize = DetectorSize, NPools = NPools)
+			# pr.disable()
+			toc1 = time.time()
+			SourceResults.append(ResultList)
+			N = len(ResultList)
+			Hew__.append(Hew_)
+
+			Sigma__.append(Sigma_)
+
+			NumericWaist, FittedWaist = tl.FindWaist(Hew_, DefocusList_mm, Threshold = 1e-15)
+			SpotPosition1_.append(NumericWaist[0])
+			SpotSize1_.append(NumericWaist[1])
+			SpotPosition2_.append(FittedWaist[0]) # miglior candidato
+			SpotSize2_.append(FittedWaist[1])
+
+			NumericWaist, FittedWaist = tl.FindWaist(Sigma_, DefocusList_mm, Threshold = 1e-15)
+			SpotPosition3_.append(NumericWaist[0])
+			SpotSize3_.append(NumericWaist[1])
+			SpotPosition4_.append(FittedWaist[0])
+			SpotSize4_.append(FittedWaist[1])
+
+			#----- figura campo caustica
+			#Plotta il campo sui detector a varie distanze durante il calcolo
+			if 1==1:
+				#Fig23
+				plt.figure(23)
+				plt.gcf().clear()
+				for Res in ResultList:
+					x = Res.S *1e6
+					y = abs(Res.Field)
+
+					plot(x,y )
+					plt.title('Intensità su detector (per caustica) - DeltaSource %0.2fm' % DeltaSource)
+					plt.xlabel('um')
+
+			#%%----- Figura: Caustica (hew)
+
+			plt.figure(33)
+			plt.gcf().clear()
+			#-- serie dati: hew
+			plot(DefocusList_mm, Hew_,'.')
+			#-- serie dati: sigma
+			plot(DefocusList_mm, 2*0.68* Sigma_,'x')
+			#-- serie dati: punto di minimo (1)
+			plot(SpotPosition1_[iSource], SpotSize1_[iSource],'o')
+			plot(SpotPosition2_[iSource], SpotSize2_[iSource],'x')
+			plot(SpotPosition3_[iSource], SpotSize3_[iSource],'*') # cagare
+			plot(SpotPosition4_[iSource], SpotSize4_[iSource],'.')
+
+			plt.xlabel('focus shift (mm)')
+			plt.ylabel('Hew')
+			plt.legend(['Hew', '0.68 * 2 Sigma'])
+			plt.title('Grafico Caustica')
+
+	toc2 = time.time()
+	#%%----- Figura: Spostamento Sorgente
+
+	plt.figure(34)
+	plt.gcf().clear()
+
+	#------ Hew, raw
+	y = DeltaSourceList
+	x = SpotPosition1_
+	plot(x, y,'x')
+	#------ Hew, spline
+	y = DeltaSourceList
+	x = SpotPosition2_
+	plot(x, y,'x')
+	#------ Gaussiana, raw
+	y = DeltaSourceList
+	x = SpotPosition3_
+	plot(x, y,'o')
+
+	#------ Gaussiana, spline
+	y = DeltaSourceList
+	x = np.array(SpotPosition4_)
+	x = x*1e-3
+	plot(x, y,'*')
+	# ------ Gaussiana, spline=> FIT
+	# p = np.polyfit(x,y,1)
+	# xnew = np.linspace(-5e-3,0)
+	# ynew = polyval(p,xnew)
+	# plot(xnew,ynew,'--')
+	# #------- Teoria dell M^2
+	# ynew2 = polyval([M**2,0], xnew)
+	# plot(xnew, ynew2, '-')
+
+	plt.xlabel('defocus (mm)')
+	plt.ylabel('Sorgente (m)')
+	plt.legend(['data', 'interp' , 'ds = M^2 df', 'gauss (spline)', 'interp'])
+	plt.title('Spostamento sorgente')
+	plt.grid()
+	plt.show()
+
+	# pr.print_stats(sort='tottime')
+
+	print('Field calculation: {:.3f} s'.format(toc - tic))
+	print('Focus sweep (N = {:d}): {:.3f} s'.format(NDeltaFocus, toc1 - tic1))
+	print('Total time of calculation: {:.3f} s'.format(toc2-tic))
