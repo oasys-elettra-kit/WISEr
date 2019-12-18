@@ -657,8 +657,6 @@ def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose
 #==============================================================================
 # 	FUN: HuygensIntegral_1d
 #==============================================================================
-HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
-
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = True):
     '''
     [iqLim, TextOutput, OUT] =
@@ -694,6 +692,28 @@ def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = T
         print(OUT.Text)
     return OUT
 
+#==============================================================================
+# 	FUN: ComputeSampling
+#==============================================================================
+def ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, OversamplingFactor=1):
+    '''
+	Lambda: wavalenght
+	z:distance b|w start and arrival planes
+	L0,L1: lenght of start and arrival planes
+	Theta0, Theta1: orientation of start and arivval planes
+
+
+	'''
+    Debug.print('Compute sampling', 2)
+    Debug.pv('Lambda', 3)
+    Debug.pv('z', 3)
+    Debug.pv('L0', 3)
+    Debug.pv('L1', 3)
+    Debug.pv('Theta0', 3)
+    Debug.pv('Theta1', 3)
+    N = int(OversamplingFactor * L0 * L1 * abs(cos(Theta0 - Theta1)) / Lambda / z)
+    Debug.pv('N', 3)
+    return N
 
 
 #	#==============================================================================

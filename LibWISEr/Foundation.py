@@ -459,7 +459,6 @@ class Tree(object):
     #================================================
 	def Append(self, NewItem,  posdirective = None, NewName = None):
 		NewItem.Name = (NewName if NewName != None else NewItem.Name)
-		print(self._ActiveItem == None)
 
 		if self._ActiveItem == None:
 			ExistingItem = None
@@ -484,7 +483,7 @@ class Tree(object):
 		# Use just a selection between FromItem and ToItem
 		ItmList = self.ItemList
 		iStart = ItmList.index(FromItem)
-		iEnd =  ItmList.index(ToItem)
+		iEnd = ItmList.index(ToItem)
 		iStart = iStart if iStart != None else 0
 		iEnd = iEnd +1 if iEnd != None else  self.NItems
 
@@ -536,7 +535,6 @@ class OpticalElement(TreeItem):
 			self.CoreOptics = Element # contains a link to an Optics object
 			self.__Type = type(self.CoreOptics)
 			self.__TypeStr = self.CoreOptics._TypeStr
-			print(self.__TypeStr)
 
 		self.Name = (Name if Name!= None else self.__GetNewName())
 		self.RayIn = None
@@ -621,7 +619,7 @@ class OpticalElement(TreeItem):
 		# The upstream element is numerical (easiest case)
 		#--------------------------------------------------------
 		if self.Parent.CoreOptics._IsAnalytic == False:
-			_NSamples = OpticalElement.GetNSamples_2Body(Lambda, self.Parent, self)
+			_NSamples = GetNSamples_OpticalElement(Lambda, self.Parent, self)
 
 		# The upstream element is analytical (a mess)
 		#--------------------------------------------------------
@@ -634,7 +632,7 @@ class OpticalElement(TreeItem):
 			for oeChild in ChildrenList:
 #				print(oeChild.Name + 40 *'&')
 				if oeChild.CoreOptics._IsAnalytic == False:
-					_NSamples = OpticalElement.GetNSamples_2Body(Lambda, self, oeChild)
+					_NSamples = GetNSamples_OpticalElement(Lambda, self, oeChild)
 
 					Debug.Print('Mutual sampling bw <%s>-<%s>' % (self.Name, oeChild.Name))
 					break
@@ -844,9 +842,10 @@ class OpticalElement(TreeItem):
 		ItemList = self.UpstreamItemList # First element is the closest element, last element is the source
 		ItemListSameOrientation = []
 		for oe in ItemList:
-			if ((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
+			if (((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
 					(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-					(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)):
+					(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)))\
+					and oe.CoreOptics.UseAsReference == True:
 				ItemListSameOrientation.append(oe)
 
 		distances = np.array([oe.DistanceFromParent for oe in ItemListSameOrientation])
@@ -857,7 +856,7 @@ class OpticalElement(TreeItem):
 	# ================================================
 
 	def GetParent(self, SameOrientation=False, OnlyReference=False):
-		if SameOrientation == True:
+		if SameOrientation == True and OnlyReference == True:
 			for oe in self.UpstreamItemList:
 				if (((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
 						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
@@ -865,9 +864,20 @@ class OpticalElement(TreeItem):
 						and oe.CoreOptics.UseAsReference == OnlyReference):
 					GetParentResult = oe
 					break
+		elif SameOrientation == True and OnlyReference == False:
+			for oe in self.UpstreamItemList:
+				if ((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
+						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)):
+					GetParentResult = oe
+					break
 		else:
 			for oe in self.UpstreamItemList:
-				if oe.CoreOptics.UseAsReference == OnlyReference:
+				if OnlyReference == True:
+					if oe.CoreOptics.UseAsReference == OnlyReference:
+						GetParentResult = oe
+						break
+				elif OnlyReference == False:
 					GetParentResult = oe
 					break
 
@@ -875,10 +885,7 @@ class OpticalElement(TreeItem):
 
 	# Gets distance from parent with the same orientation or previous optical element
 	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
-		if SameOrientation==True:
-			result = self.DistanceFromParent
-		else:
-			result = self.DistanceFromSource - self.GetParent(SameOrientation=False, OnlyReference=OnlyReference).DistanceFromSource
+		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
 
 #===========================================================================
@@ -1115,6 +1122,7 @@ class BeamlineElements(Tree):
 					if oeX != oeXSameOrientation:
 						realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource + realDistance
 
+
 				# Treat detectors differently, they are a special case...
 				# It has to be decided what distance means for the detectors. Now it puts both detectors at the same
 				# distance from the source with upstream, centre, centre positioning.
@@ -1145,11 +1153,11 @@ class BeamlineElements(Tree):
 					else:
 						oeXSameOrientationCurrent = oeXSameOrientation
 						realDistance = oeXSameOrientationCurrent.DistanceFromParent
-						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True)
+						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
 						while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
 							realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
-							oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True)
+							oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
 						realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
@@ -1650,8 +1658,6 @@ class BeamlineElements(Tree):
 		oeList = self.GetFromTo(oeStart, oeEnd)
 		oeListOriented = []
 		for _ in oeList:
-			# print(_.Name, _.CoreOptics.Orientation, (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY or
-			# 	_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or (_.CoreOptics.Orientation == Orientation))
 			if (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY or
 				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or (
 					_.CoreOptics.Orientation == Orientation):
@@ -1994,12 +2000,23 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 # FUN: GetNSamples_OpticalElement
 #==========================================
 def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : OpticalElement) -> int:
-	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
-	L0 = oe0.CoreOptics.L
-	L1 = oe1.CoreOptics.L
-	Theta0 = oe0.CoreOptics.VersorNorm.Angle
-	Theta1 = oe1.CoreOptics.VersorNorm.Angle
-	return rm.ComputeSampling(Lambda, z, L0, L1, Theta0, Theta1)
+	'''
+		:param Lambda: wavelength
+		:param oe0: optical element 1
+		:param oe1: optical element 2
+		:return: sampling
+		Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
+		'''
+
+	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
+	L0 = oe0.CoreOptics.L  # Size of element 1
+	L1 = oe1.CoreOptics.L  # Size of element 2
+	Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+
+	N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
+	print('Number of points: {}'.format(int(N)))
+
+	return int(N)
 
 def MeasureDistance(oe0: OpticalElement, oe1: OpticalElement) -> float:
 	""" Computes the distance b|w the centres of two optical Elements.
@@ -2013,7 +2030,7 @@ def MeasureDistance(oe0: OpticalElement, oe1: OpticalElement) -> float:
 # ================================================
 #  FUN: FocusSweep
 # ================================================
-def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.deg2rad(90), NPools=1):
+def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.deg2rad(90)):
 	''' Created for computing the field on a detector placed nearby the focal plane of
 	oeFocussing : Focussing element
 	oeFocussing : optical element that focusses radiation

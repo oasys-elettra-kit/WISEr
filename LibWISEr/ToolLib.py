@@ -320,13 +320,7 @@ def UnitVectorReflect(v, n):
 	n = np.array(n) # versor normal to the surface
 	v = v / norm(v)
 	n = n / norm(n)
-
 	t = np.dot(n,v); # scalar product
-#		print(v)
-#		print(n)
-#		print(norm(v))
-#		print(norm(n))
-#		print(t)
 	if t >= 0:
 	  u = v;
 	else:
@@ -840,9 +834,7 @@ class geom:
 
 		nx = 0 if abs(nx) < 1e-16 else nx
 		ny = 0 if abs(ny) < 1e-16 else ny
-#		print 10 * '===' 
-#		print(nx)
-#		print (ny)
+
 		return np.array([nx,ny])
 
 	#================================
@@ -866,13 +858,7 @@ class geom:
 		n = np.array(n)
 		v = v / norm(v)
 		n = n / norm(n)
-
 		t = np.dot(n,v);
-#		print(v)
-#		print(n)
-#		print(norm(v))
-#		print(norm(n))
-#		print(t)
 		if t >= 0:
 		  u = v;
 		else:

@@ -1516,8 +1516,6 @@ class OpticsNumericalDependent(OpticsNumerical):
 		n0 = argmin([x[49], x[51]])
 		vx = x[n1] - x[n0]
 		vy = y[n1] - y[n0]
-#		print (vx)
-#		print(vy)
 		U = tl.UnitVector(vx = vx, vy = vy, XYOrigin = self.XYCentre)
 		return  U
 	#================================
