@@ -5,9 +5,9 @@ Created on Mon Aug 08 16:10:57 2016
 @author: Mic
 :math:`y = m x + q`
 """
-import LibWISEr.ToolLib as ToolLib
+import LibWISEr.ToolLib as tl
 import LibWISEr.Noise as Noise
-import LibWISEr.Rayman as Rayman
+import LibWISEr.Rayman as rm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,7 +37,7 @@ AngleOut : The same as AngleIn, but for the Output beam
 '''
 
 
-#UnitVector = geom.ToolLib.UnitVector
+#UnitVector = geom.tl.UnitVector
 #Ray = geom.Ray
 #Line = geom.Line
 #Segment = geom.Segment
@@ -319,8 +319,8 @@ class OpticsNumerical(Optics):
 		'''
 		N = len(x1)
 		x0, y0 = self.GetXY(N)
-		ToolLib.Debug.Print('Computing Field: N  = %d' % N)
-		ToolLib.Debug.pr('Lambda')
+		tl.Debug.Print('Computing Field: N  = %d' % N)
+		tl.Debug.pr('Lambda')
 
 		#ad hoc correction: multiply by transmission function before propagation
 		E0 = E0 * self.TransmissionFunction(x0,y0)
@@ -338,7 +338,7 @@ class OpticsNumerical(Optics):
 		# print('yb', type(y0), np.shape(y0))
 		# print(y1)
 
-		E1 = Rayman.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
+		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
 
 		return E1
 
@@ -386,7 +386,7 @@ class OpticsNumerical(Optics):
 	# PROP: VersorLab
 	#================================
 	@property
-	def VersorLab(self) ->ToolLib.UnitVector:
+	def VersorLab(self) ->tl.UnitVector:
 		"""
 		VersorLab is the versor specifying the orientation of the mirror in the Lab ref. frame.
 		   DIRECTION is
@@ -395,12 +395,12 @@ class OpticsNumerical(Optics):
 		   - oriented on the same half-plane containing the reflectiong surface.
 
 		"""
-		return ToolLib.UnitVector(Angle = self.AngleLab, XYOrigin = self.XYCentre)
+		return tl.UnitVector(Angle = self.AngleLab, XYOrigin = self.XYCentre)
 	@VersorLab.setter
 	def VersorLab(self, Value):
 		if type(Value) == np.ndarray:
-			 V = ToolLib.UnitVector(Value)
-		elif type(Value) == ToolLib.UnitVector:
+			 V = tl.UnitVector(Value)
+		elif type(Value) == tl.UnitVector:
 			V = Value
 		else:
 			print('Error in Optics.OpticsNumerical.VersorTan setter')
@@ -422,14 +422,14 @@ class OpticsNumerical(Optics):
 	# PROP: VersorTan
 	#================================
 	@property
-	def VersorTan(self) -> ToolLib.UnitVector:
-		return ToolLib.UnitVector(Angle = self.AngleTanLab, XYOrigin = self.XYCentre)
+	def VersorTan(self) -> tl.UnitVector:
+		return tl.UnitVector(Angle = self.AngleTanLab, XYOrigin = self.XYCentre)
 
 	#================================
 	# PROP: VersorNorm
 	#================================
 	@property
-	def VersorNorm(self) -> ToolLib.UnitVector:
+	def VersorNorm(self) -> tl.UnitVector:
 		return self.VersorLab
 
 	#================================
@@ -449,9 +449,9 @@ class OpticsNumerical(Optics):
 		'''
 		N = len(x1)
 		x0, y0 = self.GetXY(N)
-		ToolLib.Debug.Print('Calcolo Campi: N  = %d' % N)
-		ToolLib.Debug.pr('Lambda')
-		E1 = Rayman.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
+		tl.Debug.Print('Calcolo Campi: N  = %d' % N)
+		tl.Debug.pr('Lambda')
+		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
 
 		return E1
 
@@ -511,7 +511,7 @@ class OpticsNumerical(Optics):
 			XYTranslation = self._Transformation_List[0][i]
 			Rotation = self._Transformation_List[1][i]
 			RotationCentre = self._Transformation_List[2][i]
-			x,y = ToolLib.RotXY(x,y,Rotation, RotationCentre)
+			x,y = tl.RotXY(x,y,Rotation, RotationCentre)
 			x = x + XYTranslation[0]
 			y = y + XYTranslation[1]
 
@@ -548,7 +548,7 @@ class OpticsNumerical(Optics):
 			RotationCentre = self._Transformation_List[2][i]
 			x = x + XYTranslation[0]
 			y = y + XYTranslation[1]
-			x,y = ToolLib.RotXY(x,y,Rotation, RotationCentre)
+			x,y = tl.RotXY(x,y,Rotation, RotationCentre)
 
 		return x, y
 
@@ -588,7 +588,7 @@ class OpticsNumerical(Optics):
 
 				px = px + XYTranslation[0]
 				py = py + XYTranslation[1]
-				px_new, py_new = ToolLib.RotXY(px,py, Rotation, RotationCentre)
+				px_new, py_new = tl.RotXY(px,py, Rotation, RotationCentre)
 
 			# Polynomial fit
 			P_new = np.polyfit(px_new, py_new, NP)
@@ -632,7 +632,7 @@ class OpticsNumerical(Optics):
 
 		Notice: SmallDisplacements affect the GetXY function
 		'''
-		ToolLib.Debug.Print('Applying small displacements', 3, True)
+		tl.Debug.Print('Applying small displacements', 3, True)
 #		XYTranslation = self._Transformation_List[0][i]
 #		Rotation = self._Transformation_List[1][i]
 #		RotationCentre = self._Tranisformation_List[2][i]
@@ -644,13 +644,13 @@ class OpticsNumerical(Optics):
 		DeltaX = self.SmallDisplacements.Long * np.cos(np.pi - self.RayInNominal.Angle + self.SmallDisplacements.Rotation)
 		DeltaY = self.SmallDisplacements.Long * np.sin(np.pi - self.RayInNominal.Angle + self.SmallDisplacements.Rotation)
 
-		xNew,yNew = ToolLib.RotXY(xLab, yLab, self.SmallDisplacements.Rotation, self.XYCentre)
+		xNew,yNew = tl.RotXY(xLab, yLab, self.SmallDisplacements.Rotation, self.XYCentre)
 		xNew = xLab + DeltaX
 		yNew = yLab + DeltaY
 
-		ToolLib.Debug.pv('DeltaX')
-		ToolLib.Debug.pv('DeltaY')
-		ToolLib.Debug.Print(self.SmallDisplacements.Rotation)
+		tl.Debug.pv('DeltaX')
+		tl.Debug.pv('DeltaY')
+		tl.Debug.Print(self.SmallDisplacements.Rotation)
 
 		return(xNew, yNew)
 
@@ -678,7 +678,7 @@ class OpticsNumerical(Optics):
 	# RayInNominal
 	#================================
 	@property
-	def RayInNominal(self)-> ToolLib.Ray:
+	def RayInNominal(self)-> tl.Ray:
 		'''
 		ABSTRACT
 		'''
@@ -688,7 +688,7 @@ class OpticsNumerical(Optics):
 	# RayOutNominal
 	#================================
 	@property
-	def RayOutNominal(self) -> ToolLib.Ray:
+	def RayOutNominal(self) -> tl.Ray:
 		'''
 		ABSTRACT
 		'''
@@ -803,7 +803,7 @@ class SourcePoint(object):
 		return self._XYOrigin
 	@XYCentre.setter
 	def XYCentre(self, value):
-		ToolLib.ErrMsg.NoPropertySetAllowed('Use XYOrigin instead')
+		tl.ErrMsg.NoPropertySetAllowed('Use XYOrigin instead')
 
 	#================================================
 	#	 EvalField_XYSelf
@@ -823,7 +823,7 @@ class SourcePoint(object):
 	#	 EvalField_XYLab
 	#================================================
 	def EvalField_XYLab(self, x = np.array(None), y = np.array(None)):
-		(x,y) = Rayman._MatchArrayLengths(x,y)
+		(x,y) = rm._MatchArrayLengths(x,y)
 		k = 2* np.pi / self.Lambda
 		R = np.sqrt((x-self.XYCentre[0])**2 + (y-self.XYCentre[1])**2)
 		return 1. / R * np.exp(1j * k * R)
@@ -851,7 +851,7 @@ class SourcePoint(object):
 	#================================================
 	@property
 	def RayOutNominal(self):
-		return ToolLib.Ray(XYOrigin = self.XYCentre, Angle = self.AnglePropagation)
+		return tl.Ray(XYOrigin = self.XYCentre, Angle = self.AnglePropagation)
 
 	#================================
 	# FUN: Paint
@@ -866,7 +866,7 @@ class SourcePoint(object):
 		# a star, marking the centre
 		plt.plot(self._XYOrigin[0], self._XYOrigin[1],  marker = '*', markersize = 10)
 		RayOut = self.RayOutNominal
-		U = ToolLib.UnitVector(vx = RayOut.v[0], vy = RayOut.v[1], XYOrigin = self._XYOrigin)
+		U = tl.UnitVector(vx = RayOut.v[0], vy = RayOut.v[1], XYOrigin = self._XYOrigin)
 
 		Length = Length if Length != None else 0.5
 		U.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
@@ -904,9 +904,9 @@ class _old(OpticsAnalytical):
 		self._AngleIn = AngleIn
 		AngleTan = AngleIn + self.AngleGrazing
 		# Defines: Versos, AngleNorm, AngleTan
-		UV = ToolLib.UnitVector(Angle = AngleTan + np.pi/2) # Old definition: when the primary variable was VersorNorm and not VersorTan
+		UV = tl.UnitVector(Angle = AngleTan + np.pi/2) # Old definition: when the primary variable was VersorNorm and not VersorTan
 		self.VersorNorm = UV
-		# self.VersorTan = ToolLib.UnitVector(Angle = AngleTan) # attempt of new definition, but it is not safe
+		# self.VersorTan = tl.UnitVector(Angle = AngleTan) # attempt of new definition, but it is not safe
 
 	#================================================
 	#	 EvalField_XYSelf
@@ -925,7 +925,7 @@ class _old(OpticsAnalytical):
 			Eval_Lab(x,y) = f(x-x0, y-y0)
 			'''
 
-			(x,y) = Rayman._MatchArrayLengths(x,y)
+			(x,y) = rm._MatchArrayLengths(x,y)
 			k = 2. * np.pi / self.Lambda
 			R = np.sqrt(x**2 + y**2)
 			return 1. / R * np.exp(1j * k * R)
@@ -1037,7 +1037,7 @@ class SourceGaussian(OpticsAnalytical):
 		return self._XYOrigin
 	@XYCentre.setter
 	def XYCentre(self, value):
-		ToolLib.ErrMsg.NoPropertySetAllowed('Use XYOrigin instead')
+		tl.ErrMsg.NoPropertySetAllowed('Use XYOrigin instead')
 
 	#================================================
 	#	 RayleighRange
@@ -1101,12 +1101,12 @@ class SourceGaussian(OpticsAnalytical):
 		'''
 		Evaluates the Phase at (x,y), which are in the Lab Reference
 		'''
-		(xLab,yLab) = Rayman._MatchArrayLengths(xLab,yLab)
+		(xLab,yLab) = rm._MatchArrayLengths(xLab,yLab)
 		#codice che dovrebbe funzionare ma che non va
 		# Ruoto il piano x,y di Theta attorno all'origina della gaussiana
 		myOrigin = self.XYOrigin
 		# myTheta = -self.ThetaPropagation
-		[zSelf,rSelf] = ToolLib.RotXY(xLab,yLab, CentreOfRotation = myOrigin, Theta = - self.ThetaPropagation)
+		[zSelf,rSelf] = tl.RotXY(xLab,yLab, CentreOfRotation = myOrigin, Theta = - self.ThetaPropagation)
 		zSelf = zSelf - myOrigin[0]
 		rSelf = rSelf - myOrigin[1]
 
@@ -1132,7 +1132,7 @@ class SourceGaussian(OpticsAnalytical):
 			r (source reference) --> y (lab reference)
 
 		'''
-		(z,r) = Rayman._MatchArrayLengths(z,r)
+		(z,r) = rm._MatchArrayLengths(z,r)
 
 		#Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
 		Norm =	 (self.Waist0 / self.Waist(z))
@@ -1176,7 +1176,7 @@ class SourceGaussian(OpticsAnalytical):
 			e.m. field
 		'''
 
-		(x,y) = Rayman._MatchArrayLengths(x,y)
+		(x,y) = rm._MatchArrayLengths(x,y)
 		'''
 		in qusta funciton ho introdotto il concetto per cui
 		x è la coordinata nel sistema di riferimento esterno
@@ -1195,7 +1195,7 @@ class SourceGaussian(OpticsAnalytical):
 		# Ruoto il piano x,y di Theta attorno all'origina della gaussiana
 		myOrigin = self.XYOrigin
 		# myTheta = -self.ThetaPropagation
-		[zg,yg] = ToolLib.RotXY(x,y, CentreOfRotation = myOrigin, Theta = - self.ThetaPropagation - DeltaTheta)
+		[zg,yg] = tl.RotXY(x,y, CentreOfRotation = myOrigin, Theta = - self.ThetaPropagation - DeltaTheta)
 		zg = zg - myOrigin[0]
 		yg = yg - myOrigin[1]
 
@@ -1212,7 +1212,7 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	@property
 	def RayOutNominal(self):
-		return ToolLib.Ray(XYOrigin = self.XYCentre, Angle = self.AnglePropagation)
+		return tl.Ray(XYOrigin = self.XYCentre, Angle = self.AnglePropagation)
 
 
 	#================================
@@ -1254,7 +1254,7 @@ class SourceGaussian(OpticsAnalytical):
 		# a star, marking the centre
 		plt.plot(self._XYOrigin[0], self._XYOrigin[1],  marker = '*', markersize = 10)
 		RayOut = self.RayOutNominal
-		U = ToolLib.UnitVector(vx = RayOut.v[0], vy = RayOut.v[1], XYOrigin = self._XYOrigin)
+		U = tl.UnitVector(vx = RayOut.v[0], vy = RayOut.v[1], XYOrigin = self._XYOrigin)
 
 		Length = Length if Length != None else 0.5
 		U.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
@@ -1381,12 +1381,12 @@ class SourceGaussian(OpticsAnalytical):
 #		# Ruoto il piano x,y di Theta attorno all'origina della gaussiana
 #		myOrigin = np.array([self.ZOrigin, self.YOrigin])
 #		myTheta = -self.ThetaPropagation
-#		[zg,yg] = ToolLib.RotXY(x,y, Origin = myOrigin, Theta = - self.ThetaPropagation)
+#		[zg,yg] = tl.RotXY(x,y, Origin = myOrigin, Theta = - self.ThetaPropagation)
 #		zg = zg - myOrigin[0]
 #		yg = yg - myOrigin[1]
 #
 #		'''
-#		[zg,yg] = ToolLib.RotXY(x,y, Origin = myOrigin, Theta = - self.ThetaPropagation)
+#		[zg,yg] = tl.RotXY(x,y, Origin = myOrigin, Theta = - self.ThetaPropagation)
 #		zg = zg - myOrigin[0]
 #		yg = yg - myOrigin[1]
 #		'''
@@ -1509,7 +1509,7 @@ class OpticsNumericalDependent(OpticsNumerical):
 		n0 = np.argmin([x[49], x[51]])
 		vx = x[n1] - x[n0]
 		vy = y[n1] - y[n0]
-		U = ToolLib.UnitVector(vx = vx, vy = vy, XYOrigin = self.XYCentre)
+		U = tl.UnitVector(vx = vx, vy = vy, XYOrigin = self.XYCentre)
 		return U
 	#================================
 	# PROP: VersorNorm
@@ -1518,8 +1518,8 @@ class OpticsNumericalDependent(OpticsNumerical):
 	def VersorNorm(self):
 		Ut = self.VersorTan
 		ut = self.VersorTan.v
-		un = ToolLib.UnitVectorNormal(ut)
-		Un = ToolLib.UnitVector(v = un, XYOrigin = Ut.XYOrigin)
+		un = tl.UnitVectorNormal(ut)
+		Un = tl.UnitVector(v = un, XYOrigin = Ut.XYOrigin)
 		return Un
 	#================================
 	# FUN: Paint
@@ -1621,12 +1621,12 @@ class Segment(OpticsNumerical):
 			It is used to compute MirrorAngle
 		'''
 		# BUILDING
-		if ToolLib.CheckArg([L, AngleGrazing]):
+		if tl.CheckArg([L, AngleGrazing]):
 			self._L = L
 			self._AngleGrazing = AngleGrazing
 			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
 		else:
-			ToolLib.ErrMsg.InvalidInputSet
+			tl.ErrMsg.InvalidInputSet
 
 
 	#================================
@@ -1642,11 +1642,11 @@ class Segment(OpticsNumerical):
 	#  PROP: VersorNorm
 	#================================
 	@property
-	def VersorNorm(self) -> ToolLib.UnitVector:
+	def VersorNorm(self) -> tl.UnitVector:
 		return self._VersorNorm
 
 	@VersorNorm.setter
-	def VersorNorm(self, value) -> ToolLib.UnitVector:
+	def VersorNorm(self, value) -> tl.UnitVector:
 		self._VersorNorm = value #  UnitVersor type
 		self._VersorNorm.XYOrigin = self.XYCentre
 
@@ -1722,7 +1722,7 @@ class Segment(OpticsNumerical):
 		'''
 		m = np.tan(self.AngleTanLab)
 		q = self.XYCentre[1] - m * self.XYCentre[0]
-		return ToolLib.Line(m,q)
+		return tl.Line(m,q)
 #		return self._Line_Tan
 
 	#================================
@@ -1779,7 +1779,7 @@ class Segment(OpticsNumerical):
 		self._AngleIn = AngleIn
 		AngleTan = AngleIn + self.AngleGrazing
 		# Defines: Versos, AngleNorm, AngleTan
-		UV = ToolLib.UnitVector(Angle = AngleTan + np.pi/2) # Old definition: when the primary variable was VersorNorm and not VersorTan
+		UV = tl.UnitVector(Angle = AngleTan + np.pi/2) # Old definition: when the primary variable was VersorNorm and not VersorTan
 		self.VersorNorm = UV
 		# self.VersorTan = UnitVector(Angle = AngleTan) # attempt of new definition, but it is not safe
 
@@ -1814,7 +1814,7 @@ class Segment(OpticsNumerical):
 
 		m = np.tan(self._AngleTan)
 		q = self.XYCentre[1] - m * self.XYCentre[0]
-		self._Line_Tan = ToolLib.Line(m, q)
+		self._Line_Tan = tl.Line(m, q)
 	#================================================
 	#	GetRayOutNominal
 	#	INTERFACE FUNCTION
@@ -1827,8 +1827,8 @@ class Segment(OpticsNumerical):
 	#================================
 	@property
 	def RayInNominal(self):
-		v = ToolLib.UnitVector(Angle = self.AngleIn).v
-		return ToolLib.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+		v = tl.UnitVector(Angle = self.AngleIn).v
+		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
 
 	#================================
 	# PROP: RayOutNominal
@@ -1838,8 +1838,8 @@ class Segment(OpticsNumerical):
 		'''
 		Equal to RayInNominal, but of oppposite sign.
 		'''
-		v = ToolLib.UnitVector(Angle = self.AngleIn).v
-		return ToolLib.Ray(vx = -v[0], vy = -v[1], XYOrigin = self.XYCentre)
+		v = tl.UnitVector(Angle = self.AngleIn).v
+		return tl.Ray(vx = -v[0], vy = -v[1], XYOrigin = self.XYCentre)
 
 	#================================
 	# FUN: Paint
@@ -1867,7 +1867,7 @@ class Segment(OpticsNumerical):
 	#  Draw
 	#================================
 	def Draw(self, N=100):
-		x,y  = ToolLib.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle,N)
+		x,y  = tl.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle,N)
 		return x,y
 	#================================
 	#  _Draw
@@ -2037,7 +2037,7 @@ class Mirror(OpticsNumerical):
 		'''
 
 		# Codice forse sbagliato ed inutilmente barocco
-		# x,y = ToolLib.SamplingAlongLine(self.AngleTanLab, self.XYCentre, L, N)
+		# x,y = tl.SamplingAlongLine(self.AngleTanLab, self.XYCentre, L, N)
 		L = L if L!= None else self.L
 		XYStart, XYEnd = self._ComputeXYStartXYEnd(L)
 
@@ -2138,7 +2138,7 @@ class Mirror(OpticsNumerical):
 			hFigErr  = self.FigureErrors[iFigureError]
 			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
 			self._L = LMeasured  # serve davvero?
-			hFigErr  = Rayman.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
+			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
 		else:
 			hFigErr   = np.zeros(N)
 			LMeasured = self.L
@@ -2224,7 +2224,7 @@ class Mirror(OpticsNumerical):
 			hFigErr  = self.FigureErrors[iFigureError]
 			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
 			self._L = LMeasured  # serve davvero?
-			hFigErr  = Rayman.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
+			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
 		else:
 			hFigErr   = np.zeros(N)
 			LMeasured = self.L
@@ -2471,12 +2471,12 @@ class MirrorPlane(Mirror):
 			It is used to compute MirrorAngle
 		'''
 		# BUILDING
-		if ToolLib.CheckArg([L, AngleGrazing]):
+		if tl.CheckArg([L, AngleGrazing]):
 			self._L = L
 			self._AngleGrazingNominal = AngleGrazing
 			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
 		else:
-			ToolLib.ErrMsg.InvalidInputSet
+			tl.ErrMsg.InvalidInputSet
 
 		self._UpdateParameters_Lines()
 		self._UpdateParameters_XYStartEnd()
@@ -2715,7 +2715,7 @@ class MirrorPlane(Mirror):
 		'''
 		m = np.tan(self.AngleTanLab)
 		q = self.XYCentre[1] - m * self.XYCentre[0]
-		return ToolLib.Line(m,q)
+		return tl.Line(m,q)
 
 
 	#================================================
@@ -2730,17 +2730,17 @@ class MirrorPlane(Mirror):
 	#================================
 	@property
 	def RayInNominal(self):
-		v = ToolLib.UnitVector(Angle = self.AngleInputLabNominal).v
-		return ToolLib.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
 
 	#================================
 	# PROP: RayOutNominal
 	#================================
 	@property
 	def RayOutNominal(self):
-		V = ToolLib.UnitVector(Angle = self.AngleInputLabNominal)
-		v_ref = ToolLib.UnitVectorReflect(V.v, self.VersorNorm.v)
-		return ToolLib.Ray(vx = v_ref[0], vy = v_ref[1], XYOrigin = self.XYCentre)
+		V = tl.UnitVector(Angle = self.AngleInputLabNominal)
+		v_ref = tl.UnitVectorReflect(V.v, self.VersorNorm.v)
+		return tl.Ray(vx = v_ref[0], vy = v_ref[1], XYOrigin = self.XYCentre)
 	#================================
 	# FUN: Paint
 	#================================
@@ -2768,7 +2768,7 @@ class MirrorPlane(Mirror):
 	#  Draw
 	#================================
 	def Draw(self, N=100):
-		x,y  = ToolLib.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle,N)
+		x,y  = tl.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle,N)
 		return x,y
 	#================================
 	#  _Draw
@@ -2861,7 +2861,7 @@ class MirrorElliptic(Mirror):
 
 		# Set of input parameters #1
 		# (more mathematical, less common)
-		if ToolLib.CheckArg([a,b, XProp_Centre, L]):
+		if tl.CheckArg([a,b, XProp_Centre, L]):
 
 			#-------------------------------
 			# Validating input
@@ -2871,7 +2871,7 @@ class MirrorElliptic(Mirror):
 			self._UpdateAlphaFromThetaProp()
 		# Set of input parameters #2
 		# (more practical, more common)
-		elif ToolLib.CheckArg([f1,f2,Alpha,L]):
+		elif tl.CheckArg([f1,f2,Alpha,L]):
 			# Input parameters
 			#-------------------------------
 			self._ValidateInput_Set2(f1,f2,Alpha,L)
@@ -2966,7 +2966,7 @@ class MirrorElliptic(Mirror):
 
 		# computed 2 (aux)
 		elle = 2*self._c
-		_TmpArg = ToolLib.Coerce(self._f2/elle * np.sin(np.pi - 2*Alpha),-1,1)
+		_TmpArg = tl.Coerce(self._f2/elle * np.sin(np.pi - 2*Alpha),-1,1)
 		self._ThetaProp = np.arcsin(_TmpArg)
 		self._XYProp_F1 = [-self.c, 0]
 		self._XYProp_F2 = [self.c,0]
@@ -3174,11 +3174,11 @@ class MirrorElliptic(Mirror):
 		self._pTanLab_Angle = np.arctan(self._pTanLab[0])
 
 		# Injection to VersorTan (VersorTan is the primary VersorStuff of Optics numerical)
-		#self.VersorTan = ToolLib.UnitVector(Angle = 1* self._pTanLab_Angle )
+		#self.VersorTan = tl.UnitVector(Angle = 1* self._pTanLab_Angle )
 
 		# Injection to VersorLab (VersorLab is linked to AngleLab and XYOrigin,
 		# which are the basis of positioning in  Optics numerical)
-		self.VersorLab = ToolLib.UnitVector(Angle =  self._pTanLab_Angle - np.pi/2 - self.AngleGrazingNominal  )
+		self.VersorLab = tl.UnitVector(Angle =  self._pTanLab_Angle - np.pi/2 - self.AngleGrazingNominal  )
 
 	#================================
 	# _SetMirrorCoordinates
@@ -3545,7 +3545,7 @@ class MirrorElliptic(Mirror):
 			hFigErr  = self.FigureErrors[iFigureError]
 			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
 			self._L = LMeasured  # serve davvero?
-			hFigErr  = Rayman.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
+			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
 		else:
 			hFigErr   = np.zeros(N)
 			LMeasured = self.L
@@ -3743,7 +3743,7 @@ class MirrorElliptic(Mirror):
 
 #	@property
 #	def VersorNorm(self):
-#		return ToolLib.UnitVector(Angle = self.pTan_Angle +np.pi/2, XYOrigin = self.XYCentre)
+#		return tl.UnitVector(Angle = self.pTan_Angle +np.pi/2, XYOrigin = self.XYCentre)
 	# Upstream Focus
 
 	@property
@@ -3909,9 +3909,9 @@ class MirrorElliptic(Mirror):
 		vxTan = (xEll_[1] - xEll_[0])
 		vyTan = (yEll_[1] - yEll_[0])
 		vTan = np.array([vxTan, vyTan])
-		VTan = ToolLib.Vector(v = vTan)
+		VTan = tl.Vector(v = vTan)
 		VNormal = VTan.GetNormal()
-		vNormal = ToolLib.UnitVectorNormal(vTan, Sign = -1 * Sign)
+		vNormal = tl.UnitVectorNormal(vTan, Sign = -1 * Sign)
 
 		pTan = np.polyfit( xEll_, yEll_,1)
 
@@ -3919,17 +3919,17 @@ class MirrorElliptic(Mirror):
 		# Raggio entrante (rappresentato in 3 modi diversi... uffa)
 		#----------------------------------------------------
 		pIn = np.polyfit([xStart, xEll], [yStart, yEll],1)
-		vIn = ToolLib.Normalize(np.array([xEll - xStart, yEll - yStart]))
-		#LineIn = ToolLib.Line(m=pIn[1], q = pIn[0])
+		vIn = tl.Normalize(np.array([xEll - xStart, yEll - yStart]))
+		#LineIn = tl.Line(m=pIn[1], q = pIn[0])
 		#vIn = LineIn.v
 
 
 		#Reflected ray
 		#----------------------------------------------------
-		vIn = ToolLib.Normalize(vIn)
-		vNormal = ToolLib.Normalize(vNormal)
-		vOut = ToolLib.UnitVectorReflect(vIn, vNormal)
-		VOut = ToolLib.UnitVector(v = vOut, XYOrigin = [xEll, yEll])
+		vIn = tl.Normalize(vIn)
+		vNormal = tl.Normalize(vNormal)
+		vOut = tl.UnitVectorReflect(vIn, vNormal)
+		VOut = tl.UnitVector(v = vOut, XYOrigin = [xEll, yEll])
 		pOut = VOut.PolyCoeff
 
 
@@ -3976,9 +3976,9 @@ class MirrorElliptic(Mirror):
 			vxTan = (xEll_[1] - xEll_[0])
 			vyTan = (yEll_[1] - yEll_[0])
 			vTan = np.array([vxTan, vyTan])
-			VTan = ToolLib.Vector(v = vTan)
+			VTan = tl.Vector(v = vTan)
 			VNormal = VTan.GetNormal()
-			vNormal = ToolLib.UnitVectorNormal(vTan, Sign = -1 * self._Sign)
+			vNormal = tl.UnitVectorNormal(vTan, Sign = -1 * self._Sign)
 
 			pTan = np.polyfit( xEll_, yEll_,1)
 
@@ -3986,17 +3986,17 @@ class MirrorElliptic(Mirror):
 			# Raggio entrante (rappresentato in 3 modi diversi... uffa)
 			#----------------------------------------------------
 			pIn = np.polyfit([xStart, xEll], [yStart, yEll],1)
-			vIn = ToolLib.Normalize(np.array([xEll - xStart, yEll - yStart]))
-			#LineIn = ToolLib.Line(m=pIn[1], q = pIn[0])
+			vIn = tl.Normalize(np.array([xEll - xStart, yEll - yStart]))
+			#LineIn = tl.Line(m=pIn[1], q = pIn[0])
 			#vIn = LineIn.v
 
 
 			#Reflected ray
 			#----------------------------------------------------
-			vIn = ToolLib.Normalize(vIn)
-			vNormal = ToolLib.Normalize(vNormal)
-			vOut = ToolLib.UnitVectorReflect(vIn, vNormal)
-			VOut = ToolLib.UnitVector(v = vOut, XYOrigin = [xEll, yEll])
+			vIn = tl.Normalize(vIn)
+			vNormal = tl.Normalize(vNormal)
+			vOut = tl.UnitVectorReflect(vIn, vNormal)
+			VOut = tl.UnitVector(v = vOut, XYOrigin = [xEll, yEll])
 			pOut = VOut.PolyCoeff
 
 			pInList[i-1] = pIn
@@ -4015,7 +4015,7 @@ class MirrorElliptic(Mirror):
 #
 #		# SIAMO SICURI? non manca un np.arctan?!?!?!
 #		return abs(Alpha - abs(m ))
-		TmpArg = ToolLib.Coerce(TmpArg, -1,1)
+		TmpArg = tl.Coerce(TmpArg, -1,1)
 		self._ThetaProp = np.arcsin(TmpArg)
 		# @todo
 
@@ -4066,7 +4066,7 @@ class MirrorElliptic(Mirror):
 
 	@property
 	def RayInNominal(self):
-		RayIn = ToolLib.Ray(x1 = self.XYCentre[0], y1 = self.XYCentre[1],
+		RayIn = tl.Ray(x1 = self.XYCentre[0], y1 = self.XYCentre[1],
 			  x0 = self.XYF1[0], y0 = self.XYF1[1])
 		RayIn.XYOrigin = self.XYCentre
 		return RayIn
@@ -4081,7 +4081,7 @@ class MirrorElliptic(Mirror):
        Return the nominal outcoming ray. Uses the member attributes
        of the object for the computation.
 		'''
-		RayOut = ToolLib.Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
+		RayOut = tl.Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
 				  x1 = self.XYF2[0], y1 = self.XYF2[1])
 		RayOut.XYOrigin = self.XYCentre
 		return RayOut
@@ -4186,7 +4186,7 @@ class MirrorSpheric(Mirror):
 		# Set of input parameters #1
 		# (more mathematical, less common)
 
-		if ToolLib.CheckArg([R,Alpha,L]):
+		if tl.CheckArg([R,Alpha,L]):
 			# Input parameters
 			#-------------------------------
 			self._ValidateInput_Set2(R,Alpha,L)
@@ -4278,7 +4278,7 @@ class MirrorSpheric(Mirror):
 
 		# computed 2 (aux)
 		elle = 2*self._c
-		TmpArg = ToolLib.Coerce(self._f2/elle * np.sin(np.pi - 2*Alpha),-1,1)
+		TmpArg = tl.Coerce(self._f2/elle * np.sin(np.pi - 2*Alpha),-1,1)
 		self._ThetaProp = np.arcsin(TmpArg)
 		self._XYProp_F1 = [-self.c, 0]
 		self._XYProp_F2 = [self.c,0]
@@ -4393,7 +4393,7 @@ class MirrorSpheric(Mirror):
 		self._pTanLab_Angle = np.arctan(self._pTanLab[0])
 
 		# Injection to VersorTan (VersorTan is the primary VersorStuff of Optics numerical)
-		self.VersorTan = ToolLib.UnitVector(Angle = 1* self._pTanLab_Angle )
+		self.VersorTan = tl.UnitVector(Angle = 1* self._pTanLab_Angle )
 
 
 
@@ -4627,7 +4627,7 @@ class MirrorSpheric(Mirror):
 		if len(self._FigureErrors)-1 >= iFigureError:
 			hFigErr  = self.FigureErrors[iFigureError]
 			self._L = len(hFigErr) * self._FigureErrorSteps[iFigureError]
-			hFigErr  = Rayman.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
+			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
 		else:
 			hFigErr   = np.zeros(N)
 
@@ -4797,7 +4797,7 @@ class MirrorSpheric(Mirror):
 
 #	@property
 #	def VersorNorm(self):
-#		return ToolLib.UnitVector(Angle = self.pTan_Angle +np.pi/2, XYOrigin = self.XYCentre)
+#		return tl.UnitVector(Angle = self.pTan_Angle +np.pi/2, XYOrigin = self.XYCentre)
 	# Upstream Focus
 	@property
 	def XYF1(self):
@@ -4922,7 +4922,7 @@ class MirrorSpheric(Mirror):
 #
 #		# SIAMO SICURI? non manca un np.arctan?!?!?!
 #		return abs(Alpha - abs(m ))
-		tmpArg = ToolLib.Coerce(self._f2/(2*self._c) * np.sin(np.pi - 2*self._Alpha),-1,1)
+		tmpArg = tl.Coerce(self._f2/(2*self._c) * np.sin(np.pi - 2*self._Alpha),-1,1)
 		self._ThetaProp = np.arcsin(TmpArg)
 		# @todo
 
@@ -4972,7 +4972,7 @@ class MirrorSpheric(Mirror):
 
 	@property
 	def RayInNominal(self):
-		RayIn = ToolLib.Ray(x1 = self.XYCentre[0], y1 = self.XYCentre[1],
+		RayIn = tl.Ray(x1 = self.XYCentre[0], y1 = self.XYCentre[1],
 			  x0 = self.XYF1[0], y0 = self.XYF1[1])
 		RayIn.XYOrigin = self.XYCentre
 		return RayIn
@@ -4987,7 +4987,7 @@ class MirrorSpheric(Mirror):
        Return the nominal outcoming ray. Uses the member attributes
        of the object for the computation.
 		'''
-		RayOut = ToolLib.Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
+		RayOut = tl.Ray(x0 = self.XYCentre[0], y0 = self.XYCentre[1],
 				  x1 = self.XYF2[0], y1 = self.XYF2[1])
 		RayOut.XYOrigin = self.XYCentre
 		return RayOut
@@ -5150,12 +5150,12 @@ class Slits(OpticsNumerical):
             It is used to compute MirrorAngle
         '''
 		# BUILDING
-		if ToolLib.CheckArg([L, AngleGrazing]):
+		if tl.CheckArg([L, AngleGrazing]):
 			self._L = L
 			self._AngleGrazingNominal = AngleGrazing
 			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
 		else:
-			ToolLib.ErrMsg.InvalidInputSet
+			tl.ErrMsg.InvalidInputSet
 
 		self.SmallDisplacements = False
 		self._UpdateParameters_Lines()
@@ -5365,7 +5365,7 @@ class Slits(OpticsNumerical):
 		'''
 		m = np.tan(self.AngleTanLab)
 		q = self.XYCentre[1] - m * self.XYCentre[0]
-		return ToolLib.Line(m, q)
+		return tl.Line(m, q)
 
 	# ================================================
 	#	GetRayOutNominal
@@ -5378,16 +5378,16 @@ class Slits(OpticsNumerical):
 	# ================================
 	@property
 	def RayInNominal(self):
-		v = ToolLib.UnitVector(Angle=self.AngleInputLabNominal).v
-		return ToolLib.Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
+		v = tl.UnitVector(Angle=self.AngleInputLabNominal).v
+		return tl.Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
 
 	# ================================
 	# PROP: RayOutNominal
 	# ================================
 	@property
 	def RayOutNominal(self):
-		v = ToolLib.UnitVector(Angle=self.AngleInputLabNominal).v
-		return ToolLib.Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
+		v = tl.UnitVector(Angle=self.AngleInputLabNominal).v
+		return tl.Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
 
 	# ================================
 	# FUN: Paint
@@ -5416,7 +5416,7 @@ class Slits(OpticsNumerical):
 	#  Draw
 	# ================================
 	def Draw(self, N=100):
-		x, y = ToolLib.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle, N)
+		x, y = tl.geom.DrawSegmentCentred(self._L, self.XYCentre[0], self.XYCentre[1], self.Angle, N)
 		return x, y
 
 #==============================================================================
