@@ -135,7 +135,7 @@ class PositioningDirectives:
 		SecondArmOfEllipticMirror= 'arm2'
 
 	def __init__(self, ReferTo = 'source', PlaceWhat = 'centre', PlaceWhere = 'centre',
-					 Distance = None, GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
+					 Distance = 0., GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
 					 *kwargs):
 		'''
 		[TODO] : means that the stuff still does not work.
@@ -786,9 +786,11 @@ class OpticalElement(TreeItem):
 	@property
 	def DistanceFromParent(self):
 		'''
-		Distance from parent optical element.
+		Distance from parent optical element corresponds to the optical distance between the element (self)
+		and the first optical element with the same orientation and UseAsReference flag True (obtained with
+		>>> self.GetParent(SameOrientation=True, OnlyReference=True))
+
 		'''
-		# oeParent = self.Parent
 
 		if self.Parent != None:
 			distance = np.linalg.norm(self.XYCentre - self.GetParent(SameOrientation=True, OnlyReference=True).XYCentre)
@@ -796,26 +798,6 @@ class OpticalElement(TreeItem):
 			distance = 0
 		else:
 			raise ValueError('Something wrong in DistanceFromParent!')
-		# if self.Parent != None and ((self.CoreOptics.Orientation == self.Parent.CoreOptics.Orientation) or
-		# 							(self.Parent.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-		# 							(self.Parent.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)):
-		# 	distance = np.linalg.norm(self.XYCentre - self.Parent.XYCentre)
-		#
-		# elif self.Parent != None and ((self.CoreOptics.Orientation != self.Parent.CoreOptics.Orientation) or
-		# 							  (self.Parent.CoreOptics.Orientation != Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-		# 							  (self.Parent.CoreOptics.Orientation != Optics.OPTICS_ORIENTATION.ANY)):
-		#
-		# 	oeParent = oeParent.Parent
-		#
-		# 	while not((self.CoreOptics.Orientation == oeParent.CoreOptics.Orientation) or
-		# 		   (oeParent.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-		# 		   (oeParent.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)):
-		# 		oeParent = oeParent.Parent
-		#
-		# 	distance = np.linalg.norm(self.XYCentre - oeParent.XYCentre)
-		#
-		# else:
-		# 	distance = 0
 
 		return distance
 
@@ -856,35 +838,56 @@ class OpticalElement(TreeItem):
 	# ================================================
 
 	def GetParent(self, SameOrientation=False, OnlyReference=False):
-		if SameOrientation == True and OnlyReference == True:
+		'''
+		Returns the first parent accounting for the following flags> SameOrientation, OnlyReference.
+
+		Parameters
+		-----
+
+		SameOrientation : bool
+			if Ture, it returns the first parent elemenents for which .CoreOptics.Orientation is
+			the same as self object.
+
+		OnlyReference : bool
+			if True it returns the first parent elements for which  CoreOptics.UseAsReference = True
+
+		'''
+
+		def HaveSameOrientation(oeX, oeY):
+			return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
+			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
+
+		if SameOrientation and OnlyReference:
 			for oe in self.UpstreamItemList:
-				if (((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
-						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
-						and oe.CoreOptics.UseAsReference == OnlyReference):
+				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
 					GetParentResult = oe
 					break
-		elif SameOrientation == True and OnlyReference == False:
+		elif SameOrientation and not OnlyReference:
 			for oe in self.UpstreamItemList:
-				if ((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
-						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-						(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)):
+				if HaveSameOrientation(oe, self):
 					GetParentResult = oe
 					break
 		else:
 			for oe in self.UpstreamItemList:
-				if OnlyReference == True:
-					if oe.CoreOptics.UseAsReference == OnlyReference:
+				if OnlyReference:
+					if oe.CoreOptics.UseAsReference:
 						GetParentResult = oe
 						break
-				elif OnlyReference == False:
+				elif not OnlyReference:
 					GetParentResult = oe
 					break
 
 		return GetParentResult
 
-	# Gets distance from parent with the same orientation or previous optical element
 	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
+		'''
+		High level function to calculate the distance to parent.
+
+		Dev notes
+		-----
+		it uses the distance from source and requires XYCentre to be already computed.
+		'''
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
 
@@ -1030,43 +1033,27 @@ class BeamlineElements(Tree):
 	@staticmethod
 	def ApplyPositioningDirectives(oeY: OpticalElement):
 		'''
-			This function replaces PositioningDirectives_UpdatePosition(oeY, oeX)
-			in calculating the XY positions of the optical elements along the
-			beamline. Starting from the current optical element oeY.PositioningDirectives,
-			all the features are calculated according to the previous oes.
 
 			Parameters
 			------------------
 			oeY : OpticalElement
 				The optical element to place
 
-
-			Notice
+			Behavior
 			------------------
-			- If PositioningDirectives has ReferTo='absolute', oeX is not used
 			- If PositioningDirectives has ReferTo='locked' then the positioning of the present element is not computed.
 				This shall be used for elements whose position has already been computed in another BeamlineElements object,
 				and you don't want to recompute all the sequence.
 				I introduced this when I do the focus sweep, keeping an optical element fixed ('locked') and moving the screen
 				only.
-			- If PositioningDirectives has flag=UseFollowing, oeX is supposed to be the subsequent	optical element respect with oeY.
-			- According to the type of oeY and oeX, different strategies for computing the positioning may be used.
+			- Upstream reference is workin as one expects to
+			- Downstream focus will find the firs element (with the same orientation) that has f2 as attribute, then
+			will use f2 as positioning distance
+			- UseAsReference=False means that the Element is not considerend for positioning other elements.
 
-			Developer note
+			Developer notes
 			------------------
-			This function, in order to work, expects that some (or all) of the following member
-			functions are defined in the object OpticalElement.CoreOptics
-			(This object is typically an instance of Optics.MirrorPlane, Optics.EllipticalMirror,
-			Optics.SourceGaussian, etc...)
-
-			(ni = Not Implemented yet)
-
-			- XYCentre
-
-			- SetXYAngle_Centre
-			- SetXYAngle_UpstreamFocus
-			- SetXYA_DownstreamFocus (ni)
-
+			Bases on: XYCentre, SetXYAngle_Centre,  GetParent(...), DistanceFromParent
 
 		'''
 		Pd = oeY.PositioningDirectives
@@ -1081,8 +1068,9 @@ class BeamlineElements(Tree):
 		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
 			pass
 
+		# =============================================================================================
 		# ABSOLUTE POSITIONING
-		# -------------------------------------------
+		# =============================================================================================
 		elif Pd.ReferTo == posdir_.ReferTo.AbsoluteReference:
 
 			# set position
@@ -1090,19 +1078,26 @@ class BeamlineElements(Tree):
 
 			oeY.CoreOptics.SetXYAngle_Centre(Pd.XYCentre, Pd.Angle, WhichAngle=Pd.WhichAngle)
 
+		# =============================================================================================
+		# LOCKED POSITIONING
+		# =============================================================================================
 		elif Pd.ReferTo == 'locked':
+			'''
+			XYCentre and Angle of the OpticalElement are not changed at all.
+			Typically used if the OE has been created via deepcopy . Example: FocusSweep function. 
+			'''
 			pass
-
-		# Reference = PREVIOUS ELEMENT or DOWNSTREAM ELEMENT or SOURCE
-		# -----------------------------------------------------------------
+		# =============================================================================================
+		# REFERENCE = PREVIOUS or SOURCE or DOWNSTREAM
+		# =============================================================================================
 		elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
 
 			RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # The incident ray
 			LastXY = oeXSameOrientation.CoreOptics.XYCentre # XY position of the same orientation
 
-			# ........................................
-			#  put centre Distance away from centre
-			# ........................................
+			# =============================================================================================
+			#  Set the XYCentre1   at a certain Distance from XYCentre2
+			# =============================================================================================
 			if (Pd.What == 'centre' or Pd.What == 'upstream focus') and Pd.Where == 'centre':
 
 				# All the conditions select the last arm as distance, as this is the one used in SetXYAngle_Centre
@@ -1122,47 +1117,36 @@ class BeamlineElements(Tree):
 					if oeX != oeXSameOrientation:
 						realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource + realDistance
 
-
-				# Treat detectors differently, they are a special case...
-				# It has to be decided what distance means for the detectors. Now it puts both detectors at the same
-				# distance from the source with upstream, centre, centre positioning.
-				# if type(oeY.CoreOptics) == Optics.Detector and type(oeX.CoreOptics) == Optics.Detector:
-				#
-				# 	realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource # Last arm
-				# 	newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
-				# 	oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-				#
-				# else:
 				newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
 				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
-			# ........................................
-			#  put centre into downstream focus
-			# ........................................
+			# =============================================================================================
+			#  Set the XYCentre1   at the Dowstream focus
+			# =============================================================================================
 			elif Pd.What == 'centre' and Pd.Where == 'downstream focus':
 				# When doing FocusSweep, use 'locked' for the virtual source and go into this case...
-				if oeXSameOrientation.PositioningDirectives.ReferTo == 'locked':
-					v = oeXSameOrientation.RayOutNominal.UnitVectorAtOrigin.v
-					newXYCentre = oeXSameOrientation.CoreOptics.XYCentre + (Pd.Distance + oeXSameOrientation.CoreOptics.f2) * v
+				'''
+				Behavior:
+				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
+				'''
 
-					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle)
+				#FIX 4 Aljosa :)
+				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
+					realDistance = oeXSameOrientation.CoreOptics.f2
+				else: # Find the first suitable one
+					oeXSameOrientationCurrent = oeXSameOrientation
+					realDistance = oeXSameOrientationCurrent.DistanceFromParent
+					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
-				else:
-					if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
-						realDistance = oeXSameOrientation.CoreOptics.f2
-					else:
-						oeXSameOrientationCurrent = oeXSameOrientation
-						realDistance = oeXSameOrientationCurrent.DistanceFromParent
+					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
+						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
 						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
-						while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
-							realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
-							oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
+					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
-						realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
-
-					newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
-					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+					#realDistance: distance from the last element with the same orientation
+				newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
+				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
 			else:
 				raise ValueError('Wrong or un-implemented PositioningDirectives!')
@@ -1197,11 +1181,8 @@ class BeamlineElements(Tree):
 		Select the orientations and pass them individually to ComputeFieldsMediator, which is nothing else but the old
 		ComputeFields.
 
-		:param oeStart:
-		:param oeEnd:
-		:param Dummy:
-		:param Verbose:
-		:return:
+		Parameters
+		-----
 		"""
 
 		for Orientation in self.ComputationSettings.OrientationToCompute:
@@ -1669,50 +1650,13 @@ class BeamlineElements(Tree):
 		return oeListOriented, oeStart, oeEnd
 
 	# ================================================
-	#  FUN: MeasureOpticalPath
+	#  FUN: GetOpticalPath
 	# ================================================
-	def MeasureOpticalPath(self, oeStart: OpticalElement, oeEnd: OpticalElement, SameOrientation=True):
+	def GetOpticalPath(self, oeStart: OpticalElement, oeEnd: OpticalElement):
 		"""
-		Computes the path length oeEnd.XYCentre, oeEnd-1.XYCentre.... oeStart.XYCentre.
-		It works both ways, even if oeStart is downstream of oeEnd, the order is replaced automatically.
-		By default it calculates OpticalPath, which is the path of waves through the elements with the same orientation.
-		If SameOrientation=False, then total path from one element to another is calculated, the same as MeasureDistance.
+		Computes the path length between oeStart and oeEnd
 		"""
-
-		# BeamlineElements are stored in self.ItemList
-		for i, oe in enumerate(self.ItemList):
-			if oe == oeStart:
-				oeStartIndex = i
-			if oe == oeEnd:
-				oeEndIndex = i
-
-		if oeStartIndex > oeEndIndex:
-			oeThis = oeStart
-			oeEndLoop = oeEnd
-		else:
-			oeThis = oeEnd
-			oeEndLoop = oeStart
-
-		oePrevious = oeThis.GetParent(SameOrientation=SameOrientation)
-		print('oeThis: ' + oeThis.Name)
-		print('oePrevious: ' + oePrevious.Name)
-
-		euclideanDistance = np.linalg.norm(oeThis.XYCentre - oePrevious.XYCentre)
-		z = euclideanDistance # optical path
-		print('arm z=' + euclideanDistance.astype("str") + '; z=' + z.astype("str"))
-
-		while oePrevious != oeEndLoop:
-
-			oeThis = oePrevious
-			oePrevious = oePrevious.GetParent(SameOrientation=SameOrientation)
-			print('oeThis: ' + oeThis.Name)
-			print('oePrevious: ' + oePrevious.Name)
-
-			euclideanDistance = np.linalg.norm(oeThis.XYCentre - oePrevious.XYCentre)
-			z = euclideanDistance + z
-			print('arm z=' + euclideanDistance.astype("str") + '; z=' + z.astype("str"))
-
-		return z
+		return abs(oeStart.DistanceFromSource - oeEnd.DistanceFromSource)
 
 	#================================================
 	#  FUN: Paint
@@ -2017,14 +1961,6 @@ def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : Optica
 	print('Number of points: {}'.format(int(N)))
 
 	return int(N)
-
-def MeasureDistance(oe0: OpticalElement, oe1: OpticalElement) -> float:
-	""" Computes the distance b|w the centres of two optical Elements.
-
-	If oe0 and oe1 ARE NOT subsequent, the result IS NOT the optical path.
-	"""
-	return np.linalg.norm(oe1.XYCentre	 - oe0.XYCentre)
-
 
 
 # ================================================
