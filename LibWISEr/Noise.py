@@ -4,14 +4,19 @@ Created on Thu Jul 07 14:08:31 2016
 
 @author: Mic
 """
-from __future__ import division
+from numpy import ones, exp, log10, linspace, unique, round, log2, ceil, pi, sqrt, hstack, trapz
+from numpy.fft import fft, fftshift, ifft, ifftshift
+from numpy.random import rand
+from scipy.interpolate import interp1d, splrep, splev
+from scipy.integrate import trapz
+import matplotlib.pyplot as plt
 from LibWISEr.must import *
 import numpy as np
 import LibWISEr.Rayman as rm
 Gauss1d =  lambda x ,y : None
 from scipy import interpolate as interpolate
 
-class PsdFuns:
+class FunctionCollection:
 	'''
 	Ensemble of possible Psd Functions.
 	Each element is a callable Psd.
@@ -19,21 +24,29 @@ class PsdFuns:
 		PsdFuns.PowerLaw(x,a,b)
 		PsdFuns.Interp(x, xData, yData)
 	'''
-	@staticmethod
-	def Flat(x, *args):
-		N = len(x)
-		return np.zeros([1,N]) +1
-	@staticmethod
-	def PowerLaw(x,a,b):
-		return a*x**b
-	@staticmethod
-	def Gaussian(x,sigma, x0=0):
-		return np.exp(-0.5 * (x-x0)**2/sigma**2)
-	@staticmethod
-	def Interp(x, xData, yData):
-		f = interpolate.interp1d(xData, yData)
+	class PsdFunctions:
+		@staticmethod
+		def Flat(x, *args):
+			return ones([1, len(x)])
+		@staticmethod
+		def PowerLaw(x, a, b):
+			return a*x**b
+		@staticmethod
+		def Gaussian(x, sigma, x0=0):
+			return exp(-(x-x0)**2 / (2*sigma**2))#sqrt(a / pi) * exp(- a * (x-x0)**2)
+		@staticmethod
+		def Interp(x, xData, yData):
+			if xData[1] > xData[0]:
+				xData = xData[::-1]
+				yData = yData[::-1]
+			f = interp1d(xData, yData)
+			return f(x)
 
-		return f(x)
+	# These functions are used when fitting. They're scaled by e.g. log10(f)
+	class FitFunctions:
+		@staticmethod
+		def PowerLawLog(x, a, b):
+			return log10(a*x**b)
 
 
 def PsdFun2Noise_1d(N,dx, PsdFun, PsdArgs):
@@ -47,86 +60,127 @@ def PsdFun2Noise_1d(N,dx, PsdFun, PsdArgs):
 	return  x,y
 
 
+
+def CheckRegularSpacing(xAxis):
+	difference = xAxis[1:] - xAxis[:-1]
+	isRegular = False
+	if len(unique(round(difference, 9))) == 1:
+		isRegular = True
+
+	return isRegular
+
+# def CheckPowerOfTwo(xAxis):
+# 	isPowerOfTwo = False
+# 	if log2(len(xAxis)) - int(log2(len(xAxis))) == 0:
+# 		isPowerOfTwo = True
+#
+# 	return isPowerOfTwo
 #============================================================================
 #	FUN: 	PsdArray2Noise_1d_v2
 #============================================================================
-def PsdArray2Noise_1d_v2(f_in, Psd_in, L_mm,N):
+def PsdArrayToNoise(qPsd, yPsd, L, outputLength):
 	'''
-		Returns meters
+	Returns Noise in [m]
 	'''
-	from scipy import interpolate
-	log=np.log
-	fft = np.fft.fft
-	fftshift = np.fft.fftshift
 
-	ff = f_in
-	yy = Psd_in
-	L = L_mm
-	N = int(N)
-	N2 = int(N//2)
-	L =300 # (mm)
-	L_um = L*1e3
-	L_nm = L*1e6
+	L_um = L * 1e6
+	L_nm = L * 1e9
 
-	fMin = 1/L_um
+	N2 = outputLength // 2
+	df = (2. * pi) / L  # fMin - minimal spacing in frequency domain (PSD)
 
-	##vecchia riga
-	##fSpline = (np.array(range(N2))+1)/L_um # um^-1
-	fSpline = arange(N2)/N2 * (max(ff) - min(ff)) + min(ff)
+	# if self.OperationMode == COMPUTE_FROM_MODEL:
+	#
+	# elif self.OperationMode == LOAD_PSD_FIT_WITH_MODEL:
+	#
+	# elif self.OperationMode == LOAD_PSD_AND_RESAMPLE:
+	#
+	# elif self.OperationMode == LOAD_HEIGHT_PROFILE:
 
-	fun = interpolate.splrep(log(ff), log(yy), s=2)
-	yPsd_log = interpolate.splev(log(fSpline), fun)
-	ySpline = exp(yPsd_log)
-	yPsd = ySpline
+	# First check if the PSD array has:
+	# - regular spacing
+	# - 2^N samples
+	# - max. frequency is F_max
 
-	# tolgo
-	yPsd[fSpline<ff[0]] = 200
-	n = len(yPsd)
+	# Define min and max frequency
+	fMin = min(qPsd)
+	fMax = max(qPsd)
+	xSpline = qPsd  # Only called xSpline for the purpose of resampling
+
+	# Make x axis with regular spacing and length equal to the mirror for the spline
+	if not CheckRegularSpacing(xSpline):
+		xSpline = linspace(fMin, fMax, num=N2)
+		# Interpolate the PSD with a spline
+		if qPsd[1] < qPsd[0]:
+			fun = splrep(qPsd[::-1], yPsd[::-1], s=2)
+		else:
+			fun = splrep(qPsd, yPsd, s=2)
+
+		ySpline = splev(xSpline, fun) # Interpolate on regular xSpline grid
+
+	elif CheckRegularSpacing(xSpline):
+		print('X-axis already has regular spacing. No resampling...')
+		ySpline = yPsd
+
+	#plt.plot(xSpline, ySpline, 's', markersize=3, label='Spline regular interp', linestyle='none', markeredgewidth=0.3)
+	#plt.plot(xToConvertCheck, yPsdToConvert, '+', markersize=3, label = 'Spline to convert', linestyle='none', markeredgewidth=0.3)
+	#plt.legend()
 
 
-	plot(fSpline, yPsd,'-')
-	plot(ff, yy,'x')
-	plt.legend(['ySpline','Data'])
-	ax = plt.axes()
-	#ax.set_yscale('log')
-	#ax.set_xscale('log')
+	# Take iFFT to generate roughness
+	noiseiFFT = PsdArrayToNoiseKernel(ySpline, L/(outputLength-1))
 
-	#% controllo RMS integrando la yPsd
-	import scipy.integrate as integrate
+	return real(noiseiFFT)
 
-	RMS = sqrt(integrate.trapz(yPsd, fSpline/1000))
+def PsdFunctionToNoise(xxPsd, Function, L, N, *args):
+	'''
 
-	#%  Modo Manfredda style
+	:param xxPsd:
+	:param Function:
+	:param L: length of the sample
+	:param N: number of points
+	:param args: any additional arguments for the Function
+	:return:
+	'''
+	return
 
-	#yPsdNorm = sqrt(yPsd/L_um/1000)
-	#yPsdNorm_reverse = yPsdNorm[::-1]
-	yPsd_reverse = yPsd[::-1]
-	ell= 1/(fSpline[1] - fSpline[0])
+def CheckPsdIntegral(xPsd, yPsd):
+	'''
+	Return the integral of Psd. Used in sanity check.
+	:return:
+	'''
 
-	if N%2 == 0:
-		yPsd2 = np.hstack((yPsd_reverse ,0,yPsd[0:-1]))
+	return trapz(yPsd, x=xPsd)
+
+def PsdArrayToNoiseKernel(yPsd, dx): # Rename to noise
+	'''
+	Generates roughness from (q, y)
+	:param yyPsd: y-axis of the PSD, corresponding to xxPSD
+	:param dq: spacing
+	:return: Noise pattern in real space (spatial coordinates, deviations)
+	'''
+
+	# Mirror the yyPsd over 0
+	if len(yPsd) % 2 == 0:
+		yPsdToConvert = hstack((yPsd[:0:-1], 0, yPsd[1:-1]))
 	else:
-		yPsd2 = np.hstack((yPsd_reverse ,0,yPsd))
-	##yPsd2Norm = sqrt(yPsd2/ell/1000/2)
-	yPsd2Norm = sqrt(yPsd2/ell/1000)
-	n_ = len(yPsd2)
-	print('len(yPsd2) = %0.2d' % len(yPsd2Norm))
-	phi = 2*pi * np.random.rand(n_)
-	r = exp(1j*phi)
+		yPsdToConvert = hstack((yPsd[:0:-1], 0, yPsd[1:]))
 
-	yPsd2Norm_ = fftshift(yPsd2Norm)
-	#yPsd2Norm_[len(yPsd2Norm_)//2] = 0
+	# Generate random phases on interval [0, 2pi)
+	randomPhases = ones(len(yPsdToConvert)) * 2. * pi
 
-	yRaf = np.fft.fft(r*yPsd2Norm_)
-	yRaf = real(yRaf)
-	print('Rms = %0.2e nm' % np.std(yRaf))
+	# Convert PSD to A(f(k)) and assign random phases to it
+	yPsdAmplitude = sqrt(yPsdToConvert) #sqrt(1. / (dx * 1000.) * yyPsdToConvert)
 
-	plot(yPsd2Norm_)
+	yPsdAmplitudeShifted = fftshift(yPsdAmplitude)
+	yPsdComplex = yPsdAmplitudeShifted * exp(1j * randomPhases) #####* len(yPsd)
 
-	print('max yPsd_ = %d nm' % max(yPsd2))
-	print('max yPsd2Norm = %0.4f nm' % max(yPsd2Norm))
-	print('Rms yRaf2 = %0.2e nm' % np.std(yRaf))
-	return yRaf * 1e-9
+	print('len(yPsd)-1 / dx = ', (len(yPsd)-1) / dx)
+
+	# Apply inverse Fourier transform
+	roughness = (len(yPsd)-1) / dx * ifft(yPsdComplex)  # Now the roughness will have 2*outputLength+1 elements
+
+	return roughness# * 1e-9
 
 #============================================================================
 #	FUN: 	Psd2Noise
@@ -262,7 +316,7 @@ class RoughnessMaker(object):
 		AUTO_RESET_CUTOFF_ON_PSDTYPE_CHANGE = True
 
 	def __init__(self):
-		self.PsdType = PsdFuns.PowerLaw
+		self.PsdType = FunctionCollection.PsdFunctions.PowerLaw
 		self.PsdParams = np.array([1,1])
 		self._IsNumericPsdInFreq = None
 		self.CutoffLowHigh = [None, None]
@@ -334,20 +388,20 @@ class RoughnessMaker(object):
 
 		# Numeric PSD
 		# Note: by default returned yPsd is always 0 outside the input data range
-		if self.PsdType == PsdFuns.Interp:
+		if self.PsdType == FunctionCollection.PsdFunctions.Interp:
 			# Use Auto-Fit + PowerLaw
 			if self.Options.FIT_NUMERIC_DATA_WITH_POWER_LAW == True:
 					xFreq,y = self.NumericPsdGetXY()
 					p = FitPowerLaw(1/xFreq,y)
 					_PsdParams = p[0], -p[1]
-					LowCutoff =  np.amin(self._PsdNumericX)
+					LowCutoff = np.amin(self._PsdNumericX)
 					HighCutoff = np.amin(self._PsdNumericX)
 					fMid_Pos, fMid = GetInRange(fAll, LowCutoff, HighCutoff)
-					yPsd = PsdFuns.PowerLaw(fMid, *_PsdParams )
+					yPsd = FunctionCollection.PsdFunctions.PowerLaw(fMid, *_PsdParams )
 			# Use Interpolation
 			else:
 				# check Cutoff
-				LowVal =  np.amin(self._PsdNumericX)
+				LowVal = np.amin(self._PsdNumericX)
 				HighVal = np.amax(self._PsdNumericX)
 				LowCutoff = LowVal if LowCutoff <= LowVal else LowCutoff
 				HighCutoff = HighVal if HighCutoff >= HighVal else HighCutoff
@@ -359,7 +413,7 @@ class RoughnessMaker(object):
 
 				##yPsd = self.PsdType(fMid, *self.PsdParams)
 				## non funziona, rimpiazzo a mano
-				yPsd =  PsdFuns.Interp(fMid, self._PsdNumericX, self._PsdNumericY)
+				yPsd =  FunctionCollection.PsdFunctions.Interp(fMid, self._PsdNumericX, self._PsdNumericY)
 
 		# Analytical Psd
 		else:
@@ -402,7 +456,7 @@ class RoughnessMaker(object):
 		'''
 
 
-		if self.PsdType == PsdFuns.Interp:
+		if self.PsdType == FunctionCollection.PsdFunctions.Interp:
 			# chiama codice ad hoc
 			L_mm = L*1e3
 			yRoughness = PsdArray2Noise_1d_v2(self._PsdNumericX, self._PsdNumericY, L_mm, N)
@@ -495,7 +549,7 @@ class RoughnessMaker(object):
 			self.PsdCutoffLowHigh = [np.amin, np.amax(f)]
 
 			# I set class operating variables
-			self.PsdType = PsdFuns.Interp
+			self.PsdType = FunctionCollection.PsdFunctions.Interp
 			self.PsdParams = [f,y]
 
 

@@ -1639,9 +1639,11 @@ class BeamlineElements(Tree):
 		oeList = self.GetFromTo(oeStart, oeEnd)
 		oeListOriented = []
 		for _ in oeList:
-			if (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY or
-				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or (
-					_.CoreOptics.Orientation == Orientation):
+			if (Orientation == Optics.OPTICS_ORIENTATION.ANY) or (Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC):
+				oeListOriented.append(_)
+			elif ((_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY or
+				   _.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+				  (_.CoreOptics.Orientation == Orientation)):
 				oeListOriented.append(_)
 
 		oeStart = oeListOriented[0]
