@@ -69,9 +69,10 @@ def FastResample1d(*args):
     '''
         FastResample1d([x], [y], [n])
         Usage:
-        yy = FastResample1d(y,1000)
+        >>> yy = FastResample1d(y,1000)
         or
-        xx,yy =FastResample1d(x,y,1000)
+
+        >>> xx,yy =FastResample1d(x,y,1000)
     '''
     from scipy import interpolate as interpolate
     # input: y,N
@@ -574,14 +575,12 @@ def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), b
     for i in prange(0, EbTokN):
         xbi = xb[i + bStart]
         ybi = yb[i + bStart]
-        # Preliminary normalisation
-        # 17/01/2017
-        # Normalization = self.L * self.(Alpha)/(Lambda * )
-        # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
-
+#        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
+        Normalization = 1/(sqrt(Lambda))
+#        Normalization = 1/Lambda
         RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
+        EbTok[i] = Normalization * sum(Ea / RList * exp(-1j * k * RList))
 
-        EbTok[i] = 1. / sqrt(Lambda) * sum(Ea / RList * exp(-1j * k * RList))
 
     return EbTok
 
@@ -726,7 +725,7 @@ def ComputeSamplingA(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 
     L0,L1: lenght of start and arrival planes
     Theta0, Theta1: orientation of start and arivval planes
     '''
-	
+
     Debug.print('Compute sampling',2)
     Debug.pv('Lambda',3)
     Debug.pv('z',3)

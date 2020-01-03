@@ -6,12 +6,97 @@ Created on Thu Jan 12 11:58:09 2017
 """
 from __future__ import division
 import scipy as sp
+import LibWISEr.must  as must
 from LibWISEr.must import *
 from collections import namedtuple
 from LibWISEr.Units import Units
 import inspect
 import logging
+import os
 from scipy.signal import square
+
+#================================
+#  FUN: PathSplit
+#================================
+def PathSplit (Path):
+	'''
+	Returns a tuple containing the single elements of a path.
+	e.g. "d:\home\kitchen\pan.txt" => ("d:" , "home" , "kitchen", "pan.txt")
+
+	(It Should be platform independent:).
+	'''
+	Path = os.path.normpath(Path)
+	return Path.split(os.sep)
+
+#================================
+# FUN: PathJoin
+#================================
+def PathJoin (path, *paths):
+	'''
+	It behaves like os.path.join except that the behavior is as follows
+
+	>>> PathJoin("d:", "folder")
+	> d:\\folder
+
+	rather than
+
+	>>> PathJoin("d:", "folder")
+	> d:folder
+	'''
+	# Workaround, for handling Windows Units Letters
+	if path[1] == ':':
+		path = path + os.path.sep
+
+	return os.path.join(path, *paths )
+
+#================================
+#  PathCreate
+#================================
+def PathCreate(Path, IsFile = True):
+	'''
+	Create a path, if not existing.
+
+	Parameters
+	-----
+	Path : string
+		Can be either a path to a folder (e.g. d:\pippo, /home/pippo),
+		either a path to a file (e.g. d:\pippo\pluto.txt, /home/pippo/pluto.txt).
+
+		In the latter case, it must be IsFile = True
+
+	IsFile : bool
+		It must be set to True when Path is a path to a file
+
+	'''
+	Path = os.path.dirname(Path) if IsFile else Path
+	if os.path.exists(Path):
+		return False
+	else:
+		os.makedirs(Path)
+		return True
+
+
+##================================================================
+##  GetWiserPath
+##================================================================
+#def GetWiserPath():
+#	'''
+#	Returns the parent folder containing LibWISER fodler
+#
+#	Architecture Notes
+#	----
+#	To be tested on unix.
+#	Check if better solutions are possible.
+#	Created to handle the DATA folder containing the figure error files,
+#	and the cross platform path routing.
+#
+#	'''
+#	WorkingFile = must.__file__
+#	WorkingFileItems  = PathSplit(WorkingFile)
+#	WorkingPath =  os.path.join( *WorkingFileItems[0:-2])
+#	return WorkingPath
+#
+#PathWiser = GetWiserPath() # the WiserPath variable is sent to the namespace
 
 #================================================================
 #  ErrMsg
@@ -666,6 +751,8 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 	y : 1d array
 		long N
 	"""
+	# Ensures that the path exists
+	PathCreate(FileName,True)
 
 	if x is  None and y is None:
 		AAA = A
@@ -694,9 +781,7 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 #
 #
 #
-#================================
-#  SlitCreate
-#================================
+
 
 def MirrorArray(x, Factor = +1):
 	'''
@@ -1781,6 +1866,7 @@ class Ray_seminuovo(object):
 #========================================================
 class FileIO:
 
+
 	#========================================================
 	#	FUN: ReadYFile
 	#========================================================
@@ -1837,27 +1923,110 @@ class CommonPlots:
 		return Metrology.PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs )
 
 	#=============================================================#
-	# FUN IntensityAtOpticalElement
+	# FUN RadiationAtOpticalElement
 	#=============================================================#
-	def IntensityAtOpticalElement(OptElement, XUnitPrefix = 'm' , Normalize = True , FigureIndex = None, **kwargs ):
+	def RadiationAtOpticalElement(OptElement,
+							   XUnitPrefix = 'm' ,
+							   Normalize = True ,
+							   FigureIndex = None,
+							   Type = 'f',
+							   AppendToTitle = '',
+							   **kwargs ):
+		'''
+		Helper function. Plots the Radiation (either Intensity or the absolute value
+		of the field) at a given OpticalElement.
+		The functions IntensityAtOpticalElement and FieldAtOpticalElement are also
+		available as well.
+
+		Parameters
+		------
+		Normalize : bool/str
+			- max : divides by Max values
+			- sum : divides by sum of the input array
+			- False : does nothing
+
+		Type: string ['f'|'i']
+			- 'f' : plots the Field (absolute value)
+			- 'i' : plots the Intensity
+
+		'''
 		try:
 			plt.figure(FigureIndex, **kwargs)
 
 			XUnitScale = Units.SiPrefixes[XUnitPrefix]
 			x = OptElement.Results.S / XUnitScale
-			I = abs(OptElement.ComputationData.Field)**2
-			y = I/max(I) if Normalize else I
+			A  = abs(OptElement.ComputationData.Field)
+			I = A**2
+
+			# Switch y (Observable to plot)
+			#------------------------------------------------------------
+			if Type.lower() == 'i':
+				y = I
+				Title = 'Intensity @'
+				YLabel = 'I'
+			else:
+				y = A
+				Title = 'Field @'
+				YLabel = '|E|'
+
+			# Normalization
+			#------------------------------------------------------------
+			if bool(Normalize == True) or str(Normalize).lower() == 'max':
+				y = y/max(y)
+			elif (str(Normalize).lower() == 'total') or str(Normalize).lower() == 'sum':
+				y = y/ np.sum(y)
+
+			else:
+				y = y
 
 			# --- plot x,y
 			plt.plot(x,y)
 			# --- layout
-			plt.title('Intensity @ ' + OptElement.Name)
+			plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
 			plt.xlabel(XUnitPrefix+'m')
-			plt.ylabel('I')
+			plt.ylabel(YLabel)
 			plt.grid('on')
 		except:
 			pass
 
+	#=============================================================#
+	# FUN IntensityAtOpticalElement
+	#=============================================================#
+	def IntensityAtOpticalElement(OptElement,
+							   XUnitPrefix = 'm' ,
+							   Normalize = True ,
+							   FigureIndex = None,
+							   AppendToTitle ='',
+							   **kwargs ):
+		'''
+		Specialised version of RadiationAtOpticalElement
+		'''
+		return CommonPlots.RadiationAtOpticalElement(OptElement,
+							   XUnitPrefix = XUnitPrefix ,
+							   Normalize = Normalize,
+							   FigureIndex = FigureIndex,
+							   Type = 'i',
+							   AppendToTitle = AppendToTitle,
+							   **kwargs )
+	#=============================================================#
+	# FUN FieldAtOpticalElement
+	#=============================================================#
+	def FieldAtOpticalElement(OptElement,
+							   XUnitPrefix = 'm' ,
+							   Normalize = True ,
+							   FigureIndex = None,
+							   AppendToTitle = '',
+							   **kwargs ):
+		'''
+		Specialised version of RadiationAtOpticalElement
+		'''
+		return CommonPlots.RadiationAtOpticalElement(OptElement,
+							   XUnitPrefix = XUnitPrefix ,
+							   Normalize = Normalize,
+							   FigureIndex = FigureIndex,
+							   AppendToTitle = '',
+							   Type = 'f',
+							   **kwargs )
 
 
 
@@ -1870,6 +2039,65 @@ class Metrology:
 
 		'''
 		pass
+
+
+
+
+	#=============================================================#
+	# FUN RectangularGrating
+	#=============================================================#
+	def RectangularGrating(L0,L1 = None, N = 1e4, LinesPerMillimiter = 1000,
+						GrooveHeight = 10e-9, HighDuty = 0.5,
+						ReturnStep = True):
+		'''
+		Generates a square wave, mimiking the groove height profile of  a
+		(reflection) grating.
+
+		Parameters
+		-----
+		L0 : float
+			total length of the mirror.
+
+		L1 : float
+			length of the grooved region. If None, it is assumed to be equal to L0
+
+		N : int
+			Sampling points
+
+		LinesPerMillimiter : int
+			Lines per millimiter
+
+		GrooveHeight : scalar
+			Groove heigth (default=10nm)
+
+		HighDuty : float (0 to 1)
+			Duty cycle of the high period
+
+
+		'''
+
+		from scipy.signal import square
+		NumberOfPoints = N
+		# square(t, duty=0.5)
+#		L = L1
+		# L in metres, convert LinesPerMillimiter to LinesPerMeter
+		LinesPerMeter = LinesPerMillimiter * 1e3
+		# Create x-axis, must be strictly positive for consistent result
+		x = np.linspace(0., L0, num=NumberOfPoints)
+
+		# Initialize grating parameter
+		GratingParameter = 2. * np.pi * LinesPerMeter * x
+		# Generate a grating
+		GratingProfile = ((square(GratingParameter, duty = HighDuty) + 1.) / 2.) * GrooveHeight
+
+		if L1 is not None and L1 < L0:
+			xTemp = np.linspace(-L0 / 2., L0 / 2., num=NumberOfPoints)
+			GratingProfile[np.abs(xTemp) >= L1 / 2.] = 0.
+		if ReturnStep:
+			Step = L0/N
+			return GratingProfile, Step
+		else:
+			return GratingProfile
 
 	#=============================================================#
 	# FUN SlopeIntegrate
@@ -2038,13 +2266,13 @@ class Metrology:
 #	def RectangularGrating(L, NumberOfPoints, LinesPerMillimiter, GrooveHeight, DutyCycle = 0.5, L0=0.):
 #	    #square(t, duty=0.5)
 #
-#	    # L in metres, convert linesPerMm to linesPerM
-#		LinesPerMeter = LinesPerMillimiter * 1e3
+#	    # L in metres, convert LinesPerMillimiter to LinesPerMeter
+#		LinesPerMetereter = LinesPerMeterillimiter * 1e3
 #	    # Create x-axis, must be strictly positive for consistent result
 #	    x = np.linspace(0., L, num=NumberOfPoints)
 #
 #	    # Initialize grating parameter
-#	    GratingParameter = 2. * np.pi * LinesPerMeter * x
+#	    GratingParameter = 2. * np.pi * LinesPerMetereter * x
 #	    # Generate a grating
 #
 #		 GratingProfile = ((square(GratingParameter) + 1.) / 2.) * GrooveHeight
