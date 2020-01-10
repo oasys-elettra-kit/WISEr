@@ -33,7 +33,7 @@ reload(Foundation)
 reload(rm)
 
 ###############################################################################
-Lambda = 2e-9
+Lambda = 20e-9
 Waist0 = 180e-6
 
 f1_h = fs.Dpi.Kbh.f1
@@ -171,14 +171,25 @@ if __name__ == '__main__':
 		)
 		# Aggiungo a mano ()
 
+		# SL(v)
+		# ------------------------------------------------------------
+		sl_v = OpticalElement(Optics.Slits(L=100e-6),
+							  PositioningDirectives=Foundation.PositioningDirectives(
+								  ReferTo='upstream',
+								  PlaceWhat='centre',
+								  PlaceWhere='centre',
+								  Distance=1.74 - (f1_h - f1_v)),
+							  Name='sl_v')
+		sl_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.VERTICAL
+
+
 		# detector (v)
 		#------------------------------------------------------------
 		d_v = OpticalElement(Optics.Detector(L=DetectorSize, AngleGrazing=np.deg2rad(90)),
 							 PositioningDirectives = Foundation.PositioningDirectives(
 								 ReferTo = 'upstream',
 								 PlaceWhat = 'centre',
-								 PlaceWhere = 'downstream focus',
-								 Distance = f2_v),
+								 PlaceWhere = 'downstream focus'),
 							 Name = 'detector_v')
 
 		d_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.VERTICAL
@@ -190,8 +201,7 @@ if __name__ == '__main__':
 							 PositioningDirectives=Foundation.PositioningDirectives(
 								 ReferTo='upstream',
 								 PlaceWhat='centre',
-								 PlaceWhere='downstream focus',
-								 Distance=f2_h),
+								 PlaceWhere='downstream focus'),
 							 Name='detector_h')
 
 		d_h.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL
@@ -200,10 +210,11 @@ if __name__ == '__main__':
 		#------------------------------------------------------------
 		t = None
 		t = Foundation.BeamlineElements()
-		t.ComputationSettings.OrientationToCompute = [Optics.OPTICS_ORIENTATION.VERTICAL, Optics.OPTICS_ORIENTATION.HORIZONTAL]
+		t.ComputationSettings.OrientationToCompute = [Optics.OPTICS_ORIENTATION.VERTICAL]#, Optics.OPTICS_ORIENTATION.HORIZONTAL]
 		t.Append(s)
 		t.Append(kb_v)
 		t.Append(kb_h)
+		t.Append(sl_v)
 		t.Append(d_v)
 		t.Append(d_h)
 
@@ -222,6 +233,8 @@ if __name__ == '__main__':
 		kb_h.ComputationSettings.UseCustomSampling = True  # può essere true o false indipendentemente da quello prima
 		kb_v.ComputationSettings.NSamples = 6000
 		kb_v.ComputationSettings.UseCustomSampling = True  # può essere true o false indipendentemente da quello prima
+		sl_v.ComputationSettings.NSamples = 6000
+		sl_v.ComputationSettings.UseCustomSampling = True  # può essere true o false indipendentemente da quello prima
 
 		#------------------------------------
 
@@ -234,11 +247,11 @@ if __name__ == '__main__':
 		#Fig10
 		plt.gcf().clear()
 		x_v = d_v.Results.S * 1e6
-		x_h = d_h.Results.S * 1e6
+		# x_h = d_h.Results.S * 1e6
 		y_v = abs(d_v.Results.Field) / max(abs(d_v.Results.Field))
-		y_h = abs(d_h.Results.Field) / max(abs(d_h.Results.Field))
+		# y_h = abs(d_h.Results.Field) / max(abs(d_h.Results.Field))
 		plt.plot(x_v, y_v, label='vertical')
-		plt.plot(x_h, y_h, label='horizontal')
+		# plt.plot(x_h, y_h, label='horizontal')
 		plt.xlabel('um')
 		plt.title('Field at detector position (DeltaF = %0.3fmm)' % (DetectorRestPosition * 1e3))
 		plt.legend()
@@ -247,11 +260,11 @@ if __name__ == '__main__':
 		plt.figure(100)
 		plt.gcf().clear()
 		x_v = d_v.Results.S[0:-1] * 1e6
-		x_h = d_h.Results.S[0:-1] * 1e6
+		# x_h = d_h.Results.S[0:-1] * 1e6
 		y_v = np.diff(np.angle(d_v.Results.Field))
-		y_h = np.diff(np.angle(d_h.Results.Field))
+		# y_h = np.diff(np.angle(d_h.Results.Field))
 		plt.plot(x_v, y_v, label='vertical')
-		plt.plot(x_h, y_h, label='horizontal')
+		# plt.plot(x_h, y_h, label='horizontal')
 		plt.xlabel('um')
 		plt.title('Phase gradient at detector position (DeltaF = %0.3fmm)' % (DetectorRestPosition * 1e3))
 		plt.legend()
@@ -287,7 +300,7 @@ if __name__ == '__main__':
 			DefocusList_mm = DefocusList * 1e3
 			tic1 = time.time()
 			# pr.enable()
-			ResultList, Hew_,Sigma_, More = Foundation.FocusSweep(kb_v, DefocusList, DetectorSize = DetectorSize, NPools = NPools)
+			ResultList, Hew_,Sigma_, More = Foundation.FocusSweep(kb_v, DefocusList, DetectorSize = DetectorSize)
 			# pr.disable()
 			toc1 = time.time()
 			SourceResults.append(ResultList)

@@ -27,11 +27,11 @@ import time
 from LibWISEr.must import *
 from LibWISEr.Foundation import OpticalElement
 
-import importlib
-
 reload(tl)
 reload(Optics)
 reload(Foundation)
+reload(rm)
+
 
 ###############################################################################
 Lambda = 2e-9
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                                   PlaceWhat='upstream focus',
                                   PlaceWhere='centre'),
                               Name='kb_v')
-        kb_v.ComputationSettings.UseFigureError = UseFigureError
+        kb_v.ComputationSettings.UseFigureError = False#UseFigureError
         kb_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Vertical
 
         # Figure ERROR
@@ -173,6 +173,18 @@ if __name__ == '__main__':
             AmplitudeScaling=-1 * 1e-3  # fattore di scala
         )
         # Aggiungo a mano ()
+
+        # SL(v)
+        # ------------------------------------------------------------
+        sl_v = OpticalElement(Optics.Slits(L=5),
+                               PositioningDirectives=Foundation.PositioningDirectives(
+                                   ReferTo='upstream',
+                                   PlaceWhat='centre',
+                                   PlaceWhere='centre',
+                                   Distance=0.5),
+                               Name='sl_v')
+        #sl_v.ComputationSettings.UseFigureError = False
+        sl_v.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.Vertical
 
         # detector (v)
         # ------------------------------------------------------------
@@ -222,30 +234,31 @@ if __name__ == '__main__':
         t.Append(pm2_h)
         t.Append(kb_v)
         t.Append(kb_h)
+        # t.Append(sl_v)
         t.Append(d_v)
         t.Append(d_h)
 
         t.RefreshPositions()
 
-        print(t)
-
         # Calculation of the field on the detector
         # Impose N Pools
         # ---------------------------------
 
-        d_h.ComputationSettings.NSamples = 6000
+        d_h.ComputationSettings.NSamples = 3000
         d_h.ComputationSettings.UseCustomSampling = True  # si può mettere anche su false.
-        d_v.ComputationSettings.NSamples = 6000
+        d_v.ComputationSettings.NSamples = 3000
         d_v.ComputationSettings.UseCustomSampling = True  # si può mettere anche su false.
 
-        pm1_h.ComputationSettings.NSamples = 6000
+        pm1_h.ComputationSettings.NSamples = 3000
         pm1_h.ComputationSettings.UseCustomSampling = True
-        pm2_h.ComputationSettings.NSamples = 6000
+        pm2_h.ComputationSettings.NSamples = 3000
         pm2_h.ComputationSettings.UseCustomSampling = True
-        kb_h.ComputationSettings.NSamples = 6000
+        kb_h.ComputationSettings.NSamples = 3000
         kb_h.ComputationSettings.UseCustomSampling = True  # può essere true o false indipendentemente da quello prima
-        kb_v.ComputationSettings.NSamples = 6000
+        kb_v.ComputationSettings.NSamples = 3000
         kb_v.ComputationSettings.UseCustomSampling = True  # può essere true o false indipendentemente da quello prima
+        sl_v.ComputationSettings.NSamples = 3000
+        sl_v.ComputationSettings.UseCustomSampling = True
 
         # ------------------------------------
 
