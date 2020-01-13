@@ -1033,44 +1033,59 @@ class BeamlineElements(Tree):
 	@staticmethod
 	def ApplyPositioningDirectives(oeY: OpticalElement):
 		'''
+			This function replaces PositioningDirectives_UpdatePosition(oeY, oeX)
+			in calculating the XY positions of the optical elements along the
+			beamline. Starting from the current optical element oeY.PositioningDirectives,
+			all the features are calculated according to the previous oes.
 
 			Parameters
 			------------------
 			oeY : OpticalElement
 				The optical element to place
 
-			Behavior
+
+			Notice
 			------------------
+			- If PositioningDirectives has ReferTo='absolute', oeX is not used
 			- If PositioningDirectives has ReferTo='locked' then the positioning of the present element is not computed.
 				This shall be used for elements whose position has already been computed in another BeamlineElements object,
 				and you don't want to recompute all the sequence.
 				I introduced this when I do the focus sweep, keeping an optical element fixed ('locked') and moving the screen
 				only.
-			- Upstream reference is workin as one expects to
-			- Downstream focus will find the firs element (with the same orientation) that has f2 as attribute, then
-			will use f2 as positioning distance
-			- UseAsReference=False means that the Element is not considerend for positioning other elements.
+			- If PositioningDirectives has flag=UseFollowing, oeX is supposed to be the subsequent	optical element respect with oeY.
+			- According to the type of oeY and oeX, different strategies for computing the positioning may be used.
 
-			Developer notes
+			Developer note
 			------------------
-			Bases on: XYCentre, SetXYAngle_Centre,  GetParent(...), DistanceFromParent
+			This function, in order to work, expects that some (or all) of the following member
+			functions are defined in the object OpticalElement.CoreOptics
+			(This object is typically an instance of Optics.MirrorPlane, Optics.EllipticalMirror,
+			Optics.SourceGaussian, etc...)
+
+			(ni = Not Implemented yet)
+
+			- XYCentre
+
+			- SetXYAngle_Centre
+			- SetXYAngle_UpstreamFocus
+			- SetXYA_DownstreamFocus (ni)
+
 
 		'''
 		Pd = oeY.PositioningDirectives
 
+		# Get the previous item and the closest previous item with the same orientation
 		if oeY.IsSource == False:
-			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
-			oeXSameOrientation = oeY.GetParent(SameOrientation=True, OnlyReference=True)
-
+			oeX = oeY.Parent if oeY.Parent != None else 'None'  # Get XY coordinates from the oeX
+			oeXSameOrientation = oeY.GetParent(SameOrientation=True)
 
 		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
 		# -------------------------------------------
 		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
 			pass
 
-		# =============================================================================================
 		# ABSOLUTE POSITIONING
-		# =============================================================================================
+		# -------------------------------------------
 		elif Pd.ReferTo == posdir_.ReferTo.AbsoluteReference:
 
 			# set position
@@ -1078,78 +1093,89 @@ class BeamlineElements(Tree):
 
 			oeY.CoreOptics.SetXYAngle_Centre(Pd.XYCentre, Pd.Angle, WhichAngle=Pd.WhichAngle)
 
-		# =============================================================================================
-		# LOCKED POSITIONING
-		# =============================================================================================
-		elif Pd.ReferTo == 'locked':
-			'''
-			XYCentre and Angle of the OpticalElement are not changed at all.
-			Typically used if the OE has been created via deepcopy . Example: FocusSweep function.
-			'''
-			pass
-		# =============================================================================================
-		# REFERENCE = PREVIOUS or SOURCE or DOWNSTREAM
-		# =============================================================================================
+		# If the Reference is
+		#	UPSTREAM ELEMENT or
+		#	DOWNSTREAM ELEMENT or
+		#	SOURCE
+		# -----------------------------------------------------------------
 		elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
 
 			RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # The incident ray
-			LastXY = oeXSameOrientation.CoreOptics.XYCentre # XY position of the same orientation
+			LastXY = oeXSameOrientation.CoreOptics.XYCentre  # XY position of the same orientation
 
-			# =============================================================================================
-			#  Set the XYCentre1   at a certain Distance from XYCentre2
-			# =============================================================================================
-			if (Pd.What == 'centre' or Pd.What == 'upstream focus') and Pd.Where == 'centre':
+			# ........................................
+			#  put oeY at distance "Distance" from oeX.centre
+			# ........................................
+			if Pd.What == 'centre' and Pd.Where == 'centre':
 
-				# All the conditions select the last arm as distance, as this is the one used in SetXYAngle_Centre
-				if Pd.ReferTo == 'source' and Pd.What == 'centre':
-					realDistance = Pd.Distance - oeXSameOrientation.DistanceFromSource
-				elif Pd.ReferTo == 'source' and Pd.What == 'upstream focus':
-					realDistance = oeY.CoreOptics.f1 - oeXSameOrientation.DistanceFromSource
+				# Correction of the distance (if needed)
+				if Pd.ReferTo == 'source':
+					DistanceToUse = Pd.Distance - oeX.DistanceFromSource
 				else:
-					if Pd.ReferTo != 'source' and Pd.What == 'upstream focus':
-						realDistance = oeY.CoreOptics.f1
-					else:
-						realDistance = Pd.Distance
+					DistanceToUse = Pd.Distance
+				# TODO we should throw an error if the new Distance is <0
 
+				# Treat detectors differently: they are a special case which are always in focus
+				if ('detector' in oeY.Name) or ('detector' in oeX.Name):
+					newXYCentre = LastXY + DistanceToUse * tl.Normalize(RayIn.v)
+					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+
+				else:
 					# If a normal optical element is given, first calculate the distance to the oeXSameOrientation.
 					# Then the newXYCentre can be calculated from the distance.
+					realDistance = DistanceToUse
 
-					if oeX != oeXSameOrientation:
-						realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource + realDistance
+					oePrevious = oeX
+					oeLastSame = oeXSameOrientation
 
-				newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
-				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+					# Compute the distance correctly. Only the last arm is given as a parameter in Pd.Distance
+					#					MeasureDistance()
+					# Measure the distance between the LastOpticalElementSameOrientation and oeY
+					# TODO perhaps define a function MeasureDistance(... SamerOrientation = True)
+					while oePrevious != oeLastSame:
+						realDistance = oePrevious.DistanceFromParent + realDistance
+						oePrevious = oePrevious.Parent
 
-			# =============================================================================================
-			#  Set the XYCentre1   at the Dowstream focus
-			# =============================================================================================
+					newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
+					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+
+			# ........................................
+			#  put "upstream focus" into centre of oeX
+			# ........................................
+			elif Pd.What == 'upstream focus' and Pd.Where == 'centre':
+				# TODO: FOCUS Positioning! Dangerous check here
+				#				# Set position
+				#				if Pd.ReferTo == 'source':
+				#					oeSource = oeX
+				#					while oeSource.IsSource != True:
+				#						oeSource = oeSource.Parent
+				#
+				#					#CAVEAT Which RayIn, of the source or the previous element?
+				#					# There could be a problem when an element is added somewhere in between with ReferTo == 'source'.
+				#					oeY.CoreOptics.SetXYAngle_UpstreamFocus(oeSource.XYCentre, oeSource.CoreOptics.RayOutNominal.Angle)
+				#
+				#				else:
+				oeY.CoreOptics.SetXYAngle_UpstreamFocus(oeXSameOrientation.XYCentre, RayIn.Angle)
+
+			# ........................................
+			#  put centre into downstream focus
+			# ........................................
 			elif Pd.What == 'centre' and Pd.Where == 'downstream focus':
-				# When doing FocusSweep, use 'locked' for the virtual source and go into this case...
-				'''
-				Behavior:
-				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
-				'''
+				# It is equivalent to put 'centre' into 'centre' with distance
+				# equal to f2. e.g. oeX: detector, oeY: KB mirror
 
-				#FIX 4 Aljosa :)
-				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
-					realDistance = oeXSameOrientation.CoreOptics.f2
-				else: # Find the first suitable one
-					oeXSameOrientationCurrent = oeXSameOrientation
-					realDistance = oeXSameOrientationCurrent.DistanceFromParent
-					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
+				# Set position
+				# hwired
+				v = oeX.RayOutNominal.UnitVectorAtOrigin.v
+				# newXYCentre = oeX.CoreOptics.XYCentre + (Pd.Distance + oeX.CoreOptics.f2) * oeX.RayOutNominal.v
+				# newXYCentre = oeX.CoreOptics.XYCentre + oeX.CoreOptics.f2 * v
+				newXYCentre = oeX.CoreOptics.XYCentre + (Pd.Distance + oeX.CoreOptics.f2) * v
+				tmp_ = np.linalg.norm(newXYCentre - oeX.CoreOptics.XYF2)
 
-					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
-						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
-						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
-
-					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
-
-					#realDistance: distance from the last element with the same orientation
-				newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
-				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle)
 
 			else:
-				raise ValueError('Wrong or un-implemented PositioningDirectives!')
+				print('fottiti')
 
 		else:
 			# NOT IMPLEMENTED :-)
