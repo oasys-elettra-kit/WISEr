@@ -5,12 +5,14 @@ Created on Thu Jan 12 11:58:09 2017
 @author: Mic
 """
 from __future__ import division
-import numpy as np
 import scipy as sp
-from numpy.linalg import norm
 from LibWISEr.must import *
-import inspect 
-from _ast import arg
+from collections import namedtuple
+from LibWISEr.Units import Units
+import inspect
+import logging
+from scipy.signal import square
+
 #================================================================
 #  ErrMsg
 #================================================================
@@ -18,31 +20,35 @@ class ErrMsg:
 	@staticmethod
 	def NoPropertySetAllowed(More = ''):
 		raise ValueError('Property set metod is not allowed.\n%s' % More)
-		
+
 	def InvalidInputSet(More=''):
 		raise ValueError('Ivalid input parameter set used.' % More)
 
-
 #================================================================
 #  CLASS Debug
-#================================================================		
+#================================================================
 class Debug():
-	import inspect
+
 	On = True
 	_OldValue = True
+	'''
+	logging.basicConfig(filename = FileName, filemode='w', format='%(message)s || %(asctime)s')
+	logging.warning('Starting simulation: N = %d', N)
+	logging.warning(Str)
 
-		
+	'''
+
 	def Print(Str = '', NIndent = 0, Header = False):
-		if Debug.On : 
+		if Debug.On :
 			Str = (NIndent * '\t' + '%s') % Str
 			Str= Str.replace('\n','\n' + NIndent * '\t')
-			Str = Str if Header == False else (30 * '=-' + '\n' + Str + '\n' + 30 * '=-'+'\n') 
-			print(Str)		
-		
+			Str = Str if Header == False else (30 * '=-' + '\n' + Str + '\n' + 30 * '=-'+'\n')
+			print(Str)
+
 	def print(Str ='', NIndent = 0, Header = False):
 		if Debug.On :
 			Debug.Print(Str, NIndent, Header)
-			
+
 	def pr(LocalVarName, More = ''):
 		frame = inspect.currentframe()
 		if Debug.On :
@@ -52,7 +58,7 @@ class Debug():
 				pass
 			finally:
 				del frame
-				
+
 	def pv(LocalVarName, NIndent = 0, More = ''):
 		if Debug.On :
 			frame = inspect.currentframe()
@@ -64,10 +70,10 @@ class Debug():
 					pass
 				finally:
 					del frame
-					
-	
 
-		
+
+
+
 #================================================================
 #  IsArray
 #================================================================
@@ -78,9 +84,9 @@ def IsArray(x):
 #  IsScalar
 #================================================================
 def IsScalar(x):
-	return isinstance(x,float) or isinstance(x,int)	
-			
-		
+	return isinstance(x,float) or isinstance(x,int)
+
+
 #================================================================
 #  CheckArg
 #================================================================
@@ -102,7 +108,7 @@ def CheckArg(NotNoneArgs, NoneArgs = []):
 	else:
 		return a and all([arg is None for arg in NoneArgs])
 
-	
+
 #	a = all([arg != None for arg in NotNoneArgs])
 #	#a = (NotNoneArgs != None) # all the elements ARE != None
 #	if len(NoneArgs) == 0:
@@ -122,44 +128,44 @@ def Oversample(x = np.array([]), N=1):
 		x = np.append()
 #================================
 #  SamplingOverLine
-#================================	
+#================================
 def SamplingAlongLine(Theta, XYCentre, Length, NSamples = None, Step = None):
 	'''
 	Samples a line of angle Theta centred at XYCentre with a given Step.
 
 	I created the function for properly sampling a plane or elliptical mirror.
-	It makes sense to use this one for sampling an elliptical mirror if the 
+	It makes sense to use this one for sampling an elliptical mirror if the
 	figure error is measured with an LTP profilometer (uniform spacing along
 	a railw)
 	Either the total Length or the Number of samples NSamples must be specified
-		
+
     Parameters
     ----------
-	Theta : 
+	Theta :
 		angle (radians)
 	XYCentre :  2d array
 		(x,y) centre of the line
 	Step : float
 		distance between two samples (along the linge)
 	Length : float
-		total length to cover (along the line)	
+		total length to cover (along the line)
 	NSamples : int
 		(alternative to Length), number of samples
 
 	'''
-	
-	m = np.tan(Theta)	
+
+	m = np.tan(Theta)
 	q = XYCentre[1] - m*XYCentre[0]
 	L_ = abs(Length * np.cos(Theta)	)
 	x_start = XYCentre[0] - L_/2
 	x_end = XYCentre[0] + L_/2
-	
-	if  Step!= None and Step >0:		
+
+	if  Step!= None and Step >0:
 		N = Length/Step
-	elif NSamples !=None and NSamples > 0:  
+	elif NSamples !=None and NSamples > 0:
 		N = NSamples
-		
-	x = np.linspace(x_start, x_end, N)	
+
+	x = np.linspace(x_start, x_end, N)
 	y = m*x+q
 	return x,y
 #================================================================
@@ -262,7 +268,7 @@ def RotVersor(V, Angle, Deg = False):
 	'''
 	if Deg== True:
 		Angle = Angle * np.pi/180
-		
+
 	if (Angle == 0) or np.linalg.norm(V)==0:
 		return V
 	else:
@@ -281,7 +287,7 @@ def Normalize(v):
 
 def NormAmp(x):
 	'''
-	
+
 	'''
 	a = max(x)
 	b = min(x)
@@ -311,7 +317,7 @@ def UnitVectorReflect(v, n):
 		Unit vector of the incident beam
 	n : vector-like
 		normal of the mirror surface
- 
+
 
 	v and n should be unit vectors. If they are not, they are automatically
 	normalized.
@@ -338,25 +344,25 @@ def UnitVectorReflect(v, n):
 #================================
 def FitSphericalWave1d(Phi,s, Lambda):
 	'''
-	
-	Performs the quadratic fit over the phase Phi and returns the curvature 
+
+	Performs the quadratic fit over the phase Phi and returns the curvature
 	Radii.
-	
+
 	Interpolation kernel copied from:
 	From: http://scipy-cookbook.readthedocs.io/items/Least_Squares_Circle.html
-	
+
 	Parameters
 	-----
 	Phi : array like
 		phase of the spherical wave
-		
+
 	s : array
 		coordinate points.
 
 	'''
-	x = s 
+	x = s
 	y = Phi * Lambda/2/np.pi # convertion from phase to heigth profile
-	 
+
 	from scipy import optimize
 	method_2 = "leastsq"
 	# coordinates of the barycenter
@@ -366,23 +372,23 @@ def FitSphericalWave1d(Phi,s, Lambda):
 	def calc_R(xc, yc):
 	    """ calculate the distance of each 2D points from the center (xc, yc) """
 	    return sqrt((x-xc)**2 + (y-yc)**2)
-	
+
 	def f_2(c):
 	    """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
 	    Ri = calc_R(*c)
 	    return Ri - Ri.mean()
-	
+
 	center_estimate = x_m, y_m
 	center_2, ier = optimize.leastsq(f_2, center_estimate)
-	
+
 	xc_2, yc_2 = center_2
 	Ri_2       = calc_R(*center_2)
 	R_2        = Ri_2.mean()                  #_2 is because this is method#2 from the url I copied from.
 	residu_2   = sum((Ri_2 - R_2)**2)
 #	residu2_2  = sum((Ri_2**2-R_2**2)**2)
-#	ncalls_2   = f_2.ncalls		
-	
-	
+#	ncalls_2   = f_2.ncalls
+
+
 	return R_2
 
 #================================
@@ -391,15 +397,15 @@ def FitSphericalWave1d(Phi,s, Lambda):
 def FitGaussian1d(y, x = None, PlotFigure=None):
 	'''
 	Easy way for fitting gaussian curve.
-	
+
 	It's quick and dirty, but it should work
-	
+
 	Returns
 	----
-	[a, x0, sigma] : Amplitude, mean value, standard deviation 
+	[a, x0, sigma] : Amplitude, mean value, standard deviation
 	'''
 	from scipy.optimize import curve_fit
-	from scipy import asarray as ar,exp
+	from scipy import exp
 	# HELPER FUNCTION
 	def gaus(x,a,x0,sigma):
 		return a*exp(-(x-x0)**2/(2*sigma**2))
@@ -407,17 +413,17 @@ def FitGaussian1d(y, x = None, PlotFigure=None):
 	n = len(y)
 	if x is None:
 		x = np.arange(0,N)
-	
-	mean = sum(x*y)/n    
+
+	mean = sum(x*y)/n
 	sigma = np.sqrt(sum(y*(x-mean)**2)/n)
 	amplitude = max(y)
 	try:
 		popt,pcov = curve_fit(gaus,x,y,p0=[amplitude,mean,sigma])
 		popt[2] = abs(popt[2])
-	
-	
-	
-	
+
+
+
+
 		# Plot figure if required
 		if PlotFigure!= None:
 			if PlotFigure> 1:
@@ -426,7 +432,7 @@ def FitGaussian1d(y, x = None, PlotFigure=None):
 				xfit = np.linspace(min(x), max(x), 100)
 				yfit = gaus(xfit,popt[0], popt[1], popt[2])
 				plot(xfit,yfit,'o')
-			
+
 		return popt
 	except:
 		return np.nan, np.nan, np.nan
@@ -435,7 +441,7 @@ def FitGaussian1d(y, x = None, PlotFigure=None):
    #================================
 def Coerce(x, Min, Max):
 	return Min if x < Min else Max if x > Max else x
-	
+
 #================================
 #  L2XY
    #================================
@@ -444,10 +450,10 @@ def L_2_XY(f, L, XStart,  Sign = +1, Tolerance = 1e-3, GuessStep = 1e-4, iMax = 
 	For a given function y = f(x) and a starting point XStart,
 	it finds the point XEnd such that the length of the curve
 	f(x) from XStart to XEnd equals L
- 	
-	We have originally written it for accurately finding the XStart, XEnd points of 
+
+	We have originally written it for accurately finding the XStart, XEnd points of
 	an elliptic mirror.
-	
+
 	'''
 
 	# Single path integral
@@ -459,13 +465,13 @@ def L_2_XY(f, L, XStart,  Sign = +1, Tolerance = 1e-3, GuessStep = 1e-4, iMax = 
 	while True:
 		XNew = XOld + XStep
 		YNew = f(XNew)[0]
-		DeltaL = norm(np.array([XNew, YNew])- np.array([XOld, YOld])) 
-		LSum = LSum + DeltaL 
-		
+		DeltaL = norm(np.array([XNew, YNew])- np.array([XOld, YOld]))
+		LSum = LSum + DeltaL
+
 		i = i+1
-		
+
 		if LSum >= L: # raggiunta la lunghezza
-			if (LSum - L) > Tolerance: 
+			if (LSum - L) > Tolerance:
 				# ripeti con step più piccolo
 				pass #???
 			else:
@@ -475,8 +481,8 @@ def L_2_XY(f, L, XStart,  Sign = +1, Tolerance = 1e-3, GuessStep = 1e-4, iMax = 
 				return None
 			pass
 	pass
-		
-	
+
+
 
 
 
@@ -490,9 +496,9 @@ def MinHew(Hew, Threshold = 1e-15):
 	Rough way of finding the minimum value of the Hew, without fitting.
 	Finds the minimum. If different values are repeated, then the central element
 	is chosen.
-	
+
 	Equality is to the best of Threshold
-	
+
 	'''
 	iMin = np.argmin(Hew) # position of the minimum
 	Delta = Hew - Hew[iMin]  # differences.
@@ -500,9 +506,9 @@ def MinHew(Hew, Threshold = 1e-15):
 	# find the first True value
 	First = next(i for i in range(len(Bools)) if Bools[i]  == True)
 	Last = next(i for i in np.arange(len(Bools)-1,-1,-1) if Bools[i]  == True)
-	
+
 	#Performs a quadratic fit
-		
+
 	return int(np.floor( (First + Last)/2))
 
 
@@ -514,47 +520,47 @@ def FitParabola(x, y ):
 	"""
 	Helper function that performs a parabolic fit on x,y and returns
 	the parabola parameter in a common fashion
-	
+
 	Parameters
 	-----
 	x : array
 		x
 	y : array
 		y
-		
+
 	Return
 	------
 	Struct containing:
 		a,b,c,Focus, Vertex
-	
+
 	"""
-	
+
 	class Output:
 		a = None
 		b = None
 		c = None
 		Focus = None
 		Vertex = None
-	
+
 	#Performs a quadratic fit
 	p = np.polyfit(x,y,2)
 	a = p[0]
 	b = p[1]
 	c = p[2]
 	Delta = b**2  -4*a*c
-	
+
 	xv = -b/2/a           # Vertex
 	yv = -Delta/4/a
-	
+
 	xf = -b/2/a           # focus
-	yf = (1-Delta)/a/a ; 
-	
-	Output.a = a 
+	yf = (1-Delta)/a/a ;
+
+	Output.a = a
 	Output.b = b
 	Output.c = c
 	Output.Focus = np.array([xf,yf])
 	Output.Vertex= np.array([xv,yv])
-	
+
 	return Output
 #================================
 #  FindWaist
@@ -562,29 +568,29 @@ def FitParabola(x, y ):
 def FindWaist(W, Z = None, Threshold = 1e-15):
 	'''
 	Find the waist of the beam of transverse size W and longitudinal axis Z.
-	
+
 	Parameters
 	-----
 	W : array like (y-like)
-		Beam size, typically the HEW (or the sigma, or whatever). It must have 
+		Beam size, typically the HEW (or the sigma, or whatever). It must have
 		a local minimum
-		
+
 	Z : array like (x-like)
 		longitudinal coordinate
-	
+
 	Return
 	-----
-	NumericWaist : (position, size) 
-		coordinates of the minimum of (W,Z) found as the minimum value of W 
-		
+	NumericWaist : (position, size)
+		coordinates of the minimum of (W,Z) found as the minimum value of W
+
 	FittedWaist : (position, size)
 		coordinates of the minimum of (W,Z) computed with a parabolic fit
-	
+
 	'''
 	iMin = np.argmin(W) 	       # position of the minimum
 	Delta = W - W[iMin]        # differences.
 	Bools = Delta < Threshold
-	
+
 	# find the first True value
 	First = next(i for i in range(len(Bools)) if Bools[i]  == True)
 	Last = next(i for i in np.arange(len(Bools)-1,-1,-1) if Bools[i]  == True)
@@ -592,23 +598,23 @@ def FindWaist(W, Z = None, Threshold = 1e-15):
 	MinIndex = int(np.floor( (First + Last)/2))    # position of the central minimum
 	MinValue = W[MinIndex]
 	MinZ = Z[MinIndex] if Z is not None else MinValue
-	
+
 	#Fit = FitParabola(Z,W) # old way
 	#MinFitValue = Fit.Vertex[1]
 	#MinFitZ = Fit.Vertex[0]
 	#NumericWaist = (MinZ, MinValue)
-	
+
 	# Find waist by gaussian fit
 	#----------------------------------------------------------
 	'''I pick the N boundaries values close to the minimum value
 	'''
-	
-	x_to_fit = Z	
+
+	x_to_fit = Z
 	y_to_fit = W
-	
+
 	try:
 		Fit = sp.interpolate.splrep(x_to_fit, y_to_fit, s = 0)
-		x_new = np.linspace(x_to_fit[MinIndex - 3], x_to_fit[MinIndex + 3], 100) 
+		x_new = np.linspace(x_to_fit[MinIndex - 3], x_to_fit[MinIndex + 3], 100)
 		y_new = sp.interpolate.splev(x_new, Fit)
 		# I find the numeric minimum of the spline
 		Min_i = np.argmin(y_new)
@@ -621,36 +627,36 @@ def FindWaist(W, Z = None, Threshold = 1e-15):
 		MinFitValue = MinValue
 	NumericWaist = (MinZ, MinValue)
 	FittedWaist = (MinFitZ, MinFitValue)
-	
-	
+
+
 	return NumericWaist, FittedWaist
-	
-	
+
+
 #==============================================
 #
 #==============================================
-	
+
 def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 	"""
 	Save a Matrix (NxM) into a txt file.
 	If wanted, the axes x and y are saved as well.
-	
+
 	The final output is
 	A11 A12 ... A1N
 	...
 	AM1 AM2 ... AMN
-	
+
 	if x and y are None
-	
+
 	or
-	
+
 	NaN x1   x2 ...  xN
 	y1  A11 A12 ... A1N
 	...
 	yM  AM1 AM2 ... AMN
-	
+
 	if x and y are specified.
-	
+
 	Parameters
 	------------
 	A : NxM matrix
@@ -658,57 +664,70 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 	x : 1d array
 		long M
 	y : 1d array
-		long N 
+		long N
 	"""
 
 	if x is  None and y is None:
-		AAA = A 
+		AAA = A
 	else:
 		RowName = x
 		ColName = np.insert(y,0,None )
 		AA = np.vstack((RowName, A))
 		AAA = np.column_stack([ColName, AA])
-		  
-		
+
+
 	np.savetxt(FileName,AAA, fmt = Format)
 
 #================================
 #  PhaseUnwrap
-#================================		
+#================================
 #def PhaseUnwrap(Ph):
 #	N = len(Ph)
 #	PhNew = 0 * Ph
-#	
+#
 #	Ph = Ph - Ph[0]
 #	for (i,phi) in enumerate(Ph):
 #		if i=0:
 #			continue
 #		else:
 #			pass
-#		
-#	
-#	
+#
+#
+#
 #================================
 #  SlitCreate
-#================================	
+#================================
+
+def MirrorArray(x, Factor = +1):
+	'''
+	given x = [0,1,2]
+
+	returns y = [2,1,0,1,2] if MakeNegate = False or
+		y = [2,1,0,1,2] if MakeNegate = True
+	'''
+
+	x = np.array(x)
+	return np.hstack(( Factor*x[-1:0:-1], x[:-1]))
+def PowerSpectrum(x):
+	return abs(np.fft.fft(x, norm = 'ortho'))**2
 def SlitCreate(SizeN, NSlits = 1, SlitKernel = [1]):
 	'''
 	This function was first created for simulating the diffraction from 2 or more slits.
-	
+
 	Parameters
 	----
 	SizeN : the total size (in samples) of the mask,
-	
+
 	NSlits : the total number of slits (1,2, etc...)
-	
+
 	SlitKernel : the transmission function of each slit. Can be complex.
-	
+
 	Example: create an array with 20 elements, 2 slits, each one 3 pixel large.
 	SlitCreate(20,2, [1,1,1]).
-	
 
-	'''	
-	
+
+	'''
+
 	fList =np.floor(np.linspace(0,SizeN, NSlits+2)[1:-1])
 	iList = [int(f) for f in fList]
 	A = np.zeros([SizeN])  # the total domain of the signal
@@ -840,7 +859,7 @@ class geom:
 
 		nx = 0 if abs(nx) < 1e-16 else nx
 		ny = 0 if abs(ny) < 1e-16 else ny
-#		print 10 * '===' 
+#		print 10 * '==='
 #		print(nx)
 #		print (ny)
 		return np.array([nx,ny])
@@ -930,10 +949,10 @@ class geom:
 
 
 
-	
 
 
-	
+
+
 #	#==============================================================================
 #	#	 CLASS: Ray_old
 #	#==============================================================================
@@ -1272,15 +1291,15 @@ class Segment(Line):
 #==============================================================================
 class Vector(object):
 	'''
-	The unit vector is automatically normalized to unit norm, basing on the inputs 
+	The unit vector is automatically normalized to unit norm, basing on the inputs
 	parameters.
-	
+
 	Set of Parameters 1
 	-------------------
 	x : x component
-		
+
 	y : y component
-	
+
 	Set of Parameters 2
 	-------------------
 	Angle : Angle (radians)
@@ -1292,22 +1311,22 @@ class Vector(object):
 	Set of Parameters 4
 	-------------------
 	v : a v = [vx,vy] type
-		
+
 	'''
 
 	#================================
 	# FUN: __init__
 	#================================
-	def __init__(self, 
-				vx = None, vy = None, 
+	def __init__(self,
+				vx = None, vy = None,
 				v = None, # [vx,vy] array
 				V = None, # a vector object
-				Angle = None, 
+				Angle = None,
 				XYOrigin = [0,0], Length = 1, IsUnitVector = False):
-	
+
 		self._IsUnitVector = IsUnitVector
 		self.XYOrigin = XYOrigin         # Set it now, not later
-		
+
 		if CheckArg([vx,vy]):
 			if (vx!=0 or vy !=0):
 				self.v = [vx,vy] # _v is assigned
@@ -1315,17 +1334,17 @@ class Vector(object):
 				self._ZeroLength() # _v is assigned
 		elif CheckArg([v]):
 			self.v = v          # _v is assigned
-			
-		elif CheckArg([Angle, Length]):	
+
+		elif CheckArg([Angle, Length]):
 			if Length >0:
 				self.v = RotVersor(np.array([1,0]) *Length, Angle)  # _v is assigned
 			else:
 				self._ZeroLength()    # _v is assigned
-		else: 
+		else:
 			print ('Vecor Init Wrong Argument set')
 
-		
-		
+
+
 		if self.Length > 0:
 			self._vNorm = UnitVectorNormal(self.v)
 		else:
@@ -1339,8 +1358,8 @@ class Vector(object):
 	# FUN: __str__
 	#======================
 	def __str__(self):
-		StrMsg = (' V = [%f,%f]\n Angle=%0.2f  deg\n XYOrigin=[%f,%f]' % 	
-				(self.v[0], self.v[1], (self.Angle * 180/np.pi), 
+		StrMsg = (' V = [%f,%f]\n Angle=%0.2f  deg\n XYOrigin=[%f,%f]' %
+				(self.v[0], self.v[1], (self.Angle * 180/np.pi),
 				self.XYOrigin[0], self.XYOrigin[1]))
 		return StrMsg
 	#======================
@@ -1354,7 +1373,7 @@ class Vector(object):
 		self.vAngle = 0
 		self._vNorm = None
 		self.XYEnd = self.XYOrigin
-		
+
 	#======================
 	# PROP: v
 	#======================
@@ -1372,7 +1391,7 @@ class Vector(object):
 		L2 = 1 if self._IsUnitVector == False else 	 vx**2 + vy**2
 		self._v = np.array([vx/L2, vy/L2])
 		self._vAngle = np.arctan2(self._v[1],self._v[0])
-		
+
 	#======================
 	# PROP: vAngle
 	#======================
@@ -1382,8 +1401,8 @@ class Vector(object):
 	@vAngle.setter
 	def vAngle(self, value):
 		self._v = RotVersor(np.array([1,0]) *self.Length, value)  # don't use self.Lenght (it bases on ._v)
-		self._vAngle = value	
-		
+		self._vAngle = value
+
 	#======================
 	# PROP: Angle
 	#======================
@@ -1394,10 +1413,10 @@ class Vector(object):
 	def Angle(self, value):
 		self._v = RotVersor([1,0], value)
 		self._vAngle = value
-	
+
 	#======================
 	# PROP: PolyCoeff
-	#======================	
+	#======================
 	@property
 	def PolyCoeff(self):
 		'''
@@ -1422,7 +1441,7 @@ class Vector(object):
 	@XYOrigin.setter
 	def XYOrigin(self, value):
 		self._XYOrigin = np.array(value)
-		
+
 	#======================
 	# PROP: XYEnd
 	#======================
@@ -1449,7 +1468,7 @@ class Vector(object):
 		'''
 		Rotates the present Unit vector object by angle
 		It is equivalent to the code
-		
+
 		>>> UnitVector.vAngle +=  Angle
 		'''
 		self.vAngle = self.vAngle + Angle
@@ -1465,7 +1484,7 @@ class Vector(object):
 		_Versor = copy.deepcopy(self)
 		_Versor.Rotate(+pi/2)
 		return _Versor
-		
+
 	#======================
 	# METHOD: GetNormal
 	#======================
@@ -1473,7 +1492,7 @@ class Vector(object):
 		'''
 		Returns another vector which is normal to the present one.
 		It is equivalent to rotate of +pi/2
-		
+
 		>>> UnitVector.vAngle +=  Angle
 		'''
 		import copy
@@ -1482,7 +1501,7 @@ class Vector(object):
 		return _v
 	#======================
 	# METHOD: Paint
-	#======================		
+	#======================
 	def Paint(self, FigHandle = None,  Length = 0.3, ArrowWidth = 0.3,
 		   Color = 'k', Shift = False):
 		plt.figure(FigHandle)
@@ -1491,25 +1510,25 @@ class Vector(object):
 		XYEnd = self.XYOrigin +  self.v
 		ShiftX = 0 if Shift == False else -np.cos(self.Angle)*(Length + ArrowLength)
 		ShiftY = 0 if Shift == False else -np.sin(self.Angle)* (Length+ArrowLength)
-		x0 = self.XYOrigin[0] + ShiftX 
+		x0 = self.XYOrigin[0] + ShiftX
 		y0 = self.XYOrigin[1] + ShiftY
 		x1 = XYEnd[0] + ShiftX
 		y1 = XYEnd[1] + ShiftY
-			
+
 		ArrowWidth = 0.5 * Length if ArrowWidth == None else ArrowWidth
-			
-		ax.arrow(x0,y0,Length*(x1-x0), Length*(y1-y0), 
-				   head_width = ArrowWidth, head_length= ArrowLength, 
+
+		ax.arrow(x0,y0,Length*(x1-x0), Length*(y1-y0),
+				   head_width = ArrowWidth, head_length= ArrowLength,
 								   fc=Color, ec=Color)
 #============================================================================
 #	 CLASS: UnitVector
 #==============================================================================
 class UnitVector(Vector):
-	def __init__(self,  vx = None, vy = None, 
+	def __init__(self,  vx = None, vy = None,
 				v = None,
 				V = None,
 			   Angle = None, XYOrigin = [0,0]):
-		Vector.__init__(self,  vx = vx, vy= vy, v = v, V = V , 
+		Vector.__init__(self,  vx = vx, vy= vy, v = v, V = V ,
 				  Angle = Angle, XYOrigin = XYOrigin,
 				  IsUnitVector = True)
 
@@ -1528,7 +1547,7 @@ class Ray(Vector):
 		---------------------------------
 
 		'''
-		
+
 		# Parameter Set 1
 		if CheckArg([x0,y0,x1,y1]):
 			# Store input
@@ -1549,14 +1568,14 @@ class Ray(Vector):
 			print('Ray.__init__ : a wrong combination of arguments was used')
 			raise ValueError('A very specific bad thing happened')
  			# Update further parameters (common procedure)
-			 
+
 		#self.XYOrigin = [0,0] if XYOrigin == None else XYOrigin
 		self.XYOrigin = [0,0] if XYOrigin is None else XYOrigin
 		self.FocalLength = FocalLength
 
 	#======================
 	# PROP: UnitVectorAtOrigin
-	#======================		
+	#======================
 	@property
 	def UnitVectorAtOrigin(self):
 		return UnitVector(v = self.v)
@@ -1564,27 +1583,27 @@ class Ray(Vector):
 
 	#======================
 	# PROP: Length
-	#======================		
+	#======================
 	@property
 	def Length(self):
 		return norm(self.v)
 
 	#======================
 	# PROP: Norm
-	#======================		
+	#======================
 	@property
 	def Norm(self):
 		return norm(self.v)
 	#======================
 	# PROP: XYEnd
-	#======================		
+	#======================
 	@property
 	def Norm(self):
 		return norm(self.v)
 
 	#======================
 	# PROP: FocalLength
-	#======================		
+	#======================
 	@property
 	def FocalLength(self):
 		return norm(self._FocalLength)
@@ -1593,18 +1612,18 @@ class Ray(Vector):
 		value = float('inf') if value == None else value
 		self._FocalLength = value
 		self._XYFocus = self._XYOrigin + self._FocalLength * Normalize(self.v) if self._FocalLength < float('inf') else float('inf')
-	
+
 	#======================
 	# METHOD: Paint
-	#======================		
-	def Paint(self, FigHandle = None, Length = None, ArrowWidth = 0.3, 
+	#======================
+	def Paint(self, FigHandle = None, Length = None, ArrowWidth = 0.3,
 			   Color = 'k', Shift = False):
-		
+
 		UV = UnitVector(v = self.v, XYOrigin = self.XYOrigin)
 		_Length = Length = Length if Length != None else self.Length
-		UV.Paint(FigHandle, _Length,  
+		UV.Paint(FigHandle, _Length,
 					  ArrowWidth = ArrowWidth, Color = Color, Shift = Shift)
-		
+
 	#======================
 	#	 Draw
 	#======================
@@ -1631,7 +1650,7 @@ class Ray(Vector):
 		XYList = np.array([geom.StepAlongDirection(self.XYOrigin[0],
 								self.XYOrigin[1], L/i, self.Angle) for i in range(1,N+1)])
 		return XYList[:,0], XYList[:,1]
-		
+
 #============================================================================
 #	 CLASS: Ray
 #==============================================================================
@@ -1653,7 +1672,7 @@ class Ray_seminuovo(object):
 		---------------------------------
 
 		'''
-		
+
 		self.v = [1,0]
 		self.vNorm =[0,1]
 
@@ -1693,32 +1712,32 @@ class Ray_seminuovo(object):
 
 	#======================
 	# PROP: Length
-	#======================		
+	#======================
 	@property
 	def Length(self):
 		return norm(self.v)
 
 	#======================
 	# PROP: Norm
-	#======================		
+	#======================
 	@property
 	def Norm(self):
 		return norm(self.v)
 	#======================
 	# PROP: XYEnd
-	#======================		
+	#======================
 	@property
 	def Norm(self):
 		return norm(self.v)
 
-		
+
 	#======================
 	# METHOD: Paint
-	#======================		
+	#======================
 	def Paint(self, FigHandle = None, ArrowWidth = 0.3):
 		V = UnitVector(Angle = self.Angle, XYOrigin = self.XYOrigin)
 		V.Paint(FigHandle, Length = self.Length,  ArrowWidth = ArrowWidth)
-		
+
 	#======================
 	#	 Draw
 	#======================
@@ -1756,4 +1775,283 @@ class Ray_seminuovo(object):
 #plt.xlim(-5,5)
 #plt.ylim(-5,5)
 #
+
+#========================================================
+#	FUN: FileIO
+#========================================================
+class FileIO:
+
+	#========================================================
+	#	FUN: ReadYFile
+	#========================================================
+	def ReadYFile(Path,  SkipLines = 0):
+		'''
+		Behavior:
+		-----
+		Reads the y data formatted as a column.
+
+		where N is len(y)
+		'''
+		with open(Path) as file:
+			Lines = file.readlines()[SkipLines :]
+		N = len(Lines)
+		y = np.zeros(N)
+
+		# format lines
+		for (iLine, Line) in enumerate(Lines):
+			Line = Line.strip()
+			if Line != '':
+				y[iLine] = float(Line)
+
+		return y
+
+	#========================================================
+	#	FUN: ReadXYFile
+	#========================================================
+	def ReadXYFile(Path, Delimiter = '\t', SkipLines = 2):
+		'''
+		Behavior:
+		-----
+		Reads the x,y data formatted as a column
+		'''
+		with open(Path) as file:
+			Lines = file.readlines()[SkipLines :]
+		N = len(Lines)
+		x = np.zeros(N)
+		y = np.zeros(N)
+		for (iLine, Line) in enumerate(Lines):
+			Line = Line.strip()
+			if Line != '':
+				Tokens = Line.split('\t')
+				x[iLine] = float(Tokens[0])
+				y[iLine] = float(Tokens[1])
+
+		return x,y
+
+class CommonPlots:
+
+	#=============================================================#
+	# FUN FigureError
+	#=============================================================#
+	def FigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs ):
+		return Metrology.PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs )
+
+	#=============================================================#
+	# FUN IntensityAtOpticalElement
+	#=============================================================#
+	def IntensityAtOpticalElement(OptElement, XUnitPrefix = 'm' , Normalize = True , FigureIndex = None, **kwargs ):
+		try:
+			plt.figure(FigureIndex, **kwargs)
+
+			XUnitScale = Units.SiPrefixes[XUnitPrefix]
+			x = OptElement.Results.S / XUnitScale
+			I = abs(OptElement.ComputationData.Field)**2
+			y = I/max(I) if Normalize else I
+
+			# --- plot x,y
+			plt.plot(x,y)
+			# --- layout
+			plt.title('Intensity @ ' + OptElement.Name)
+			plt.xlabel(XUnitPrefix+'m')
+			plt.ylabel('I')
+			plt.grid('on')
+		except:
+			pass
+
+
+
+
+class Metrology:
+	def AverageXYFiles(PathList, ReaderFunction, ReaderFunctionParams):
+		'''
+		Performs an average of X,Y files.
+
+		X,Y shall be evenly sampled.
+
+		'''
+		pass
+
+	#=============================================================#
+	# FUN SlopeIntegrate
+	#=============================================================#
+	def SlopeIntegrate(Slope, dx = None, x = None, SubtractPoly1 = False):
+		'''
+		Integrate the slope to get a height profile.
+
+		Slopes : *array like*
+			Slope array to integrate
+
+		dx : *scalar, optional* (alternative to x)
+				The X step b|w the Slope values.
+
+		x : *array, optional* (alternative to dx)
+				The sample points corrisponding to the Slope values
+
+		SubtractPoly1 : *boolean*
+			If True, the final profile will be y = y0 - p1, where
+
+			- *y0* is the result of the integration of *Slopes*
+			- *p1* is  a line passing through the first N and the last N points of y0
+
+
+		'''
+		if CheckArg([dx]):
+			x = np.linspace(0,len(Slope) * dx, len(Slope))
+		elif CheckArg([x]):
+			pass
+		else:
+			#FIX: Throw error
+			pass
+
+		#h = [np.trapz(Slope[0:i], dx ) for i in range(1,len(Slope))]
+		h1 = np.cumsum(Slope) *  dx
+		h1 = h1 - h1[0]
+#		I have chosen y.
+		return h1
+	#=============================================================#
+	# FUN ReadLtp2File
+	#=============================================================#
+	def ReadLtp2File(Path : str, ForceYScalingToUnity = True):
+		'''
+		#TODO: This function is very specific and should not stay here.
+		Let's wait how the class is evolving...
+
+		Parameters
+		------
+		Path : *string*
+			Full path of the file, written in the Ltp2 format.
+			Ltp2 format is the old format of the metrology lab of ELETTRA.
+			For more info, you should really read the code of this function.
+
+
+		ForceYScalingToUnity : *boolean*
+			Ignores the *ZUnit* parameters (specified in the file). I introduced
+			this because, apparently, the y(or z) data are always saved in S.I.
+			units, whereas x data are not.
+
+
+		Read an (old) Ltp2 file and returns
+		- x,y data array in S.I units
+		- a data structure containing various info on the file.
+
+		Return
+		=====
+		x : x data. Position along the mirror.
+
+		y : y data. Either height or slopes. See FileInfo.YUnit
+
+		FileInfo: data structure, containing
+			FileName XUnit YUnit XScale YScale XStep
+		'''
+		FileInfo = namedtuple('FileInfo', 'FileName XUnit YUnit XScale YScale XStep Type')
+		with open(Path, 'r') as f:
+		    Lines = f.readlines()
+
+
+		I_FILENAME = 6
+		I_STEP_SIZE = 10
+		I_DATA_TYPE = 9
+		I_X_UNIT = 11
+		I_Y_UNIT = 12
+		I_DATA_START = 40
+
+		# Get File Name
+		FileInfo.FileName = Lines[I_FILENAME].strip()
+
+		#Get Data Type (Slopes or height or else)
+		FileInfo.Type = (Lines[I_DATA_TYPE].strip()).split(':')[1].lower()
+
+		#Get X,Y Unit
+		FileInfo.XUnit = (Lines[I_X_UNIT].strip()).split(':')[1]
+		FileInfo.YUnit = (Lines[I_Y_UNIT].strip()).split(':')[1]
+
+		#Get X,Y Scale
+		FileInfo.XScale = Units.UnitString2UnitScale(FileInfo.XUnit)
+		FileInfo.YScale = Units.UnitString2UnitScale(FileInfo.YUnit) if not ForceYScalingToUnity else 1
+
+		# Get XStep
+		FileInfo.XStep = float((Lines[I_STEP_SIZE].strip()).split(':')[1]) * FileInfo.XScale
+
+		#Get X,Y Arrays
+		N = len(Lines) -  I_DATA_START
+		x = np.zeros([N])
+		y = np.zeros([N])
+		for (iLine, Line) in enumerate(Lines[I_DATA_START:]):
+			Tokens = Line.split('\t')
+			x[iLine] = float(Tokens[0])
+			y[iLine] = float(Tokens[1])
+
+		x = x * FileInfo.XScale
+		y = y * FileInfo.YScale
+
+		return (x,y, FileInfo)
+
+	#=============================================================#
+	# FUN PlotFigureError
+	#=============================================================#
+	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs ):
+		'''
+		Type: Helper/Developer function
+		-----
+
+		Plots the Figure Error of OpticalElement.CoreOptics.
+		This function should not really stay here, but it could be a good idea to
+		be placed in the future CoreOptics.Metrology subclass
+
+		'''
+		#@todo Really:
+#		We should catch the error so that the execution is not stopped, but a warning is written to the console.
+
+		#Internal Reassignment
+		Item = OpticalElement
+		Tot = len(OpticalElement.CoreOptics.FigureErrors)
+		if LastUsed == True:
+			y = Item.CoreOptics.LastFigureErrorUsed
+			Index = Item.CoreOptics.LastFigureErrorUsedIndex
+			#FIXME:minor
+			# There is not: LastFigureErrorStepUsed... or similar... so
+			# the following lines are not rigorous
+			dx = Item.CoreOptics.FigureErrorSteps[Index]
+			x = np.linspace(0,len(y) * dx, len(y))
+			TitleStr = 'Figure Error[%d/%d], Last Used' % (Index + 1,Tot)
+		else:
+			y = Item.CoreOptics.FigureErrors[Index]
+			dx = Item.CoreOptics.FigureErrorSteps[Index]
+			x = np.linspace(0,len(y) * dx, len(y))
+			TitleStr = 'Figure Error[%d/%d]' % (Index + 1,Tot)
+		'''
+		Notes: Index +1 => In order so that the maximum is e.h. 5/5 and min is 1/5
+		'''
+
+		plt.figure(FigureIndex, **kwargs)
+		plot(x * 1e3,y * 1e9)
+		plt.xlabel('mm')
+		plt.ylabel('nm')
+		plt.title(Item.Name + TitleStr)
+		plt.grid('on')
+#		plt.legend('oe:'+ OpticalElement.Name)
+		return None
+
+
+
+#
+#	def RectangularGrating(L, NumberOfPoints, LinesPerMillimiter, GrooveHeight, DutyCycle = 0.5, L0=0.):
+#	    #square(t, duty=0.5)
+#
+#	    # L in metres, convert linesPerMm to linesPerM
+#		LinesPerMeter = LinesPerMillimiter * 1e3
+#	    # Create x-axis, must be strictly positive for consistent result
+#	    x = np.linspace(0., L, num=NumberOfPoints)
+#
+#	    # Initialize grating parameter
+#	    GratingParameter = 2. * np.pi * LinesPerMeter * x
+#	    # Generate a grating
+#
+#		 GratingProfile = ((square(GratingParameter) + 1.) / 2.) * GrooveHeight
+#
+#	    if L0 != 0:
+#	        xTemp = np.linspace(-L/2., L/2., num=NumberOfPoints)
+#	        GratingProfile[np.abs(xTemp)>=L0/2.] = 0.
+#
+#	    return GratingProfile
 

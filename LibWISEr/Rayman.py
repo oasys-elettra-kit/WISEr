@@ -8,11 +8,14 @@ Cose da sistemare
 - trovare denominazione comune xMir yMir, Mir_x MirX Mir_xy MirXY e salaminchia
 """
 #%%
-from numpy import sum, cos, sin, tan, pi, array, arange, size, polyval, polyfit, dot, exp, real, imag, sqrt, prod, zeros, floor, unravel_index, empty, linspace, ceil, amin, amax, diff, cumsum, append, deg2rad, column_stack, linalg, sort, complex, concatenate, nan, inf, ndarray
+from numpy import sum, cos, sin, tan, pi, array, arange, size, polyval, polyfit, dot, exp
+from numpy import real, imag, sqrt, floor, unravel_index, empty, linspace, ceil
+from numpy import amin, amax, diff, cumsum, append, deg2rad, column_stack, linalg
+from numpy import concatenate, nan, inf, ndarray
+from numpy import zeros as nzeros
 from LibWISEr.ToolLib import Debug
 from numba import jit, prange
 from numba import int64, float64, complex128
-from numba import cuda
 
 from scipy import ndimage
 import multiprocessing
@@ -468,14 +471,6 @@ class SphericalWave_1d(object):
         return self.Field(z,y)
 '''
 
-#	def ChirpCyclesInParaxialApproximation
-
-
-
-
-
-
-
 class SourceType():
     POINT = 0
     GAUSSIAN_TEM00 = 1
@@ -487,7 +482,8 @@ class SourceType():
 
 #import yaml
 
-@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
+@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])',
+     nopython=True, nogil=True, parallel=True, cache=True)
 def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     """
     Parameters
@@ -511,21 +507,20 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     k = 2. * pi / wl
 
     bStart = 0
-    bEnd = prod(int64(xb.shape))
-    EbTokN = xb.shape[0]
+    bEnd = 1
+    for x in xb.shape:
+        bEnd = x * bEnd
 
     EbTokN = bEnd - bStart
-    EbTok = zeros(EbTokN, dtype=complex128)
-    RList = zeros(EbTokN, dtype=float64)
+    EbTok = nzeros(EbTokN, dtype=complex128)
+    RList = nzeros(EbTokN, dtype=float64)
 
-    # loop on items within the segment of B
-    assert(EbTok.shape == RList.shape)
-    assert(RList.shape == xa.shape)
-    assert(RList.shape == ya.shape)
+    # # loop on items within the segment of B
+    # assert(EbTok.shape == RList.shape)
+    # assert(RList.shape == xa.shape)
+    # assert(RList.shape == ya.shape)
 
     for i in prange(0, EbTokN):
-        xbi = xb[i + bStart]
-        ybi = yb[i + bStart]
         xbi = xb[i]
         ybi = yb[i]
         # Preliminary normalisation
@@ -534,11 +529,9 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
         # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
 
         RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
-
-        EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
         EbTok[i] = sum(Ea / RList * exp(-1j * k * RList))
 
-    EbTok = 1. / sqrt(wl) * EbTok
+    EbTok =  EbTok / sqrt(wl)
 
     return EbTok
 
@@ -664,8 +657,6 @@ def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose
 #==============================================================================
 # 	FUN: HuygensIntegral_1d
 #==============================================================================
-HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
-
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = True):
     '''
     [iqLim, TextOutput, OUT] =
@@ -701,6 +692,28 @@ def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=inf, Verbose = T
         print(OUT.Text)
     return OUT
 
+#==============================================================================
+# 	FUN: ComputeSampling
+#==============================================================================
+def ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, OversamplingFactor=1):
+    '''
+	Lambda: wavalenght
+	z:distance b|w start and arrival planes
+	L0,L1: lenght of start and arrival planes
+	Theta0, Theta1: orientation of start and arivval planes
+
+
+	'''
+    Debug.print('Compute sampling', 2)
+    Debug.pv('Lambda', 3)
+    Debug.pv('z', 3)
+    Debug.pv('L0', 3)
+    Debug.pv('L1', 3)
+    Debug.pv('Theta0', 3)
+    Debug.pv('Theta1', 3)
+    N = int(OversamplingFactor * L0 * L1 * abs(cos(Theta0 - Theta1)) / Lambda / z)
+    Debug.pv('N', 3)
+    return N
 
 
 #	#==============================================================================
