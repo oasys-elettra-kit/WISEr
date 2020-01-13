@@ -13,7 +13,6 @@ import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
-from enum import Enum
 
 from LibWISEr.Optics import TypeOfAngle
 
@@ -52,12 +51,6 @@ class ComputationResults(object):
 		Field : can be either automatically filled as the result of propagation, or
 		"manually" filled as the input field (i.e. the beginning of a propagation chain).
 		'''
-	@property
-	def Intensity(self):
-		try:
-			return abs(self.Field)**2
-		except:
-			return None
 
 #===========================================================================
 # 	STRUCT: PropagationDirectives
@@ -88,14 +81,6 @@ class ComputationSettingsForOpticalElement(object):
 		self.UseCustomSampling = False
 		self.OversamplingFactor = 1
 
-		@property
-		def NSamples (self):
-			return self._NSamples
-		@NSamples.setter
-		def NSamples (self, value):
-			self._NSamples = int(value)
-
-
 
 #===========================================================================
 # 	STRUCT: PositioningDirectives
@@ -113,29 +98,32 @@ class PositioningDirectives:
 				   'Distance', 'XYCentre', 'Angle', 'WhichAngle']
 	class What:
 		Centre = 'centre'
-		UpstreamFocus = 'upstream focus'
-		DownstreamFocus = 'downstream focus'
+		UpstreamFocus= 'upstream focus'
+		DownstreamFocus= 'downstream focus'
 
 	class Where:
 		Centre = 'centre'
-		UpstreamFocus = 'upstream focus'
-		DownstreamFocus = 'downstream focus'
+		UpstreamFocus= 'upstream focus'
+		DownstreamFocus= 'downstream focus'
 
 	class ReferTo:
 		AbsoluteReference = 'absolute'
 		UpstreamElement = 'upstream'
 		DownstreamElement = 'downstream'
 		DoNotMove = 'fix'
-		Source = 'source'
-		Locked = 'locked'
 
 	class WhichAngle:
 		AxisOfTheSelfReferenceFrame = 'self' #default configuration
 		FirstArmOfEllipticMirror = 'arm1'
 		SecondArmOfEllipticMirror= 'arm2'
 
-	def __init__(self, ReferTo = 'source', PlaceWhat = 'centre', PlaceWhere = 'centre',
-					 Distance = 0., GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
+
+
+
+
+
+	def __init__(self, ReferTo = 'upstream', PlaceWhat = 'centre', PlaceWhere = 'centre',
+					 Distance = None, GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
 					 *kwargs):
 		'''
 		[TODO] : means that the stuff still does not work.
@@ -216,30 +204,9 @@ class TreeItem(object):
 		Str = '[%s] ---- *[%s]*----[%s]' %( NameParent, self.Name,NameChildren)
 		return Str
 
-	# ===========================================
-	# PROP: ParentContainer
-	# ==========================================
-	@property
-	def ParentContainer(self):
-		'''
-		The Container (if exists) of this TreeItem object. A typical container can
-		be a Tree object or (if the TreeItem is subclassed to an OpticalElement) a
-		BeamlineElement object (which a subclass of TreeClass).
-
-		Behavior
-		----
-
-		ParentCointainer must be updated by external functions (e.g. by Append, Insert function of
-		Tree objects)
-		'''
-		return self._ParentContainer
-
-	@ParentContainer.setter
-	def ParentContainer(self, value):
-		self._ParentContainer = value
-	# ================================================
+	#================================================
 	#	PROP: UpstreamItemList
-	# ================================================
+	#================================================
 	@property
 	def UpstreamItemList(self):
 		oeThis = self
@@ -249,7 +216,6 @@ class TreeItem(object):
 			oeThis = oeThis.Parent
 			ItemList.append(oeThis)
 		return ItemList
-
 
 	#================================================
 	#	PROP: DonwstreamItemList
@@ -459,6 +425,7 @@ class Tree(object):
     #================================================
 	def Append(self, NewItem,  posdirective = None, NewName = None):
 		NewItem.Name = (NewName if NewName != None else NewItem.Name)
+		print(self._ActiveItem == None)
 
 		if self._ActiveItem == None:
 			ExistingItem = None
@@ -483,7 +450,7 @@ class Tree(object):
 		# Use just a selection between FromItem and ToItem
 		ItmList = self.ItemList
 		iStart = ItmList.index(FromItem)
-		iEnd = ItmList.index(ToItem)
+		iEnd =  ItmList.index(ToItem)
 		iStart = iStart if iStart != None else 0
 		iEnd = iEnd +1 if iEnd != None else  self.NItems
 
@@ -535,6 +502,7 @@ class OpticalElement(TreeItem):
 			self.CoreOptics = Element # contains a link to an Optics object
 			self.__Type = type(self.CoreOptics)
 			self.__TypeStr = self.CoreOptics._TypeStr
+			print(self.__TypeStr)
 
 		self.Name = (Name if Name!= None else self.__GetNewName())
 		self.RayIn = None
@@ -619,7 +587,7 @@ class OpticalElement(TreeItem):
 		# The upstream element is numerical (easiest case)
 		#--------------------------------------------------------
 		if self.Parent.CoreOptics._IsAnalytic == False:
-			_NSamples = GetNSamples_OpticalElement(Lambda, self.Parent, self)
+			_NSamples = OpticalElement.GetNSamples_2Body(Lambda, self.Parent, self)
 
 		# The upstream element is analytical (a mess)
 		#--------------------------------------------------------
@@ -632,7 +600,7 @@ class OpticalElement(TreeItem):
 			for oeChild in ChildrenList:
 #				print(oeChild.Name + 40 *'&')
 				if oeChild.CoreOptics._IsAnalytic == False:
-					_NSamples = GetNSamples_OpticalElement(Lambda, self, oeChild)
+					_NSamples = OpticalElement.GetNSamples_2Body(Lambda, self, oeChild)
 
 					Debug.Print('Mutual sampling bw <%s>-<%s>' % (self.Name, oeChild.Name))
 					break
@@ -705,34 +673,20 @@ class OpticalElement(TreeItem):
 		self._ComputationSettings = value
 
 	#================================================
-	#	PROP: ComputationData (get,set)
-	#================================================
-	@property
-	def ComputationData(self):
-		return self.Results
-	@ComputationData.setter
-	def ComputationData(self,value):
-		self.Results = value
-
-	#================================================
 	#	PROP: ComputationResults (get,set)
 	#================================================
 	@property
 	def ComputationResults(self):
-		'''
-		#XXX TBDisc
-		To be discontinued in favor of ComputationData
-		'''
 		return self.Results
 	@ComputationResults.setter
 	def ComputationResults(self,value):
-		self.Results = value
+		self.Results= value
 
 
 	#================================================
 	#	Paint (tunnel)
 	#================================================
-	def Paint(self, hFig = None,**kwargs):
+	def Paint(self, hFig,**kwargs):
 		return self.CoreOptics.Paint(**kwargs)
 
 	#================================================
@@ -756,140 +710,48 @@ class OpticalElement(TreeItem):
 		return self.CoreOptics.XYCentre
 
 
-#	#================================================
-#	#	PROP: DistanceFromParente (deferred)
-#	#================================================
-
-#	@property
-#	def DistanceFromParent(self):
-#		'''
-#		Distance from parent optical element.
-#		'''
-#		if self.Parent != None:
-#			return np.linalg.norm(self.XYCentre - self.Parent.XYCentre)
-#		else:
-#			return 0
-
-#	#================================================
-#	#	PROP: DistanceFromSource
-#	#================================================
-#	@property
-#	def DistanceFromSource(self):
-#		'''
-#		Distance from the source.
-#		'''
-#		ItemList =  self.UpstreamItemList
-#		Distances = np.array([oe.DistanceFromParent for oe in ItemList])
-#		return sum(Distances) + self.DistanceFromParent
-
-
+	#================================================
+	#	PROP: DistanceFromParente (deferred)
+	#================================================
 	@property
 	def DistanceFromParent(self):
 		'''
-		Distance from parent optical element corresponds to the optical distance between the element (self)
-		and the first optical element with the same orientation and UseAsReference flag True (obtained with
-		>>> self.GetParent(SameOrientation=True, OnlyReference=True))
-
+		Distance from parent optical element.
 		'''
-
 		if self.Parent != None:
-			distance = np.linalg.norm(self.XYCentre - self.GetParent(SameOrientation=True, OnlyReference=True).XYCentre)
-		elif self.Parent == None:
-			distance = 0
+			return np.linalg.norm(self.XYCentre - self.Parent.XYCentre)
 		else:
-			raise ValueError('Something wrong in DistanceFromParent!')
-
-		return distance
-
-	# # ================================================
-	# #	PROP: DistanceFromSource
-	# # ================================================
-	# @property
-	# def DistanceFromSource(self):
-	# 	'''
-	# 	Distance from the source.
-	# 	'''
-	# 	ItemList = self.UpstreamItemList
-	# 	Distances = np.array([oe.DistanceFromParent for oe in ItemList])
-	# 	return sum(Distances) + self.DistanceFromParent
-
-	# ================================================
+			return 0
+	#================================================
 	#	PROP: DistanceFromSource
-	# ================================================
+	#================================================
 	@property
 	def DistanceFromSource(self):
 		'''
 		Distance from the source.
 		'''
-		ItemList = self.UpstreamItemList # First element is the closest element, last element is the source
-		ItemListSameOrientation = []
-		for oe in ItemList:
-			if (((oe.CoreOptics.Orientation == self.CoreOptics.Orientation) or
-					(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-					(oe.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY)))\
-					and oe.CoreOptics.UseAsReference == True:
-				ItemListSameOrientation.append(oe)
+		ItemList =  self.UpstreamItemList
+		Distances = np.array([oe.DistanceFromParent for oe in ItemList])
+		return sum(Distances) + self.DistanceFromParent
 
-		distances = np.array([oe.DistanceFromParent for oe in ItemListSameOrientation])
-		return sum(distances) + self.DistanceFromParent
-
-	# ================================================
-	#	FUNC: GetParent
-	# ================================================
-
-	def GetParent(self, SameOrientation=False, OnlyReference=False):
+	#================================================
+    #     UpdatePreOutput
+    #================================================
 		'''
-		Returns the first parent accounting for the following flags> SameOrientation, OnlyReference.
-
-		Parameters
-		-----
-
-		SameOrientation : bool
-			if Ture, it returns the first parent elemenents for which .CoreOptics.Orientation is
-			the same as self object.
-
-		OnlyReference : bool
-			if True it returns the first parent elements for which  CoreOptics.UseAsReference = True
-
+			Intended to be a more general version of
+			AlignToInputRay
+		'''
+	#================================================
+    #     UpdatePreInput
+    #================================================
+		'''
+			boh...
 		'''
 
-		def HaveSameOrientation(oeX, oeY):
-			return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
-			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
+	#================================================
+    #     UpdatePreComputations0
+    #================================================
 
-		if SameOrientation and OnlyReference:
-			for oe in self.UpstreamItemList:
-				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
-					GetParentResult = oe
-					break
-		elif SameOrientation and not OnlyReference:
-			for oe in self.UpstreamItemList:
-				if HaveSameOrientation(oe, self):
-					GetParentResult = oe
-					break
-		else:
-			for oe in self.UpstreamItemList:
-				if OnlyReference:
-					if oe.CoreOptics.UseAsReference:
-						GetParentResult = oe
-						break
-				elif not OnlyReference:
-					GetParentResult = oe
-					break
-
-		return GetParentResult
-
-	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
-		'''
-		High level function to calculate the distance to parent.
-
-		Dev notes
-		-----
-		it uses the distance from source and requires XYCentre to be already computed.
-		'''
-		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
-		return result
 
 #===========================================================================
 # 	CLASS: BeamlineElements
@@ -911,7 +773,6 @@ class BeamlineElements(Tree):
 			self.UseRoughness = False
 			self.iRoughness = 0
 			self.iFigureError = 0
-			self.OrientationToCompute = [Optics.OPTICS_ORIENTATION.ANY]
 
 		@property
 		def iComputation(self):
@@ -943,59 +804,11 @@ class BeamlineElements(Tree):
 				return Itm
 			else:
 				return None
-		return None
+		return False
 
-#	#================================================
-#	#  FUN: RefreshPositions
-#	#================================================
-#	def RefreshPositions(self):
-#		'''
-#		Uses the data stored in PositioningDirectives of each OpticalElement in
-#		order to set the physical positions of each optical element.
-#		In so doing, the optical rays are computed as well.
-#
-#		If some element is OpticsNumericalDependent, then the Positioning operation
-#		is not done. The .Refresh method is invoked instead (at the end of all
-#		the positioning operation list)
-#		'''
-#
-#		# places an item respect with its parent (if there is any)
-#		# improve 101
-#		oeRecoveryList = []
-#		oeList = self.ItemList
-#		k = 0
-#		kTot = len(oeList)
-#		for oeY in oeList:
-#			k +=1
-#			Debug.print('%d/%d -  Positioning "%s"' % (k,kTot, oeY.Name),3)
-#
-#			if oeY.PositioningDirectives != None:
-#
-#				# Who is the reference element?
-#				#----------------------------------------------------------------
-#				if oeY.PositioningDirectives.ReferTo == 'upstream':
-#					oeX = oeY.Parent
-#				elif oeY.PositioningDirectives.ReferTo == 'locked':
-#					oeX = None
-#				elif oeY.PositioningDirectives.ReferTo == 'source':
-#					oeX = self.Source
-#				elif oeY.PositioningDirectives.ReferTo == 'absolute':
-#					oeX = None
-#				else:
-#					oeX = oeY.Parent										# even if oeY.Parent = None, that's ok. The function will handle it.
-#				#----------------------------------------------------------------
-#
-#				PositioningDirectives_UpdatePosition(oeY, oeX)
-#			else:
-#				oeRecoveryList.append(oeY)
-#
-#		# AD HOC for OpticsNuemricalDependent oe
-#		for oe in oeRecoveryList:
-#			oe.CoreOptics.Refresh()
-
-	# ================================================
+	#================================================
 	#  FUN: RefreshPositions
-	# ================================================
+	#================================================
 	def RefreshPositions(self):
 		'''
 		Uses the data stored in PositioningDirectives of each OpticalElement in
@@ -1009,153 +822,37 @@ class BeamlineElements(Tree):
 
 		# places an item respect with its parent (if there is any)
 		# improve 101
-
 		oeRecoveryList = []
 		oeList = self.ItemList
 		k = 0
 		kTot = len(oeList)
 		for oeY in oeList:
-			k += 1
-			Debug.print('%d/%d -  Positioning "%s"' % (k, kTot, oeY.Name), 3)
+			k +=1
+			Debug.print('%d/%d -  Positioning "%s"' % (k,kTot, oeY.Name),3)
 
 			if oeY.PositioningDirectives != None:
-				self.ApplyPositioningDirectives(oeY)
+
+				# Who is the reference element?
+				#----------------------------------------------------------------
+				if oeY.PositioningDirectives.ReferTo == 'upstream':
+					oeX = oeY.Parent
+				elif oeY.PositioningDirectives.ReferTo == 'locked':
+					oeX = None
+				elif oeY.PositioningDirectives.ReferTo == 'source':
+					oeX = self.Source
+				elif oeY.PositioningDirectives.ReferTo == 'absolute':
+					oeX = None
+				else:
+					oeX = oeY.Parent										# even if oeY.Parent = None, that's ok. The function will handle it.
+				#----------------------------------------------------------------
+
+				PositioningDirectives_UpdatePosition(oeY, oeX)
 			else:
 				oeRecoveryList.append(oeY)
 
 		# AD HOC for OpticsNuemricalDependent oe
 		for oe in oeRecoveryList:
 			oe.CoreOptics.Refresh()
-
-	# ================================================
-	#     PositioningDirectives_UpdatePosition
-	# ================================================
-	@staticmethod
-	def ApplyPositioningDirectives(oeY: OpticalElement):
-		'''
-
-			Parameters
-			------------------
-			oeY : OpticalElement
-				The optical element to place
-
-			Behavior
-			------------------
-			- If PositioningDirectives has ReferTo='locked' then the positioning of the present element is not computed.
-				This shall be used for elements whose position has already been computed in another BeamlineElements object,
-				and you don't want to recompute all the sequence.
-				I introduced this when I do the focus sweep, keeping an optical element fixed ('locked') and moving the screen
-				only.
-			- Upstream reference is workin as one expects to
-			- Downstream focus will find the firs element (with the same orientation) that has f2 as attribute, then
-			will use f2 as positioning distance
-			- UseAsReference=False means that the Element is not considerend for positioning other elements.
-
-			Developer notes
-			------------------
-			Bases on: XYCentre, SetXYAngle_Centre,  GetParent(...), DistanceFromParent
-
-		'''
-		Pd = oeY.PositioningDirectives
-
-		if oeY.IsSource == False:
-			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
-			oeXSameOrientation = oeY.GetParent(SameOrientation=True, OnlyReference=True)
-
-
-		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
-		# -------------------------------------------
-		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
-			pass
-
-		# =============================================================================================
-		# ABSOLUTE POSITIONING
-		# =============================================================================================
-		elif Pd.ReferTo == posdir_.ReferTo.AbsoluteReference:
-
-			# set position
-			# Debug.print(Pd.XYCentre, 5)
-
-			oeY.CoreOptics.SetXYAngle_Centre(Pd.XYCentre, Pd.Angle, WhichAngle=Pd.WhichAngle)
-
-		# =============================================================================================
-		# LOCKED POSITIONING
-		# =============================================================================================
-		elif Pd.ReferTo == 'locked':
-			'''
-			XYCentre and Angle of the OpticalElement are not changed at all.
-			Typically used if the OE has been created via deepcopy . Example: FocusSweep function.
-			'''
-			pass
-		# =============================================================================================
-		# REFERENCE = PREVIOUS or SOURCE or DOWNSTREAM
-		# =============================================================================================
-		elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
-
-			RayIn = oeXSameOrientation.CoreOptics.RayOutNominal  # The incident ray
-			LastXY = oeXSameOrientation.CoreOptics.XYCentre # XY position of the same orientation
-
-			# =============================================================================================
-			#  Set the XYCentre1   at a certain Distance from XYCentre2
-			# =============================================================================================
-			if (Pd.What == 'centre' or Pd.What == 'upstream focus') and Pd.Where == 'centre':
-
-				# All the conditions select the last arm as distance, as this is the one used in SetXYAngle_Centre
-				if Pd.ReferTo == 'source' and Pd.What == 'centre':
-					realDistance = Pd.Distance - oeXSameOrientation.DistanceFromSource
-				elif Pd.ReferTo == 'source' and Pd.What == 'upstream focus':
-					realDistance = oeY.CoreOptics.f1 - oeXSameOrientation.DistanceFromSource
-				else:
-					if Pd.ReferTo != 'source' and Pd.What == 'upstream focus':
-						realDistance = oeY.CoreOptics.f1
-					else:
-						realDistance = Pd.Distance
-
-					# If a normal optical element is given, first calculate the distance to the oeXSameOrientation.
-					# Then the newXYCentre can be calculated from the distance.
-
-					if oeX != oeXSameOrientation:
-						realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource + realDistance
-
-				newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
-				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-
-			# =============================================================================================
-			#  Set the XYCentre1   at the Dowstream focus
-			# =============================================================================================
-			elif Pd.What == 'centre' and Pd.Where == 'downstream focus':
-				# When doing FocusSweep, use 'locked' for the virtual source and go into this case...
-				'''
-				Behavior:
-				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
-				'''
-
-				#FIX 4 Aljosa :)
-				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
-					realDistance = oeXSameOrientation.CoreOptics.f2
-				else: # Find the first suitable one
-					oeXSameOrientationCurrent = oeXSameOrientation
-					realDistance = oeXSameOrientationCurrent.DistanceFromParent
-					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
-
-					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
-						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
-						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
-
-					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
-
-					#realDistance: distance from the last element with the same orientation
-				newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
-				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-
-			else:
-				raise ValueError('Wrong or un-implemented PositioningDirectives!')
-
-		else:
-			# NOT IMPLEMENTED :-)
-			print('PositioningDirectives.PARSE =: \t%s\n\t Code not implemented yet :-)' % Pd.ReferTo)
-			pass
-		Debug.print('<\end Parse>', 4)
 
 	#================================================
 	#  FUN: GetSamplingList
@@ -1175,31 +872,17 @@ class BeamlineElements(Tree):
 			if Verbose:
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
 		return NList, NameList
-
-	def ComputeFields(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True):
-		"""
-		Select the orientations and pass them individually to ComputeFieldsMediator, which is nothing else but the old
-		ComputeFields.
-
-		Parameters
-		-----
-		"""
-
-		for Orientation in self.ComputationSettings.OrientationToCompute:
-			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
-
-	# ================================================
+	#================================================
 	#  FUN: ComputeFields
-	# ================================================
-	def ComputeFieldsMediator(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True,
-							  Orientation=Optics.OPTICS_ORIENTATION.ANY) -> OpticalElement.ComputationResults:
-		"""
+	#================================================
+	def ComputeFields(self, oeStart = None, oeEnd = None, Dummy = False, Verbose = True) -> OpticalElement.ComputationResults:
+		'''
 		Perform a single simulation along the beamline.
-		This is the first function of this kind that we have created, and it does not do averages if
+		This is the first function that we have created, and it does not do averages if
 		many FigureErrors or Roughness profiles are used. If you want to do that,
 		use ComputeFieldsAndAverage
 
-		If StartElement = None, then the computation of the e.m. fields starts
+		If StartElement = None, then the computaiton of the e.m. fields starts
 		from the first element of the sequence.
 
 		Parameters
@@ -1213,34 +896,35 @@ class BeamlineElements(Tree):
 		-----
 		oeList Used.
 
-		"""
+		'''
 
 		Debug.On = Verbose
+
 
 		Action = 'not defined'
 
 		# Buffer structure which is used to propagate the signal along the elements
-		# -------------------------
+		#-------------------------
 		class PropInfo:
 			oeLast = None
-			TotalPath = 0  # path from the last active element used.
+			TotalPath = 0			#path from the last active element used.
 			N = 0
 
 		PropInfo.oeLast = self.FirstItem
 
-		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
+		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd)
 
-		#		oeStart = self.FirstItem if oeStart == None else oeStart
-		#		oeEnd = self.LastItem if oeEnd == None else oeEnd
-		#		#Picking just a subportion of oeList, if required by oeStart, oeEnd
-		#		oeList = self.GetFromTo(oeStart, oeEnd)
-		#		oeStart = oeList[0]
+#		oeStart = self.FirstItem if oeStart == None else oeStart
+#		oeEnd = self.LastItem if oeEnd == None else oeEnd
+#		#Picking just a subportion of oeList, if required by oeStart, oeEnd
+#		oeList = self.GetFromTo(oeStart, oeEnd)
+#		oeStart = oeList[0]
 
-		# Select the wavelength (CRITICAL)
+		#Select the wavelenght (CRITICAL)
 		# CRITICAL: Where shall I get Lambda from?
 		# If oeStart is a source, then from its properties.
 		# Else, from the previous computed field.
-		if (oeStart == self.FirstItem) and (oeStart.IsSource == True):
+		if (oeStart == self.FirstItem) and (oeStart.IsSource==True):
 			try:
 				Lambda = self.FirstItem.CoreOptics.Lambda
 			except:
@@ -1248,85 +932,85 @@ class BeamlineElements(Tree):
 		else:
 			Lambda = oeStart.ComputationResults.Lambda
 
+
 		k = 0
 		Ind = 1
 		for oeThis in oeList:
-			Debug.Print('\n\nCompute Fields>>-----------------\n\t Processing: ' + '\t' + oeThis.Name)
-			# ----------------------------------------------
+			Debug.Print('\n\nCompute Fields>>-----------------\n\t Processing: '  + '\t' + oeThis.Name)
+			#----------------------------------------------
 			# case: the present element is the Source
-			# ----------------------------------------------
-			if oeThis.IsSource == True:
-				# if oeThis.CoreOptics._Behaviour == 'source' : # This was the first way to do it
+			#----------------------------------------------
+			if oeThis.IsSource == True :
+			#if oeThis.CoreOptics._Behaviour == 'source' : # This was the first way to do it
 				Action = 'no Action'
 				Debug.print('\t Action:' + Action)
 				pass
-			# ----------------------------------------------
+			#----------------------------------------------
 			# case: the present element must be Ignored
-			# ----------------------------------------------
+			#----------------------------------------------
 			elif (oeThis.ComputationSettings.Ignore == True):
 				PropInfo.TotalPath += oeThis.DistanceFromParent
 				PropInfo.N += 1
 
-			# ----------------------------------------------
+			#----------------------------------------------
 			# case:  Compute the field (on this element)
-			# ----------------------------------------------
+			#----------------------------------------------
 			else:
 
-				# ----------------------------------------------
+				#----------------------------------------------
 				# oeLast is Analitical
-				# ----------------------------------------------
+				#----------------------------------------------
 				# I require to transform oeThis --> Virtual(oeThis)
 				if PropInfo.oeLast.CoreOptics._IsAnalytic == True:
 					Action = 'Evaluating analytical function (of previous OE on THIS one)'
-					Debug.print('Action: ' + Action, Ind)
+					Debug.print('Action: ' + Action,Ind)
 
 					# Transform oeThis --> oeV (virtual optical element)
-					oeV = self._MakeVirtual(oeThis, PropInfo.oeLast,
-											PropInfo.TotalPath + oeThis.DistanceFromParent) if PropInfo.N > 0 else oeThis
+					oeV = self._MakeVirtual(oeThis, PropInfo.oeLast, PropInfo.TotalPath + oeThis.DistanceFromParent) if PropInfo.N > 0 else oeThis
 					NSamples = oeV.GetNSamples(Lambda)
 
 					xV, yV = oeV.GetXY(NSamples)
 					# update registers
 
-					# ----------------------------------------------
+					#----------------------------------------------
 					# Dummy? (Analytic Branch)
-					# ----------------------------------------------
+					#----------------------------------------------
 					if Dummy == True:
-						oeThis.Results.Field = 0
+						oeThis.Results.Field  = 0
 						xThis = None
 						yThis = None
 					else:
-						Debug.print('Computing field (Analytic)', Ind + 1, True)
-						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('target object = %s' % oeThis.Name, Ind + 1)
-						Debug.pr('NSamples', Ind + 1)
+						Debug.print('Computing field (Analytic)', Ind+1, True)
+						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind+1)
+						Debug.print('target object = %s' % oeThis.Name, Ind+1)
+						Debug.pr('NSamples', Ind+1)
 
-						# --------------------------------------------
+						#--------------------------------------------
 						# DATA ==>  Storage
-						# --------------------------------------------
+						#--------------------------------------------
 						oeThis.Results.Field = PropInfo.oeLast.CoreOptics.EvalField(
-							xV,
-							yV,
-							Lambda=Lambda)
-						# -----------------------------------------------------
+												xV,
+												yV,
+												Lambda = Lambda)
+						#-----------------------------------------------------
 
 						xThis, yThis = oeThis.GetXY(NSamples)
-						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
-						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
-						Debug.print('xLast = -- not defined', Ind + 1)
-						Debug.print('yLast = -- not defined', Ind + 1)
-						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
-						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
+						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind+1)
+						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind+1)
+						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind+1)
+						Debug.print('xLast = -- not defined', Ind+1)
+						Debug.print('yLast = -- not defined', Ind+1)
+						Debug.print('len xThis = %d'  % len(xThis), Ind+1)
+						Debug.print('len yThis = %d'  % len(yThis), Ind+1)
 
 					PropInfo.N = 0
 					PropInfo.TotalPath = 0
 					PropInfo.oeLast = oeThis
-				# ----------------------------------------------
+				#----------------------------------------------
 				# oeLast is Numerical
-				# ----------------------------------------------
+				#----------------------------------------------
 				else:
-					Action = 'Evaluating numerical Huygens Fresnel (on oeThis): ' + oeThis.Name
+					Action = 'Evaluating numerical Huygens Fresnel (on oeThis)'
 					Debug.print('Action: ' + Action, Ind)
 
 					# oeThis --> xThis, yThis
@@ -1344,58 +1028,62 @@ class BeamlineElements(Tree):
 						NSamples = len(PropInfo.oeLast.Results.Field)
 
 					xThis, yThis = oeThis.CoreOptics.GetXY(NSamples)
-					# ----------------------------------------------
+					#----------------------------------------------
 					# Dummy? (Huygens branch)
-					# ----------------------------------------------
+					#----------------------------------------------
 					if Dummy == True:
-						oeThis.Results.Field = 0
+						oeThis.Results.Field= 0
 						xThis = None
 						yThis = None
 
 					else:
-						Debug.print('Computing field (Numeric)', Ind + 1)
-						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('target object = %s' % oeThis.Name, Ind + 1)
-						Debug.print('NSamples', Ind + 1)
+						Debug.print('Computing field (Numeric)', Ind+1)
+						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind+1)
+						Debug.print('target object = %s' % oeThis.Name, Ind+1)
+						Debug.pr('NSamples', Ind+1)
 
 						# definizione di promemoria
 						# EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
 
+
 						oeThis.Results.Field = PropInfo.oeLast.CoreOptics.EvalField(
-							xThis,
-							yThis,
-							Lambda=Lambda,
-							E0=PropInfo.oeLast.Results.Field,
-							NPools=1)
+												xThis,
+												yThis,
+												Lambda = Lambda,
+												E0 = PropInfo.oeLast.Results.Field ,
+												NPools = self.ComputationSettings.NPools )
+
+
 
 						xLast, yLast = PropInfo.oeLast.GetXY(NSamples)
-						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
-						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
-						Debug.print('xLast = -- not defined', Ind + 1)
-						Debug.print('yLast = -- not defined', Ind + 1)
-						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
-						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
+						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind+1)
+						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind+1)
+						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind+1)
+						Debug.print('xLast = -- not defined', Ind+1)
+						Debug.print('yLast = -- not defined', Ind+1)
+						Debug.print('len xThis = %d'  % len(xThis), Ind+1)
+						Debug.print('len yThis = %d'  % len(yThis), Ind+1)
 
-				# ----------------------------------------------
+				#----------------------------------------------
 				# DATA => Storage
-				# ----------------------------------------------
+				#----------------------------------------------
 				oeThis.Results.NSamples = NSamples
-				oeThis.Results.X = xThis
+				oeThis.Results.X= xThis
 				oeThis.Results.Y = yThis
 				oeThis.Results.S = rm.xy_to_s(xThis, yThis)
 				oeThis.Results.Action = Action
 				oeThis.Results.Lambda = Lambda
 				oeThis.Results.Name = oeThis.Name
-				# ----------------------------------------------
+				#----------------------------------------------
 				# Computing field => PropInfo
-				# ----------------------------------------------
+				#----------------------------------------------
 				PropInfo.oeLast = oeThis
 				PropInfo.TotalPath = 0
 				PropInfo.N = 0
 
+			# end if (ignore, source, etc.) -----------------
+		# end for
 		return oeList
-
 	#================================================
 	#  FUN: ComputeFields
 	#================================================
@@ -1623,47 +1311,49 @@ class BeamlineElements(Tree):
 		PositioningDirectives_UpdatePosition(oeV, oeX)
 		return oeV
 
-	# ================================================
+	#================================================
 	#  FUN: _PickOeList
-	# ================================================
-	def _PickOeList(self, oeStart=None, oeEnd=None, Orientation=Optics.OPTICS_ORIENTATION.ANY):
+	#================================================
+	def _PickOeList(self, oeStart = None, oeEnd = None, Dummy = False, Verbose = True):
 		"""
-		Return a list of OE contained between oeStart and oeEnd of given orientation.
+		Return a list of OE comprised between oeStart and oeEnd.
 		If oeStart = None, it starts from the first element.
 		If oeEnd = None, it finishes up to the last element.
+
+
 		"""
 
 		oeStart = self.FirstItem if oeStart == None else oeStart
 		oeEnd = self.LastItem if oeEnd == None else oeEnd
-		# Picking just a subportion of oeList, if required by oeStart, oeEnd
+		#Picking just a subportion of oeList, if required by oeStart, oeEnd
 		oeList = self.GetFromTo(oeStart, oeEnd)
-		oeListOriented = []
-		for _ in oeList:
-			# Any Orientation?
-			if (Orientation == Optics.OPTICS_ORIENTATION.ANY or
-				Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC):
-				oeListOriented.append(_)
 
-			#Have the same orientation?
-			elif (_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY or
-				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC or
-					_.CoreOptics.Orientation == Orientation):
-				oeListOriented.append(_)
-
-		oeStart = oeListOriented[0]
-		oeEnd = oeListOriented[-1]
-
-		return oeListOriented, oeStart, oeEnd
-
-	# ================================================
-	#  FUN: GetOpticalPath
-	# ================================================
-	def GetOpticalPath(self, oeStart: OpticalElement, oeEnd: OpticalElement):
+		oeStart = oeList[0]
+		return oeList, oeStart, oeEnd
+	#================================================
+	#  FUN: MeasureOpticalPath
+	#================================================
+	def MeasureOpticalPath(self, oeStart: OpticalElement, oeEnd: OpticalElement):
 		"""
-		Computes the path length between oeStart and oeEnd
+		Computes the path length oeStart.XYCentre, oe1.XYCentre.... oeEnd.XYCentre
 		"""
-		return abs(oeStart.DistanceFromSource - oeEnd.DistanceFromSource)
+		z = 0 # optical path
+		oeThis = oeStart
+		while True:
 
+			oeNext = oeThis.Children[0] # The following element
+			print(oeThis.Name)
+			print(oeNext.Name)
+			if oeNext == None:
+				print('MeasureOpticalPath: arrival optical element "oeEnd" not found in the 	chain')
+			else:
+				z += np.linalg.norm(oeNext.XYCentre - oeThis.XYCentre)
+				if oeNext == oeEnd:
+					break
+				else:
+					oeThis = oeNext
+
+		return z
 	#================================================
 	#  FUN: Paint
 	#================================================
@@ -1759,6 +1449,8 @@ class MakePositioningDirectives:
 	PlaceFocusAfterCentre
 	PlaceFocusAfterFocus
 	'''
+
+
 #================================================
 #     PositioningDirectives_UpdatePosition
 #================================================
@@ -1773,6 +1465,8 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 		In the future it should be put in
 		OpticalElement.SetPosition
 		and maybe implemented in an external class ('Visitor pattern')
+
+
 
 		Paramters
 		------------------
@@ -1828,7 +1522,6 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 	#-------------------------------------------
 	if 	Pd.ReferTo == posdir_.ReferTo.DoNotMove:
 		pass
-
 	# ABSOLUTE POSITIONING
 	#-------------------------------------------
 	elif Pd.ReferTo == posdir_.ReferTo.AbsoluteReference:
@@ -1843,12 +1536,8 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 	elif Pd.ReferTo == 'locked':
 		Debug.print('Locked positioning', _DebugTab)
 
-	# ==============================================================================
-	# REFERENCE:=
-	# 	-PREVIOUS ELEMENT or
-	#	-DOWNSTREAM ELEMENT or
-	#	-SOURCE
-	# ==============================================================================
+	# Reference = PREVIOUS ELEMENT or DOWNSTREAM ELEMENT or SOURCE
+	#-----------------------------------------------------------------
 	elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
 
 		Debug.print('positioning respect with upstream element', _DebugTab+1)
@@ -1863,6 +1552,7 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 			# Set position
 			newXYCentre = oeX.CoreOptics.XYCentre + Pd.Distance * tl.Normalize(RayIn.v)
 			oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle = TypeOfAngle.InputNominal)
+
 
 			Debug.print('RayIn:= ' + str(RayIn.v), _DebugTab+1)
 			Debug.print('RayIn2:= ' + str(RayIn2.v), _DebugTab+1)
@@ -1902,6 +1592,9 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 		print('PositioningDirectives.PARSE =: \t%s\n\t Code not implemented yet :-)' % Pd.ReferTo)
 		pass
 	Debug.print ('<\end Parse>',4)
+
+
+
 
 	#================================================
 	#  FUN: ComputeCaustics
@@ -1950,61 +1643,64 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 # FUN: GetNSamples_OpticalElement
 #==========================================
 def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : OpticalElement) -> int:
-	'''
-		:param Lambda: wavelength
-		:param oe0: optical element 1
-		:param oe1: optical element 2
-		:return: sampling
-		Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
-		'''
+	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
+	L0 = oe0.CoreOptics.L
+	L1 = oe1.CoreOptics.L
+	Theta0 = oe0.CoreOptics.VersorNorm.Angle
+	Theta1 = oe1.CoreOptics.VersorNorm.Angle
+	return rm.ComputeSampling(Lambda, z, L0, L1, Theta0, Theta1)
 
-	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
-	L0 = oe0.CoreOptics.L  # Size of element 1
-	L1 = oe1.CoreOptics.L  # Size of element 2
-	Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+def MeasureDistance(oe0: OpticalElement, oe1: OpticalElement) -> float:
+	""" Computes the distance b|w the centres of two optical Elements.
 
-	N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
-	print('Number of points: {}'.format(int(N)))
-
-	return int(N)
+	If oe0 and oe1 ARE NOT subsequent, the result IS NOT the optical path.
+	"""
+	return np.linalg.norm(oe1.XYCentre	 - oe0.XYCentre)
 
 
-# ================================================
+
+#================================================
 #  FUN: FocusSweep
-# ================================================
-def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.deg2rad(90)):
+#================================================
+def FocusSweep(oeFocussing, DefocusList, DetectorSize = 50e-6, AngleInNominal = np.deg2rad(90), NPools = 4):
 	''' Created for computing the field on a detector placed nearby the focal plane of
-	oeFocussing : Focussing element
+    oeFocussing : Focussing element
+
 	oeFocussing : optical element that focusses radiation
+
 	DefocusList :
+
 	Return
 	--------
 	ResultList : a list of OpticalElement._ClassComputationResults
+
 	HewList : an array of Half Energy Width of the INTENISTY
+
 	SigmaList : an array of Sigma, computed as result of gaussian fitting ON THE INTENSITY
+
 	More :	Other stuff
+
 	'''
 	DistanceList = DefocusList
 	oeFocussing = copy.deepcopy(oeFocussing)
 	# creating dummydetector
-	# ------------------------------------------------------------
+	#------------------------------------------------------------
 	d_k = Optics.Detector(
-		L=DetectorSize,
-		AngleGrazing=AngleInNominal)
+    						L=DetectorSize,
+    						AngleGrazing = AngleInNominal)
 
 	d_pd = PositioningDirectives(
-		ReferTo='upstream',
-		PlaceWhat='centre',
-		PlaceWhere='downstream focus',
-		Distance=0)
+    						ReferTo = 'upstream',
+    						PlaceWhat = 'centre',
+    						PlaceWhere = 'downstream focus',
+    						Distance = 0)
 	d = OpticalElement(
-		d_k,
-		PositioningDirectives=d_pd,
-		Name='detector')
+    						d_k,
+    						PositioningDirectives = d_pd,
+    						Name = 'detector')
 
-	oeFocussing._IsSource = True  # MUSTBE!
+	oeFocussing._IsSource = True # MUSTBE!
 	oeFocussing.PositioningDirectives.ReferTo = 'locked'
-	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
 	NSamples = oeFocussing.ComputationResults.NSamples
 	oeFocussing.ComputationSettings.NSamples = NSamples
 	oeFocussing.ComputationSettings.UseCustomSampling = True
@@ -2012,53 +1708,53 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	d.ComputationSettings.NSamples = NSamples
 	d.ComputationSettings.UseCustomSampling = True
 
-	# Bemaline elments
-	# ------------------------------------------------------------
+   # Bemaline elments
+	#------------------------------------------------------------
 	t = None
 	t = BeamlineElements()
 	t.Append(oeFocussing)
 	t.Append(d)
-	t.ComputationSettings.NPools = 1
+	t.ComputationSettings.NPools = NPools
+
 
 	# Buffer
-	# ------------------------------------------------------------
+	#------------------------------------------------------------
 	N = len(DistanceList)
-	Debug.On = False
+	Debug.On = True
 	ResultList = [ComputationSettingsForOpticalElement] * N
 	HewList = np.zeros(N)
 	SigmaList = np.zeros(N)
-
-	# Debug.print('Running: Fundation.FocusSweep',1)
+	Debug.print('Running: Fundation.FocusSweep',1)
 
 	class More():
 		Dist = np.zeros(N)
-		XYCentre = np.zeros([N, 2])
+		XYCentre = np.zeros([N,2])
 
-	for (i, Distance) in enumerate(DistanceList):
+	for (i,Distance) in enumerate(DistanceList):
 		# I set the Position the detector at distance = Distance
-		# ------------------------------------------------------------
+		#------------------------------------------------------------
 		d.PositioningDirectives.Distance = Distance
 		t.RefreshPositions()
-		t.ComputeFields(Verbose=False)
+		t.ComputeFields(Verbose = False)
 
-		# Debug.print('%i/%i) dz = %0.2f mm' %(i,N, Distance *1e3),2)
+		Debug.print('%i/%i) dz = %0.2f mm' %(i,N, Distance *1e3),2)
 
 		More.Dist[i] = np.linalg.norm(oeFocussing.CoreOptics.XYF2 - d.CoreOptics.XYCentre)
 		More.XYCentre[i] = d.CoreOptics.XYCentre
 
-		# Debug.print(oeFocussing.CoreOptics.GetPositionString(1))
+		#Debug.print(oeFocussing.CoreOptics.GetPositionString(1))
 		print(d.CoreOptics.XYCentre)
-		# Debug.print(d.CoreOptics.GetPositionString(1))
+		#Debug.print(d.CoreOptics.GetPositionString(1))
 
 		# Preparing and storing the results
-		# -----------------------------------------------------------
-		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
+		#-----------------------------------------------------------
+		DeltaS = np.mean(np.diff(d.Results.S)) # Sample spacing on the detector
 
 		ResultList[i] = copy.deepcopy(d.ComputationResults)
-		I = abs(d.ComputationResults.Field) ** 2
-		A2 = abs(d.ComputationResults.Field) ** 2
-		I = A2 / max(A2)
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS)
+		I = abs(d.ComputationResults.Field)**2
+		A2 = abs(d.ComputationResults.Field)**2
+		I = A2/max(A2)
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step = DeltaS)
 		try:
 			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationResults.S)
 		except:
@@ -2068,8 +1764,8 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 
 	# Analyze the obtained caustics (minumum value, etc)
 
-	return (ResultList, HewList, SigmaList, More)
 
+	return (ResultList, HewList,SigmaList, More)
 
 #================================================
 #  FUN: ZSweep

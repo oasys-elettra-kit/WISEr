@@ -21,13 +21,13 @@ Conventions:
 ----------------
 
 RF : stands for "reference frame"
-XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element. 
+XYSelf : couple of (x,y) coordinates expressed in the RF of the optical element.
 
 XYKLab : couple of (x,y) coordinates expressed in the RF of the laboratory
- 
+
 AngleGrazing : is the "grazing angle" (see wikipedia), and it is typically taken from the central point of an optical element.
 	In this sense it is independent on the laboratory RF.
-	
+
 AngleIn : "In" stands for Input, and designate the angle of the input beam (in the laboratory RF)
 
 AngleOut : The same as AngleIn, but for the Output beam
@@ -99,7 +99,7 @@ class OPTICS_INFO(Enum):
 					  'XYStart', 'XYCentre', 'XYEnd']
 
 
-	
+
 #=============================
 #     ENUM: OPTICS_ORIENTATION
 #=============================
@@ -181,10 +181,10 @@ class Optics(object):
 		'''
 		Created for: handling the succession of Vertical and Horizontal items in a beamline,
 		and in the the pertinent field propagation.
-		
+
 		This property is queried by the 1d propagation system in order to know which o.e. couple
 		together.
-		 
+
 		'''
 		return self._Orientation
 	@Orientation.setter
@@ -978,7 +978,7 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	#	 __init__
 	#================================================
-	def __init__(self, Lambda, Waist0, XYOrigin=[0,0], AnglePropagation=0, **kwargs):
+	def __init__(self, Lambda, Waist0, M2 = 1, XYOrigin=[0,0], AnglePropagation=0, **kwargs):
 		'''
 		Defines a purely gaussian source (M factor =1).
 
@@ -991,6 +991,7 @@ class SourceGaussian(OpticsAnalytical):
 
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
+		self.M2 = 1  #divergence
 		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
 		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
 
@@ -1044,13 +1045,27 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	@property
 	def RayleighRange(self):
-		return   np.pi * self.Waist0**2 / self.Lambda
+		'''
+		Rayleigh Range, using the formula:
+
+		.. math::
+			z_r = \pi w_0^2 /(\lambda M^2)
+
+		'''
+		return   np.pi * self.Waist0**2 / self.Lambda/self.M2
 	#================================================
 	#	 ThetaDiv
 	#================================================
 	@property
 	def ThetaDiv(self):
-		return  self.Lambda/np.pi/self.Waist0
+		'''
+		Divergence of the gaussian field .
+
+		.. math::
+			\\theta = M^2\\frac{\\lambda}{\\pi w_0}
+
+		'''
+		return  self.M^2*self.Lambda/np.pi/self.Waist0
 
 	#================================================
 	#	 WaistZ
@@ -2623,7 +2638,7 @@ class MirrorPlane(Mirror):
 		Options can be
 		- 'ideal' : the ideal mirror profile is used (default)
 		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration. 
+		 "perturbations" around the nominal configuration.
 		- 'figure error' : a figure error is added to the mirror profile, if possible
 		- 'roughness' : a roughness profile is added to the mirror profile, if possible
 		'''
@@ -5207,7 +5222,7 @@ class Slits(OpticsNumerical):
 	def GetXY(self, N):
 		'''
 		Main User-interface function for getting the x,y points of the mirror
-		in the laboratory reference frame. 
+		in the laboratory reference frame.
 		Uses the self.ComputationSettings parameters for performing the computation parameters
 		-----
 		N : int
