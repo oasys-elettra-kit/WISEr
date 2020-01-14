@@ -4,11 +4,20 @@ Created on Mon Nov 11 16:12:18 2019
 
 @author: Mike
 """
+#import enum
+#from enum import Enum, Flag
+
+
+
+
+#class UnitType(
+#					 UnitType
+#					 UnitStr : str,
+#					 UnitMath : str = None,
+#					 SiPrefixPreferred  : str = None  )
 
 class Units:
-
 	SiPrefixes = { 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
-
 	@staticmethod
 	def UnitString2UnitScale(UnitString : str):
 		''' Scans a unit string (e.g. mm, um, km) and returns the corresponding
