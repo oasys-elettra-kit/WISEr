@@ -717,10 +717,21 @@ def FindWaist(W, Z = None, Threshold = 1e-15):
 	return NumericWaist, FittedWaist
 
 
-#==============================================
-#
-#==============================================
 
+
+#==============================================
+#FUN MatrixSaveWithHeader
+#==============================================
+def MatrixSave(FileName, A, x = None, y = None, Format = '%.18e'):
+	'''
+	Save a file containing a Matrix Z, the arrays X,Y representing the axis.
+	If required, prepends to the data section an header section containing
+	labels and unit of the data contained.
+
+	'''
+#==============================================
+#FUN SaveMatrix
+#==============================================
 def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 	"""
 	Save a Matrix (NxM) into a txt file.
@@ -761,7 +772,6 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 		ColName = np.insert(y,0,None )
 		AA = np.vstack((RowName, A))
 		AAA = np.column_stack([ColName, AA])
-
 
 	np.savetxt(FileName,AAA, fmt = Format)
 

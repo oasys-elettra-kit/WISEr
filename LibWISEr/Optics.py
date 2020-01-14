@@ -991,7 +991,7 @@ class SourceGaussian(OpticsAnalytical):
 
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
-		self.M2 = 1  #divergence
+		self.M2 = 1  # quality factor
 		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
 		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
 
