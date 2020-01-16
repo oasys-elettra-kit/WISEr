@@ -2052,7 +2052,35 @@ class Metrology:
 
 
 
+	#=============================================================#
+	# FUN ReadLtpElettraJavaFileA
+	#=============================================================#
+	def ReadLtpLtpJavaFileA(Path : str,
+						 Decimation = 1,
+						 DecimationStart = 1,
+						 Delimiter = ' ',
+						 SkipLines = 0,
+						 **kwargs):
+		'''
+		Expects only a X and Y column, with no header, white space as delimiter.
+		There may be sawtooth fluctuations in the source data, in this case use:
+		"Undersampling" flag. For example:
 
+		Parameter
+		----
+		DecimateEveryN : int
+			Takes one point every N. Default is 1 (all the points). The final output
+			has the same size of the original output, because linear resampling is performed.
+			'''
+
+		#----Load Heights
+		x,h0 = FileIO.ReadXYFile(Path, Delimiter, SkipLines)
+		h0a = h0[1::2]
+		xa  = x[1::2]
+		f = scipy.interpolate.interp1d(xa,h0a, kind = 'linear', fill_value = 'extrapolate')
+		h0b = f(x)
+
+		return x ,h0b
 	#=============================================================#
 	# FUN RectangularGrating
 	#=============================================================#
