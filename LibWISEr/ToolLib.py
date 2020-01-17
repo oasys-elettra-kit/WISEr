@@ -14,6 +14,7 @@ import inspect
 import logging
 import os
 from scipy.signal import square
+from pathlib import Path as MakePath
 
 #================================
 #  FUN: PathSplit
@@ -75,6 +76,20 @@ def PathCreate(Path, IsFile = True):
 		os.makedirs(Path)
 		return True
 
+#================================
+#  RunFile
+#================================
+def ExecFile(FilePath):
+	'''
+	Executes a python file.
+
+	'''
+	FilePath = MakePath(FilePath)
+	if FilePath.exists():
+		scriptContent = open(FilePath, 'r').read()
+		exec(scriptContent)
+	else:
+		pass
 
 ##================================================================
 ##  GetWiserPath
@@ -1918,7 +1933,7 @@ class FileIO:
 		for (iLine, Line) in enumerate(Lines):
 			Line = Line.strip()
 			if Line != '':
-				Tokens = Line.split('\t')
+				Tokens = Line.split(Delimiter)
 				x[iLine] = float(Tokens[0])
 				y[iLine] = float(Tokens[1])
 
@@ -2055,7 +2070,7 @@ class Metrology:
 	#=============================================================#
 	# FUN ReadLtpElettraJavaFileA
 	#=============================================================#
-	def ReadLtpLtpJavaFileA(Path : str,
+	def ReadLtpLtpJavaFileA(PathFile : str,
 						 Decimation = 1,
 						 DecimationStart = 1,
 						 Delimiter = ' ',
@@ -2074,7 +2089,7 @@ class Metrology:
 			'''
 
 		#----Load Heights
-		x,h0 = FileIO.ReadXYFile(Path, Delimiter, SkipLines)
+		x,h0 = FileIO.ReadXYFile(PathFile, Delimiter, SkipLines)
 		h0a = h0[1::2]
 		xa  = x[1::2]
 		f = scipy.interpolate.interp1d(xa,h0a, kind = 'linear', fill_value = 'extrapolate')

@@ -2359,19 +2359,41 @@ class Mirror(OpticsNumerical):
 	#================================
 	# FigureErrorLoad
 	#================================
-	def FigureErrorLoad(self, h: float=None, Step: float=1e-3, File: str='', AmplitudeScaling: float=1,
-						 Append: bool=True, SubtractMean=False):
+	def FigureErrorLoad(self, h: float=None,
+							 Step: float=1e-3,
+							 File: str='',
+							 AmplitudeScaling: float=1,
+							 Append: bool=False,
+							 SubtractMean=False):
+
 		'''
 		Appends a 1darray to the list of Figure Errors.
 
-		If Append = False, clear the existing list of FigureErrors.
+		The function is the result of progressive coding, so it is far for being crystal-clear.
+
+		In the ideal case, it would be nice to use the "File" parameter. However, pretty much
+		depends on the file format, and the function is not trained to handle so many data formats.
+
+		For this reason, it is safer to use "h" and "Step" arguments.
 
 		Parameters
 		--------------------
-		h : 1d array. It is the height vector (m).
-		Assumed to be evenly spaced. Stored in FigureErrors.
+		h : 1d array.
+			Figure error. 	Assumed to be evenly spaced. Stored in FigureErrors. Alternative to: File
 
-		Step : lateral spacing of h samples. Stored in FigureErrorSteps
+		Step : Scalar
+			lateral spacing of h samples. Stored in FigureErrorSteps.
+
+
+		File : string
+			Path to the data file
+
+		AmplitudeScaling : float
+			Factor multiplying the value of h.
+
+		Append : bool
+			If Append = False, it clears the existing list of FigureErrors.
+
 		@ToRepair: adjustment of mirror length
 		'''
 
