@@ -5,7 +5,7 @@ Created on Thu Jan 12 11:58:09 2017
 @author: Mic
 """
 from __future__ import division
-import scipy as sp
+import scipy
 import LibWISEr.must  as must
 from LibWISEr.must import *
 from collections import namedtuple
@@ -2075,6 +2075,7 @@ class Metrology:
 						 DecimationStart = 1,
 						 Delimiter = ' ',
 						 SkipLines = 0,
+						 ReturnStep = False,
 						 **kwargs):
 		'''
 		Expects only a X and Y column, with no header, white space as delimiter.
@@ -2086,6 +2087,11 @@ class Metrology:
 		DecimateEveryN : int
 			Takes one point every N. Default is 1 (all the points). The final output
 			has the same size of the original output, because linear resampling is performed.
+
+		ReturnStep : bool
+			If True, returns the tuple *x,h0,Step* where  ``Step = np.mean(np.diff(x))``.
+			This becaouse it may happen that the separation recorded on the LTP files varies a little bit.
+
 			'''
 
 		#----Load Heights
@@ -2094,8 +2100,11 @@ class Metrology:
 		xa  = x[1::2]
 		f = scipy.interpolate.interp1d(xa,h0a, kind = 'linear', fill_value = 'extrapolate')
 		h0b = f(x)
-
-		return x ,h0b
+		if ReturnStep == False:
+			return x ,h0b
+		else:
+			Step = np.mean(np.diff(x))
+			return x, h0b, Step
 	#=============================================================#
 	# FUN RectangularGrating
 	#=============================================================#
@@ -2304,12 +2313,14 @@ class Metrology:
 		Notes: Index +1 => In order so that the maximum is e.h. 5/5 and min is 1/5
 		'''
 
+		PlotLabel  = '[%d/%d, L=%0.1f mm out of %0.1f mm]' % (Index + 1,Tot, x[-1] - x[0], OpticalElement.CoreOptics.L)
 		plt.figure(FigureIndex, **kwargs)
-		plot(x * 1e3,y * 1e9)
+		plot(x * 1e3,y * 1e9, label = PlotLabel)
 		plt.xlabel('mm')
 		plt.ylabel('nm')
 		plt.title(Item.Name + TitleStr)
 		plt.grid('on')
+		plt.legend()
 #		plt.legend('oe:'+ OpticalElement.Name)
 		return None
 

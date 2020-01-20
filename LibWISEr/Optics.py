@@ -2397,17 +2397,19 @@ class Mirror(OpticsNumerical):
 		@ToRepair: adjustment of mirror length
 		'''
 
-		# Read data from file
+		# Data is read from file
 		if h is None and File!= '':
 			h = np.loadtxt(File) * AmplitudeScaling
+		# Data is passed as argument
 		else:
 			h = h * AmplitudeScaling
 
 		if SubtractMean:
 			h = h - np.mean(h)
-		if not Append:
-			# empties the buffer
+		if Append == False:
+			# empties the buffer.
 			self._FigureErrors = []
+			self._FigureErrorSteps = []
 
 		self._FigureErrors.append(h)
 		self._FigureErrorSteps.append(Step)
