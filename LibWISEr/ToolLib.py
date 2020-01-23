@@ -5,7 +5,7 @@ Created on Thu Jan 12 11:58:09 2017
 @author: Mic
 """
 from __future__ import division
-import scipy as sp
+import scipy
 import LibWISEr.must  as must
 from LibWISEr.must import *
 from collections import namedtuple
@@ -14,6 +14,7 @@ import inspect
 import logging
 import os
 from scipy.signal import square
+from pathlib import Path as MakePath
 
 #================================
 #  FUN: PathSplit
@@ -75,6 +76,20 @@ def PathCreate(Path, IsFile = True):
 		os.makedirs(Path)
 		return True
 
+#================================
+#  RunFile
+#================================
+def ExecFile(FilePath):
+	'''
+	Executes a python file.
+
+	'''
+	FilePath = MakePath(FilePath)
+	if FilePath.exists():
+		scriptContent = open(FilePath, 'r').read()
+		exec(scriptContent)
+	else:
+		pass
 
 ##================================================================
 ##  GetWiserPath
@@ -717,10 +732,21 @@ def FindWaist(W, Z = None, Threshold = 1e-15):
 	return NumericWaist, FittedWaist
 
 
-#==============================================
-#
-#==============================================
 
+
+#==============================================
+#FUN MatrixSaveWithHeader
+#==============================================
+def MatrixSave(FileName, A, x = None, y = None, Format = '%.18e'):
+	'''
+	Save a file containing a Matrix Z, the arrays X,Y representing the axis.
+	If required, prepends to the data section an header section containing
+	labels and unit of the data contained.
+
+	'''
+#==============================================
+#FUN SaveMatrix
+#==============================================
 def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 	"""
 	Save a Matrix (NxM) into a txt file.
@@ -761,7 +787,6 @@ def SaveMatrix(FileName, A, x = None, y = None, Format = '%.18e'):
 		ColName = np.insert(y,0,None )
 		AA = np.vstack((RowName, A))
 		AAA = np.column_stack([ColName, AA])
-
 
 	np.savetxt(FileName,AAA, fmt = Format)
 
@@ -1908,7 +1933,7 @@ class FileIO:
 		for (iLine, Line) in enumerate(Lines):
 			Line = Line.strip()
 			if Line != '':
-				Tokens = Line.split('\t')
+				Tokens = Line.split(Delimiter)
 				x[iLine] = float(Tokens[0])
 				y[iLine] = float(Tokens[1])
 
@@ -2042,7 +2067,49 @@ class Metrology:
 
 
 
+	#=============================================================#
+	# FUN ReadLtpElettraJavaFileA
+	#=============================================================#
+	def ReadLtpLtpJavaFileA(PathFile : str,
+						 Decimation = 1,
+						 DecimationStart = 1,
+						 Delimiter = ' ',
+						 SkipLines = 0,
+						 ReturnStep = False,
+						 XScaling = 1e-3,
+						 YScaling = 1,
+						 **kwargs):
+		'''
+		Expects only a X and Y column, with no header, white space as delimiter.
+		There may be sawtooth fluctuations in the source data, in this case use:
+		"Undersampling" flag. For example:
 
+		Parameter
+		----
+		DecimateEveryN : int
+			Takes one point every N. Default is 1 (all the points). The final output
+			has the same size of the original output, because linear resampling is performed.
+
+		ReturnStep : bool
+			If True, returns the tuple *x,h0,Step* where  ``Step = np.mean(np.diff(x))``.
+			This becaouse it may happen that the separation recorded on the LTP files varies a little bit.
+
+			'''
+
+		#----Load Heights
+		x,h0 = FileIO.ReadXYFile(PathFile, Delimiter, SkipLines)
+		x = x * XScaling
+		h0 = h0 * YScaling
+
+		h0a = h0[1::2]
+		xa  = x[1::2]
+		f = scipy.interpolate.interp1d(xa,h0a, kind = 'linear', fill_value = 'extrapolate')
+		h0b = f(x)
+		if ReturnStep == False:
+			return x ,h0b
+		else:
+			Step = np.mean(np.diff(x))
+			return x, h0b, Step
 	#=============================================================#
 	# FUN RectangularGrating
 	#=============================================================#
@@ -2251,12 +2318,14 @@ class Metrology:
 		Notes: Index +1 => In order so that the maximum is e.h. 5/5 and min is 1/5
 		'''
 
+		PlotLabel  = '[%d/%d, L=%0.1f mm out of %0.1f mm]' % (Index + 1,Tot, x[-1] - x[0], OpticalElement.CoreOptics.L)
 		plt.figure(FigureIndex, **kwargs)
-		plot(x * 1e3,y * 1e9)
+		plot(x * 1e3,y * 1e9, label = PlotLabel)
 		plt.xlabel('mm')
 		plt.ylabel('nm')
 		plt.title(Item.Name + TitleStr)
 		plt.grid('on')
+		plt.legend()
 #		plt.legend('oe:'+ OpticalElement.Name)
 		return None
 
