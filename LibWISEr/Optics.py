@@ -5170,7 +5170,7 @@ class Slits(OpticsNumerical):
 		self.XY = array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
-		self.Orientation = OPTICS_ORIENTATION.Any
+		self.Orientation = OPTICS_ORIENTATION.ANY
 
 		OpticsNumerical
 		self._Transformation_List = [ [], [], [] ]
