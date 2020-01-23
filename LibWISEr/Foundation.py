@@ -887,7 +887,7 @@ class OpticalElement(TreeItem):
 		Dev notes
 		-----
 		It uses the distance from source and requires XYCentre to be already computed.
-		Best version (20201023)
+		Best version (20201023) - AF + MM
 		'''
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
