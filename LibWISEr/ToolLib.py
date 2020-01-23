@@ -2076,6 +2076,8 @@ class Metrology:
 						 Delimiter = ' ',
 						 SkipLines = 0,
 						 ReturnStep = False,
+						 XScaling = 1e-3,
+						 YScaling = 1,
 						 **kwargs):
 		'''
 		Expects only a X and Y column, with no header, white space as delimiter.
@@ -2096,6 +2098,9 @@ class Metrology:
 
 		#----Load Heights
 		x,h0 = FileIO.ReadXYFile(PathFile, Delimiter, SkipLines)
+		x = x * XScaling
+		h0 = h0 * YScaling
+
 		h0a = h0[1::2]
 		xa  = x[1::2]
 		f = scipy.interpolate.interp1d(xa,h0a, kind = 'linear', fill_value = 'extrapolate')

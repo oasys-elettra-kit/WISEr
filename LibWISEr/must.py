@@ -18,13 +18,11 @@ import time
 from scipy.interpolate import interp1d
 
 from matplotlib.ticker import MultipleLocator
-
 from os.path import join as PathJoin
 
 
 
 
-#def GridMinor()
 #ax2.yaxis.set_minor_locator(minorLocator)
 
 def execfile(filepath):

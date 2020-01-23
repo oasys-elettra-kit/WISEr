@@ -3,6 +3,9 @@
 Created on Fri May 12 10:05:38 2017
 
 @author: Mic
+
+Remember:
+Waist0E = Waist0I/sqrt(2) = Sigma0I/2
 """
 
 
