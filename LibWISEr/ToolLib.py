@@ -1939,6 +1939,46 @@ class FileIO:
 
 		return x,y
 
+	#==============================================
+	# FUN SaveToH5
+	#==============================================
+
+	def SaveToH5(FileName='output.hdf5', GroupNames=None, values=None):
+		"""
+		Save to hdf5 file.
+
+		len(group_names) must be equal to len(values).
+
+		group_names is a Python list, containing strings describing the i-th value
+		in values list.
+
+		values is a Python list, containing values corresponding to the i-th
+		group_name. The elements can be of any shape and type, as long as they fit
+		into a Python list
+
+		Parameters
+		------------
+		FileName : string
+			filename of the hdf5 output
+		group_names : list
+			group names in hdf5
+		values : list
+			values corresponding to group_names
+		"""
+		# Ensures that the path exists
+		PathCreate(FileName, True)
+
+		import h5py # For hdf5 files
+
+		DataFile = h5py.File(FileName, 'w')
+
+		for i, GroupName in enumerate(GroupNames):
+			DataFile.create_dataset(GroupName, data=values[i])
+
+		DataFile.close()
+
+		return None
+
 class CommonPlots:
 
 	#=============================================================#
