@@ -1148,11 +1148,17 @@ class SourceGaussian(OpticsAnalytical):
 
 		'''
 		(z,r) = rm._MatchArrayLengths(z,r)
-
+		# EQUATION: of the Normalized Gaussian field.
+		# Normalized to the integrated power
 		#Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
-		Norm =	 (self.Waist0 / self.Waist(z))
+		Norm =	 (self.Waist0 / self.Waist(z)) # Normalize peak to 1
 		A = np.exp(-r**2/self.Waist(z)**2)
-		return Norm * A *	np.exp(1j * self.Phase(z, r))
+		E = Norm * A *	np.exp(1j * self.Phase(z, r))
+		# Normalize to the integrated power
+		I = np.abs(E)**2
+		Norm2 = np.sqrt(np.sum(I))
+
+		return E/Norm2
 
 
  	#================================

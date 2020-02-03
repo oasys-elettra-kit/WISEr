@@ -577,7 +577,10 @@ def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), b
         ybi = yb[i + bStart]
 #        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
         Normalization = 1/(sqrt(Lambda))
-#        Normalization = 1/Lambda
+#        Normalization = 1
+#        Normalization = 1/Lambda**(-sqrt(2))
+        Normalization = 1/np.sqrt(Lambda)
+
         RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
         EbTok[i] = Normalization * sum(Ea / RList * exp(-1j * k * RList))
 

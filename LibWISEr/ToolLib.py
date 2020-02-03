@@ -1992,7 +1992,7 @@ class CommonPlots:
 	#=============================================================#
 	def RadiationAtOpticalElement(OptElement,
 							   XUnitPrefix = 'm' ,
-							   Normalize = True ,
+							   Normalize = False ,
 							   FigureIndex = None,
 							   Type = 'f',
 							   AppendToTitle = '',
@@ -2013,6 +2013,9 @@ class CommonPlots:
 		Type: string ['f'|'i']
 			- 'f' : plots the Field (absolute value)
 			- 'i' : plots the Intensity
+
+		kwargs are redirected to the plot command. So you can use the label
+		parameter to assign plot names
 
 		'''
 		try:
@@ -2051,6 +2054,9 @@ class CommonPlots:
 			plt.xlabel(XUnitPrefix+'m')
 			plt.ylabel(YLabel)
 			plt.grid('on')
+
+			if LegendOn:
+				plt.legend()
 		except:
 			pass
 
@@ -2081,6 +2087,7 @@ class CommonPlots:
 							   Normalize = True ,
 							   FigureIndex = None,
 							   AppendToTitle = '',
+							   LegendOn = False,
 							   **kwargs ):
 		'''
 		Specialised version of RadiationAtOpticalElement
