@@ -1979,6 +1979,79 @@ class FileIO:
 
 		return None
 
+	def SaveToH5t(FileName='output.hdf5', PathValueTuples = None,
+			   TryToExpandDataContainers = True):
+		"""
+		Save to hdf5 file. "i" stands for "tuples", which is the data input data type.
+
+		len(group_names) must be equal to len(values).
+
+		Parameters
+		------------
+		FileName : string
+			filename of the hdf5 output
+
+		PathValueTuples : list of tuples
+			List of tuples in the form (String to path, value)
+
+		TryToExpandDataClasses : bool
+			If true, Values of type 'type' are treated as data containers and an
+			additional search is performed through them. The final path is given by
+			the specified path + the new found attribute.
+
+			Example:
+			Tuple = ('Temperature', TemperatureInfo)
+			and
+			*TemperatureInfo.T = 12*
+			*TemperatureInfo.Location = Trieste*
+			*TemperatureInfo.Units = Celsius*
+
+			Then the entries stored in the h5 file will be
+			'Temerature/TemperatureInfo/T'
+			'Temerature/TemperatureInfo/Location'
+			'Temerature/TemperatureInfo/Units'
+
+			**What if** it happens to have one more nesting level? E.g. ? *TemperatureInfo.AnotherDataStructure*
+
+			In principle the stuff shall go on the same way... but we have to work on that.
+
+			**CAVEAT** Such an introspection mechanism only exports the following data types:
+				- int
+				- float
+				- numpy.ndarray
+				- str
+
+		Notice
+		------------
+
+
+		"""
+		from Scrubs import ListAttr
+		# Ensures that the path exists
+		PathCreate(FileName, True)
+
+		import h5py # For hdf5 files
+
+		DataFile = h5py.File(FileName, 'w')
+
+
+		for i, Tuple in enumerate(PathValueTuples):
+			GroupName = Tuple[0]
+			Value = Tuple[1]
+
+			# Attempt Data container expansion
+			if type(Value) == type and TryToExpandDataContainers:
+				StrAttr, ObjAttr = ListAttr(Value, Preset = 'mathstr', ReturnObject = True)
+
+				SaveToH5t(FileName = FileName)
+			# Do normal operations
+			else:
+				DataFile.create_dataset(GroupName, data=Value)
+
+		DataFile.close()
+
+		return None
+
 class CommonPlots:
 
 	#=============================================================#

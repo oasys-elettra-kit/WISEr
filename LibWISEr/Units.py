@@ -35,6 +35,13 @@ class Units:
 
 		return Units.SiPrefixes[UnitString.strip()[0]]
 
+#class (Unit ='',  # e.g. 'm'
+#	   Name = '',   # e.g. 'FocalShift' if empty set equal to label.
+#	   Label = '',  # e.g. '\Delta f' if empty set equal to Name
+#	   Multiplier = 1, # 1 if data are in SI. 1e-3 if data are in mm.
+#	    PlotMultiplier = 1): # 1e-3 if data shall be plot in mm
+#
+
 # Code below copied from
 #https://stackoverflow.com/questions/10969759/python-library-to-convert-between-si-unit-prefixes
 # credit if used

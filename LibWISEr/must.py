@@ -20,7 +20,7 @@ from scipy.interpolate import interp1d
 from matplotlib.ticker import MultipleLocator
 from os.path import join as PathJoin
 
-
+from LibWISEr.Scrubs import DataContainer
 
 
 #ax2.yaxis.set_minor_locator(minorLocator)
@@ -100,3 +100,23 @@ def ReadXYFile(Path, Delimiter = '\t', SkipLines = 2):
 
 	return x,y
 
+#========================================================
+#	FUN: frozen
+#========================================================
+def frozen(set):
+    "Raise an error when trying to set an undeclared name."
+    def set_attr(self,name,value):
+        if hasattr(self,name):
+            set(self,name,value)
+        else:
+            raise AttributeError("You cannot add attributes to %s" % self)
+    return set_attr
+#========================================================
+#	class: Frozen
+#========================================================
+class Frozen(object):
+    """Subclasses of Frozen are frozen, i.e. it is impossibile to add
+     new attributes to them and their instances."""
+    __setattr__=frozen(object.__setattr__)
+    class __metaclass__(type):
+        __setattr__=frozen(type.__setattr__)

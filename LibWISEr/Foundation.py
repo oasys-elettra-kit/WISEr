@@ -2070,8 +2070,216 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	# Analyze the obtained caustics (minumum value, etc)
 
 	return (ResultList, HewList, SigmaList, More)
+# ================================================
+#  FUN: FocusFind
+# ================================================
+def FocusFind(oeFocussing,	  DefocusRange = (-20e-3, 20e-3),
+			  DetectorSize=50e-6,
+			  MaxIter = 21,
+			  AngleInNominal=np.deg2rad(90)):
+	'''
+	Find the best focus. Similar to FocusSweep, except that it does not provide the
+	full sampling of the DefocusRange, but it uses an optimization algorithms to find
+	the best focus as fast as possible.
+
+	Faster, perhaps less fancy.
+
+	For automation purposes, when producing publication-quality plots,
+	it could be a nice idea to use feed FocusSweep with the
+	results of FocusFind.
+
+	Parameters
+	------
+	oeFocussing : Focussing element
+	oeFocussing : optical element that focusses radiation
+	DefocusList : array like
+		List of defocus distances
+
+	Return
+	--------
+	Results : struct-like class
+		with the following attributes
+
+	- BestField : 1d-array (complex)
+				Field at the best focus
+	- BestDefocus : scalar (real)
+				Defocus of the best spot
+	- BestHew : scalar (real)
+				Half energy width of the best spot
+
+	- OptResult : OptimizationResult object
+				Contains the results of the optimization
+
+	Notes
+	--------
+	In the test I did, convergence was reached within few (5-7) iterations,
+	with BestDefocus of the order of 10mm (which was a pretty high value, indeed!).
+	N of samples used: 1e4, lambda=2nm [MMan2020]
+
+	'''
+
+	from scipy import optimize as opt
+
+	oeFocussing = copy.deepcopy(oeFocussing)
+	# creating dummydetector
+	# ------------------------------------------------------------
+	d_k = Optics.Detector(
+		L=DetectorSize,
+		AngleGrazing=AngleInNominal)
+
+	d_pd = PositioningDirectives(
+		ReferTo='upstream',
+		PlaceWhat='centre',
+		PlaceWhere='downstream focus',
+		Distance=0)
+	d = OpticalElement(
+		d_k,
+		PositioningDirectives=d_pd,
+		Name='detector')
+
+	oeFocussing._IsSource = True  # MUSTBE!
+	oeFocussing.PositioningDirectives.ReferTo = 'locked'
+	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
+	NSamples = oeFocussing.ComputationResults.NSamples
+	oeFocussing.ComputationSettings.NSamples = NSamples
+	oeFocussing.ComputationSettings.UseCustomSampling = True
+
+	d.ComputationSettings.NSamples = NSamples
+	d.ComputationSettings.UseCustomSampling = True
+
+	# Bemaline elments
+	# ------------------------------------------------------------
+	t = None
+	t = BeamlineElements()
+	t.Append(oeFocussing)
+	t.Append(d)
+
+	# Buffer Variabnles
+	#------------------------------------------------------------
+	DefocusList = []
 
 
+	# Function to Minimize
+	# ------------------------------------------------------------
+	def ComputeHew(Defocus, d,t):
+		# I set the Position the detector at Defocus = Defocus
+		# ------------------------------------------------------------
+		d.PositioningDirectives.Distance = Defocus
+		t.RefreshPositions()
+		# Perform the computation
+		t.ComputeFields(Verbose=False)
+		I = abs(d.ComputationData.Field) ** 2
+		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
+
+		return Hew
+
+	OptResult = opt.minimize_scalar(ComputeHew,
+								 method='bounded',
+								 bounds = DefocusRange,
+								 options = {'maxiter' : MaxIter, 'disp' : True},
+								 args = (d,t)
+								 )
+#	OptResult = opt.bisect(HewToMinimize,
+#								a = DefocusRange[0],
+#								b = DefocusRange[1],
+#								full_output = True,
+#								xtol = 0.3e-3,
+#								args = (d,t)
+#								 )
+
+#	OptResult = opt.minimize(HewToMinimize,
+#								  x0 = 2.5 ,
+#								method = 'Powell',
+#								options = {'xtol' :  0.2e-3},
+#								args = (d,t)
+#								 )
+	class Results():
+		pass
+
+	Results.BestField = d.ComputationData.Field
+	Results.BestDefocus = OptResult.x
+	Results.BestHew = OptResult.fun
+	Results.OptResult = OptResult
+
+	return Results
+
+# ================================================
+#  FUN: FocusFind
+# ================================================
+def FocusSweep2(oeFocussing,
+			  DefocusList ,
+			  DetectorSize=50e-6,
+			  AngleInNominal=np.deg2rad(90)):
+	'''
+
+	Debug purposes
+
+	'''
+
+	from scipy import optimize as opt
+	oeFocussing = copy.deepcopy(oeFocussing)
+	# creating dummydetector
+	# ------------------------------------------------------------
+	d_k = Optics.Detector(
+		L=DetectorSize,
+		AngleGrazing=AngleInNominal)
+
+	d_pd = PositioningDirectives(
+		ReferTo='upstream',
+		PlaceWhat='centre',
+		PlaceWhere='downstream focus',
+		Distance=0)
+	d = OpticalElement(
+		d_k,
+		PositioningDirectives=d_pd,
+		Name='detector')
+
+	oeFocussing._IsSource = True  # MUSTBE!
+	oeFocussing.PositioningDirectives.ReferTo = 'locked'
+	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
+	NSamples = oeFocussing.ComputationResults.NSamples
+	oeFocussing.ComputationSettings.NSamples = NSamples
+	oeFocussing.ComputationSettings.UseCustomSampling = True
+
+	d.ComputationSettings.NSamples = NSamples
+	d.ComputationSettings.UseCustomSampling = True
+
+	# Bemaline elments
+	# ------------------------------------------------------------
+	t = None
+	t = BeamlineElements()
+	t.Append(oeFocussing)
+	t.Append(d)
+
+	# Buffer Variabnles
+	#------------------------------------------------------------
+	N = len(DefocusList)
+	HewList = np.zeros(N)
+
+	# ComputeHew
+	# ------------------------------------------------------------
+	def ComputeHew(Defocus, d,t):
+		# I set the Position the detector at Defocus = Defocus
+		# ------------------------------------------------------------
+		d.PositioningDirectives.Distance = Defocus
+		t.RefreshPositions()
+
+		# Perform the computation
+		t.ComputeFields(Verbose=False)
+		I = abs(d.ComputationData.Field) ** 2
+		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
+
+		return Hew
+
+	# Focus Sweep
+	# ------------------------------------------------------------
+	for iDefocus, Defocus in enumerate( DefocusList):
+		Hew = ComputeHew(Defocus, d,t)
+		HewList[iDefocus] = Hew
+
+	return HewList
 #================================================
 #  FUN: ZSweep
 #================================================

@@ -24,7 +24,7 @@ import LibWISEr.Foundation as Foundation
 import LibWISEr.Optics as Optics
 import LibWISEr.Noise as Noise
 import LibWISEr.FermiSource as Fermi
-
+import LibWISEr.Scrubs
 # Worth of mention objects / Frequently used aliases
 #=======================================================================
 from LibWISEr.Foundation import OpticalElement

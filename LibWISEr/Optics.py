@@ -1154,6 +1154,7 @@ class SourceGaussian(OpticsAnalytical):
 		Norm =	 (self.Waist0 / self.Waist(z)) # Normalize peak to 1
 		A = np.exp(-r**2/self.Waist(z)**2)
 		E = Norm * A *	np.exp(1j * self.Phase(z, r))
+
 		# Normalize to the integrated power
 		I = np.abs(E)**2
 		Norm2 = np.sqrt(np.sum(I))
