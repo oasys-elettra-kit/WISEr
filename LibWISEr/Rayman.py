@@ -539,48 +539,49 @@ def HuygensIntegral_1d_Kernel_Mule(Lambda, Ea, xa, ya, xb, yb, bStart = None, bE
 #==============================================================================
 # 	FUN: HuygensIntegral_1d_Kernel
 #==============================================================================
-@jit(nopython=True, nogil=True, parallel=True)
-def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), bEnd=np.int64(0)):
+@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
+def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     """
     Parameters
     --------------------
-    Lambda : float
+    wl : float
         Wavelength (m)
-    Ea : N x M complex array
+    Ea : 1d complex array
         Electromagnetic Field
-    xa, ya : 1darray float
+    xa, ya : 1d array float
         Coordinates of the start plane
     xb, yb : 1d array float
         Coordinates of the final plane
-    bStart : int
-        Start index on the start plane
-    bEnd : int
-        End index on the final plane
-
     The computation is performed on the elements
     xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
     """
 
-    k = 2. * pi / Lambda
+    k = 2. * np.pi / wl
 
-    if bStart == -1:
-        bStart = 0
-        bEnd = np.prod(np.int64(xb.shape))
+    bStart = 0
+    # bEnd = prod(int64(xb.shape))
+    bEnd = 1.
+    for x in xb.shape:
+        bEnd = x * bEnd
 
-    EbTokN = bEnd - bStart
-    EbTok = np.empty(EbTokN, dtype=np.complex128)
-    RList = np.empty(EbTokN, dtype=np.float64)
+    EbTokN = np.int32(bEnd - bStart)
+    EbTok = np.zeros(EbTokN, dtype=np.complex128)
 
-    # loop on items within the segment of B
     for i in prange(0, EbTokN):
-        xbi = xb[i + bStart]
-        ybi = yb[i + bStart]
-#        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
-        Normalization = 1/(sqrt(Lambda))
-#        Normalization = 1/Lambda
-        RList = sqrt((xa - xbi)**2 + (ya - ybi)**2)
-        EbTok[i] = Normalization * sum(Ea / RList * exp(-1j * k * RList))
+        xbi = xb[i]
+        ybi = yb[i]
+        # Preliminary normalisation
+        # 17/01/2017
+        # Normalization = self.L * self.(Alpha)/(Lambda * )
+        # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
 
+        RList = np.sqrt((xa - xbi)**2 + (ya - ybi)**2)
+
+        #EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
+        D = Ea / RList * np.exp(-1j * k * RList)
+        EbTok[i] = np.sum(D)
+
+    EbTok = 1. / np.sqrt(wl) * EbTok
 
     return EbTok
 
