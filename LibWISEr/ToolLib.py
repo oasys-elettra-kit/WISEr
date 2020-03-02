@@ -226,6 +226,46 @@ def Oversample(x = np.array([]), N=1):
 	x = np.array([])
 	for i, xi in enumerate(x):
 		x = np.append()
+
+#def CombinedRange(ListOfTuples, UseLinspace = False):
+#	'''
+#	ListOfTuples is a list of tuples containing the parameters
+#	of the scansion. Each tuple is in the form
+#
+#	( (Start, Stop, A) (Value) ) or
+#	( (Start, Stop, A) (StartValue, StopValue))
+#
+#	The N of samples of the second variables are the same of the firs one.
+#
+#	if UseLinspace = True, then Step is the number of samples, and the
+#	np.linspace function is called instead.
+#
+#	'''
+#	# preconditioning
+#	if type(ListOfTuples) is list:
+#		pass
+#	else:
+#		ListOfTuples = list(ListOfTuples)
+#
+#	if UseLinspace:
+#		RangeFunction = np.linspace
+#	else:
+#		RangeFunction = np.arange
+#
+#	for iTuple, Tuple in ListOfTuples:
+#
+#		for iSubtuple, Subtuple in
+#		Start = Tuple[0]
+#		Stop = Tuple[1]
+#		A = Tuple[2]
+#		Array = list(RangeFunction(Start,Stop,A))
+#		N = len(Array)
+
+
+
+
+
+	pass
 #================================
 #  SamplingOverLine
 #================================
@@ -1979,10 +2019,20 @@ class FileIO:
 
 		return None
 
-	def SaveToH5t(FileName='output.hdf5', PathValueTuples = None,
-			   TryToExpandDataContainers = True):
+	#==============================================
+	# FUN SaveToH5t
+	#==============================================
+	def SaveToH5t(FileName='output.hdf5', GroupValueTuples = None,
+			   Attributes = None,
+			   ExpandDataContainers = True):
 		"""
 		Save to hdf5 file. "i" stands for "tuples", which is the data input data type.
+
+		This function supports the *DataContainer* class. This means that:
+			- If a valid h5 type is passed, it is saved.
+			- A DataContainer object is passed, it is processed looking for the valid
+				h5 types. The behavior is commanded by the flag: TryToExpandDataClasses.
+
 
 		len(group_names) must be equal to len(values).
 
@@ -2021,12 +2071,15 @@ class FileIO:
 				- numpy.ndarray
 				- str
 
-		Notice
+		Dev Notes
 		------------
-
+		Linked to Scrubs.DataContainer object for the advanced functionality of DataCointainer
+		expasion
 
 		"""
-		from Scrubs import ListAttr
+		PathValueTuples  = GroupValueTuples
+		from Scrubs import ListAttr, ListAttrRecursive
+		from LibWISEr.Scrubs import DataContainer # otherwise the type match does not work properly
 		# Ensures that the path exists
 		PathCreate(FileName, True)
 
@@ -2034,20 +2087,31 @@ class FileIO:
 
 		DataFile = h5py.File(FileName, 'w')
 
-
+		# loop on each tuple in the form: (Path, Value)
+		# Path is actually referred to as 'group'
 		for i, Tuple in enumerate(PathValueTuples):
 			GroupName = Tuple[0]
 			Value = Tuple[1]
 
-			# Attempt Data container expansion
-			if type(Value) == type and TryToExpandDataContainers:
-				StrAttr, ObjAttr = ListAttr(Value, Preset = 'mathstr', ReturnObject = True)
+			# Performs DataContainer expansion
+			if type(Value) == DataContainer and ExpandDataContainers:
+				SubItems = Value._GetSubItems(Preset = 'mathstr')
 
-				SaveToH5t(FileName = FileName)
+				# Digest each SubItem and prepare it for being attached to the H5 output
+				for SubItem in SubItems:
+						SubGroupName = GroupName + '/' + SubItem[0]
+						SubValue = SubItem[1]
+						DataFile.create_dataset(SubGroupName, data=SubValue)
+
+
+
 			# Do normal operations
 			else:
 				DataFile.create_dataset(GroupName, data=Value)
-
+		Items = list(Attributes.items())
+		for Attr in Items:
+			DataFile.attrs[Attr[0]] = Attr[1]
+#		DataFile.attrs = Attributes
 		DataFile.close()
 
 		return None

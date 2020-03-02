@@ -157,6 +157,7 @@ def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None
                 RHi = myR;
             myR = np.ceil(RLow + RHi)/2;
             DeltaR = RHi-RLow ;
+
     elif AlgorithmType == 0 :
         #================================================
         # Algoritmo stupido
@@ -586,7 +587,67 @@ def HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), b
 
 
     return EbTok
-
+#==============================================================================
+# 	FUN: HuygensIntegral_1d_Kernel_Dark
+#==============================================================================
+#@jit(nopython=True, nogil=True, parallel=True)
+#def HuygensIntegral_1d_Kernel_Dark(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), bEnd=np.int64(0)):
+#    """
+#    Parameters
+#    --------------------
+#    Lambda : float
+#        Wavelength (m)
+#    Ea : N x M complex array
+#        Electromagnetic Field
+#    xa, ya : 1darray float
+#        Coordinates of the start plane
+#    xb, yb : 1d array float
+#        Coordinates of the final plane
+#    bStart : int
+#        Start index on the start plane
+#    bEnd : int
+#        End index on the final plane
+#
+#    The computation is performed on the elements
+#    xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
+#    """
+#
+#	k = 2. * pi / Lambda
+#
+#	#experimental
+##	z = np.mean(np.sqrt((xa-xb)**2 + (ya-yb)**2 ))
+##	FN = np.sqrt(Lambda/2/np.pi * z)
+##	s = Raymanx.xy_to_s(xa,ya)
+##	Step = np.mean(s)
+##	DeltaIndex = int(np.ceil(FN/Step))
+##	N = len(Ea)
+#
+#	if bStart == -1:
+#		bStart = 0
+#		bEnd = np.prod(np.int64(xb.shape))
+#
+#	EbTokN = bEnd - bStart
+#	EbTok = np.empty(EbTokN, dtype=np.complex128)
+#	RList = np.empty(EbTokN, dtype=np.float64)
+#
+#	# loop on items within the segment of B
+#	for i in prange(0, EbTokN):
+#		xbi = xb[i + bStart]
+#		ybi = yb[i + bStart]
+##        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
+#		Normalization = 1/(sqrt(Lambda))
+##        Normalization = 1
+##        Normalization = 1/Lambda**(-sqrt(2))
+#		Normalization = 1/np.sqrt(Lambda)
+#
+#		DeltaLeft= max(i, DeltaIndex)
+#		DeltaRight = min(DeltaIndex, N - DeltaIndex )
+#		RList = sqrt((xa[i-DeltaIndex:i +
+#						  DeltaIndex] - xbi)**2 + (ya[i-DeltaIndex:i+DeltaIndex] - ybi)**2)
+#		EbTok[i] = Normalization * sum(Ea / RList * exp(-1j * k * RList))
+#
+#
+#	return EbTok
 
 # # Fully vectorized implementation of the HuygensIntegral_1d_Kernel using Numpy linalg functions
 # #@jit(nopython=True, nogil=True, parallel=True)

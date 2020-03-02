@@ -7,17 +7,40 @@ Still to define if it will be kept
 @author: Mike - Manfredda
 """
 
-
+#==============================================================================
+#  Exists
+#==============================================================================
+def Exists(var):
+	'''
+	Check if a certain variable/object exists.
+	'''
+	try:
+	   var
+	   return True
+	except:
+		return False
+	   # Do something.
 
 #==============================================================================
 #  Class: DataContainer
 #==============================================================================
 class DataContainer():
 	'''
+	Brilliant classe ever B-)
+
 	DataContainer class is a struct-like object conceived for easy-to-use data
 	storage. It is designed with user-friendliness in mind rather than performance.
 	So it is more suitable for gathering many light-wight data rather than heavy-weight
 	ones.
+
+	Still to define
+	--------
+
+	The ListAttr function list only certain preferred data types.
+	One should define this preferred data types in this class....
+
+	At the present moment NO FILTER is included (th Preset argument is set to None)
+	across the code
 
 	See Also
 	-----
@@ -34,7 +57,22 @@ class DataContainer():
 
 	Example 2
 	-----
-	>>> D = DataContainer(Name = 'lambda', Value = 5e-9, Unit = 'm')
+	>>> D = DataContainer(Name = 'lambda', Value = 5e-9)
+	print(D)
+
+	Example 3 (Nesting)
+	-----
+	>>> D = DataContainer()
+	D.x = 1
+	D.y = DataContainer()
+	D.y.yy = 10
+
+	>>> Items = D._GetItems()
+	print('\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in Items]))
+
+	SubItems = D._GetSubItems()
+	print('\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in SubItems]))
+
 	print(D)
 
 	'''
@@ -52,26 +90,102 @@ class DataContainer():
 	#==============================
 	#  FUN: __repr__
 	#==============================
-	def __repr__(self):
-		AttrStrList, AttrStrObj = ListAttr(self, ReturnObject = True)
+#	def __repr__(self):
+#		AttrStrList, AttrStrObj = ListAttr(self, ReturnObject = True)
+#
+#		Str = str(type(self)) + '\n'
+#		for i,AttrStr in enumerate(AttrStrList):
+#			Str = Str + AttrStr + ':\t' + str(AttrStrObj[i]) + '\n'
+#
+#		return Str
 
-		Str = str(type(self)) + '\n'
-		for i,AttrStr in enumerate(AttrStrList):
-			Str = Str + AttrStr + ':\t' + str(AttrStrObj[i]) + '\n'
-
-		return Str
-	#==============================
+#	#==============================
 	#  FUN: __str__
 	#==============================
 	def __str__(self):
-		return __repr__(self)
+		'''
+		return report in the form
+
+		field1: value
+		field2: value
+		field3/subfield1: value
+
+		Uses the GetSubItems function.
+		'''
+
+		SubItems = self._GetSubItems()
+		return '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in SubItems])
+
+
+
+	#==============================
+	#  FUN: _GetItems
+	#==============================
+	def _GetItems(self):
+		'''
+		Returns a list of tuples
+		'''
+		Attr, Obj = ListAttr(self)
+
+		TupleList = []
+		for i, a in enumerate(Attr):
+			o = Obj[i]
+			TupleList.append((a,o))
+		return TupleList
+
+	#==============================
+	#  FUN: _GetSubItems
+	#==============================
+	def _GetSubItems(self, TypeList = [None], Preset = None):
+		'''
+		Returns a list of tuples
+
+
+		Philosophy:
+		-------------
+		Potentially, I want to get all the attributes (this is why TypeList
+		and Preset are set to None, i.e. any type and no preset).
+		However, the Recursion is locked only to DataContainer types.
+
+		*Preset* will be locked outside the class, by the functions using
+		this class for handling h5 files (which are somehow "friend functions").
+		In that case, we want to be sure that only h5-compatible datatypes are selected.
+		*Preset* behavior is defined inside the class, and it is "hardcoded".
+
+		However, if for example you want to use other datatypes (because you
+		are not using h5 files), you still have flexibility from the outside,
+		with no need of modifing the inner code. This is provided by the
+		*TypeList* parameter, where you can specify the types which are returned
+		by the function.
+
+		'''
+		Attr, Obj = ListAttrRecursive(self, RecursionTypeList = [DataContainer])
+
+		TupleList = []
+		for i, a in enumerate(Attr):
+			o = Obj[i]
+			TupleList.append((a,o))
+		return TupleList
 
 	pass
 a = DataContainer(x=1)
+
+
+def InvertDictionary (Dictionary = dict() ):
+	my_dict = Dictionary
+	from collections import defaultdict
+	my_inverted_dict = defaultdict(list)
+	{my_inverted_dict[v].append(k) for k, v in my_dict.items()}
+	return dict(my_inverted_dict)
+
 #==============================================================================
 #  FUN: ListAttributes
 #==============================================================================
-def ListAttr(x, TypeList = None, Preset = None, ReturnObject = False):
+def ListAttr(x,
+			 TypeList = None,
+			 Preset = None,
+			 ReturnObject = False,
+			 IncludeCallable = False):
 	'''
 
     Listra gli attributi di un oggetto (oggetto, classe, istanza, whatever)
@@ -99,15 +213,29 @@ def ListAttr(x, TypeList = None, Preset = None, ReturnObject = False):
 
 			Preset type are appended to TypeList.
 
-		Note
-		-----
-		If one wants to implement recursive search... still to be defined
+	Motivation
+	------------------------
+	Created for interacting with DataContainer class and similar entities.
+	This means that its logic favors "data" attributes rather than callable attributes.
+	There is not a certain way to do that.
+	IncludeCallable is a possible flag.
+	Attributes starting with '__' are automatically excluded.
+	For listing all the attributes, one should do explicit coding.
+
+	If one wants to implement recursive search... still to be defined
 	'''
 	from numpy import ndarray
 	Presets = {'math' :[int, float, ndarray],
 					'math' :[int, float, str, ndarray]}
 
-	strAttr = [iAttr for iAttr in dir(x) if not callable(iAttr) and not iAttr.startswith("__")]
+	# callable attributes are included (less common use)
+	if IncludeCallable:
+		strAttr = [iAttr for iAttr in dir(x) if not iAttr.startswith("__")]
+	# callable attributes are excluded (more common use)
+	else:
+		strAttr = [iAttr for iAttr in dir(x) if not callable(getattr(x,iAttr)) and not iAttr.startswith("__")]
+
+	# The function will return both attribute names and the respective object
 	if ReturnObject:
 		objAttr = [getattr(x,iAttr) for iAttr in strAttr]
 	else:
@@ -214,6 +342,7 @@ def ListClassProps(myClass, strOwnerClass = ''):
     strAttr = [iAttr for iAttr in dir(myClass) if not callable(iAttr) and not iAttr.startswith("__")]
     objAttr = [getattr(myClass,iAttr) for iAttr in strAttr]
     return strAttr, objAttr
+
 
 #==============================================================================
 #  FUN: ListClassPropsStr

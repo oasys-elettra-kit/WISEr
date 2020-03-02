@@ -2499,11 +2499,18 @@ class MirrorPlane(Mirror):
 	_IsAnalytic = False
 	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 					  'XYStart', 'XYCentre', 'XYEnd']
-
+	_CommonInputSets = [(('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
 	#================================
 	#  FUN: __init__[MirroPlane]
 	#================================
-	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0, **kwargs):
+	def __init__(self,
+			   L: 'user1'  = None,
+			   AngleGrazing :'user1' = None,
+			   XYLab_Centre = [0,0],
+			   AngleIn : 'user1' = 0,
+			   **kwargs):
 		super().__init__(**kwargs)
 		'''
 		Parameters
@@ -2837,6 +2844,16 @@ class MirrorElliptic(Mirror):
 	_TypeDescr = "KB Mirror"
 	_Behaviour = OPTICS_BEHAVIOUR.Focus
 	_IsAnalytic = False
+	_CommonInputSets = [(('f1','Front focal length (p)' ),
+						('f2','Rear focal length (q)'),
+					   ('Alpha','Grazing angle'),
+					   ('L','Length')),
+					  (('a','Major axis'),
+						('b','Minor axis'),
+						('XProp_Centre','Absolute X'),
+						( 'L','Length'))
+					  ]
+
 #	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']
 
@@ -4194,9 +4211,10 @@ class MirrorSpheric(Mirror):
 	_IsAnalytic = False
 #	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']
-
-
-
+	_CommonInputSets = [(('R','Curvature Radius'),
+						('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
 
 	#================================
 	# INIT
@@ -5085,6 +5103,10 @@ class MirrorSpheric(Mirror):
 #==============================================================================
 class Detector(MirrorPlane):
 	_TypeStr = 'DT'
+	_CommonInputSets = [(('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
+
 	def __init__(self, L=None, AngleGrazing=None, XYLab_Centre=[0,0], AngleIn=0, **kwargs):
 		# UseAsReference = False => Make detector transparent by default
 		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)

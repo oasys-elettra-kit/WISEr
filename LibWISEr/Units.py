@@ -16,6 +16,23 @@ Created on Mon Nov 11 16:12:18 2019
 #					 UnitMath : str = None,
 #					 SiPrefixPreferred  : str = None  )
 
+from engineering_notation import EngNumber
+
+
+def SmartFormatter(x):
+	'''
+	Attempts a smart formatting of x.
+	It returns
+	- EngNumber(x) if x is a float
+	- A smart formatting if x is decorated with UnitInfo object
+	- str(x) in any other case
+	'''
+
+	if x is float:
+		return EngNumber(x)
+	else:
+		return str(x)
+
 class Units:
 	SiPrefixes = { 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
 	@staticmethod

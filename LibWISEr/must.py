@@ -4,7 +4,7 @@ Created on Thu Jul 07 14:24:04 2016
 
 @author: Mic
 """
-
+from sys import platform
 import numpy as np
 from importlib import reload
 from numpy import  cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, angle, dot, exp, arcsin, arccos, real, imag, angle, copy
@@ -20,10 +20,22 @@ from scipy.interpolate import interp1d
 from matplotlib.ticker import MultipleLocator
 from os.path import join as PathJoin
 
-from LibWISEr.Scrubs import DataContainer
+from LibWISEr.Scrubs import DataContainer, ListAttr, ListAttrRecursive
 
 
 #ax2.yaxis.set_minor_locator(minorLocator)
+
+#çTODO To improve (it is stupid to re-define the function each time
+# accordingly to the os. Use conditional definition of the function instead)
+def Beep(a,b):
+	if platform =='linux' or platform == 'linux2':
+		pass
+	elif platform == 'win32':
+		from winsound import Beep as WinBeep
+		WinBeep(a,b)
+	elif platform == 'darwin':
+		pass
+	return None
 
 def execfile(filepath):
 		scriptContent = open(filepath, 'r').read()
@@ -120,3 +132,4 @@ class Frozen(object):
     __setattr__=frozen(object.__setattr__)
     class __metaclass__(type):
         __setattr__=frozen(type.__setattr__)
+
