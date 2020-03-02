@@ -3560,7 +3560,7 @@ class MirrorElliptic(Mirror):
 
 		'''
 		#@todo: si dovrebbe decidere chi spaziare, se X o Y a seconda della tangente locale.
-
+		N = int(N)
 		# Shall I use  the Nominal Length L or Measured one?
 		#-----------------------------------------------------------------
 		if L==None: # the stored length self.L is used, hence the stored XYStart
@@ -3573,6 +3573,7 @@ class MirrorElliptic(Mirror):
 		# Evaluating the ellipse (in the Self Reference)
 		#-----------------------------------------------------------------
 		if self._EvalWithX == True:
+
 			x = np.linspace(XYProp_Start[0], XYProp_End[0],N)
 			y = self._EvalMirrorYProp(x, Sign)
 		else:
@@ -4216,13 +4217,13 @@ class MirrorSpheric(Mirror):
 						('AngleGrazing','Grazing Angle')),
 					  ]
 
+
 	#================================
 	# INIT
 	#================================
 	def __init__(self, R, Alpha = None, L = None, XSelf_Centre = None,
 			  MirXMid = None, XYOrigin = np.array([0,0]), RotationAngle = 0):
 		'''
-
 		Parameters
 		-------------------------
 		R : float

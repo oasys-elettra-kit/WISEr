@@ -14,6 +14,7 @@ from collections import OrderedDict
 import numpy as np
 import copy
 from enum import Enum
+import time
 
 from LibWISEr.Optics import TypeOfAngle
 
@@ -1185,7 +1186,6 @@ class BeamlineElements(Tree):
 		Parameters
 		-----
 		"""
-
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
 
