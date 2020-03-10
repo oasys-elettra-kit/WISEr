@@ -45,10 +45,11 @@ def PathJoin (path, *paths):
 	> d:folder
 	'''
 	# Workaround, for handling Windows Units Letters
-	if path[1] == ':':
+	if len(path)==2 and path[1] == ':':
 		path = path + os.path.sep
 
-	return os.path.join(path, *paths )
+	return MakePath(path, *paths)
+#	return os.path.join(path, *paths )
 
 #================================
 #  PathCreate
@@ -66,7 +67,13 @@ def PathCreate(Path, IsFile = True):
 		In the latter case, it must be IsFile = True
 
 	IsFile : bool
-		It must be set to True when Path is a path to a file
+		It must be set to True when Path is a path to a filf
+
+	Return
+	------
+	- False: if the path has not been created (i.e. it was already existing)
+
+	- False: if the path has been created (i.e. it was not already existing)
 
 	'''
 	Path = os.path.dirname(Path) if IsFile else Path

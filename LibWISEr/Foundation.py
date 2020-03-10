@@ -914,6 +914,8 @@ class BeamlineElements(Tree):
 			self.iRoughness = 0
 			self.iFigureError = 0
 			self.OrientationToCompute = [Optics.OPTICS_ORIENTATION.ANY]
+			self._TotalComputationTimeMinutes = 0
+
 
 		@property
 		def iComputation(self):
@@ -1186,9 +1188,12 @@ class BeamlineElements(Tree):
 		Parameters
 		-----
 		"""
+		Tic = time.time()
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
+		Toc = time.time()
 
+		self._TotalComputationTimeMinutes = (Toc-Tic)/60
 	# ================================================
 	#  FUN: ComputeFields
 	# ================================================
@@ -2059,7 +2064,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		I = abs(d.ComputationResults.Field) ** 2
 		A2 = abs(d.ComputationResults.Field) ** 2
 		I = A2 / max(A2)
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS)
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCenterOfMass = False) # FocusSweep
 		try:
 			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationResults.S)
 		except:
@@ -2170,7 +2175,7 @@ def FocusFind(oeFocussing,	  DefocusRange = (-20e-3, 20e-3),
 		t.ComputeFields(Verbose=False)
 		I = abs(d.ComputationData.Field) ** 2
 		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCentreOfMass = False) # Compute the HEW in Focus Find
 
 		return Hew
 
