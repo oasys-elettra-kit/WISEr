@@ -834,10 +834,32 @@ class OpticalElement(TreeItem):
 		distances = np.array([oe.DistanceFromParent for oe in ItemListSameOrientation])
 		return sum(distances) + self.DistanceFromParent
 
+
+	# ================================================
+	#	FUNC: GetChildren
+	# ================================================
+	def GetChild(self, SameOrientation=False):
+		'''
+		Returns cihldren of an element accounting for the following flags> SameOrientation, MustBeReference.
+
+		Parameters
+		-----
+
+		SameOrientation : bool
+			if Ture, it returns the first parent elemenents for which .CoreOptics.Orientation is
+			the same as self object.
+
+		'''
+		DownstreamItemList = self.DonwstreamItemList
+
+		for Item in DownstreamItemList:
+			if HaveSameOrientation(oeX,oeY):
+				return Item
+		return None
+
 	# ================================================
 	#	FUNC: GetParent
 	# ================================================
-
 	def GetParent(self, SameOrientation=False, OnlyReference=False):
 		'''
 		Returns the first parent accounting for the following flags> SameOrientation, OnlyReference.
@@ -854,10 +876,10 @@ class OpticalElement(TreeItem):
 
 		'''
 
-		def HaveSameOrientation(oeX, oeY):
-			return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
-			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
+#		def HaveSameOrientation(oeX, oeY):
+#			return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
+#			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+#			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 
 		if SameOrientation and OnlyReference:
 			for oe in self.UpstreamItemList:
@@ -893,7 +915,8 @@ class OpticalElement(TreeItem):
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
 
-#===========================================================================
+
+	#===========================================================================
 # 	CLASS: BeamlineElements
 #===========================================================================
 class BeamlineElements(Tree):
@@ -1765,6 +1788,13 @@ class MakePositioningDirectives:
 	PlaceFocusAfterCentre
 	PlaceFocusAfterFocus
 	'''
+# ================================================
+#	HaveSameOrientation
+# ================================================
+def HaveSameOrientation(oeX, oeY):
+	return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
+	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 #================================================
 #     PositioningDirectives_UpdatePosition
 #================================================
@@ -2064,7 +2094,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		I = abs(d.ComputationResults.Field) ** 2
 		A2 = abs(d.ComputationResults.Field) ** 2
 		I = A2 / max(A2)
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCenterOfMass = False) # FocusSweep
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCentreOfMass = False) # FocusSweep
 		try:
 			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationResults.S)
 		except:
