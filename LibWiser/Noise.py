@@ -8,10 +8,10 @@ Created on Thu Jul 07 14:08:31 2016
 """
 
 from __future__ import division
-from LibWISEr.must import *
+from LibWiser.must import *
 import numpy as np
-import LibWISEr.Rayman as rm
-import LibWISEr.ToolLib as tl
+import LibWiser.Rayman as rm
+import LibWiser.ToolLib as tl
 Gauss1d =  lambda x ,y : None
 from scipy import interpolate as interpolate
 

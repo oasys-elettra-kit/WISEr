@@ -5,9 +5,9 @@ Created on Mon Aug 08 16:10:57 2016
 @author: Mic
 :math:`y = m x + q`
 """
-import LibWISEr.ToolLib as tl
-import LibWISEr.Noise as Noise
-import LibWISEr.Rayman as rm
+import LibWiser.ToolLib as tl
+import LibWiser.Noise as Noise
+import LibWiser.Rayman as rm
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1148,11 +1148,18 @@ class SourceGaussian(OpticsAnalytical):
 
 		'''
 		(z,r) = rm._MatchArrayLengths(z,r)
-
+		# EQUATION: of the Normalized Gaussian field.
+		# Normalized to the integrated power
 		#Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
-		Norm =	 (self.Waist0 / self.Waist(z))
+		Norm =	 (self.Waist0 / self.Waist(z)) # Normalize peak to 1
 		A = np.exp(-r**2/self.Waist(z)**2)
-		return Norm * A *	np.exp(1j * self.Phase(z, r))
+		E = Norm * A *	np.exp(1j * self.Phase(z, r))
+
+		# Normalize to the integrated power
+		I = np.abs(E)**2
+		Norm2 = np.sqrt(np.sum(I))
+
+		return E/Norm2
 
 
  	#================================
@@ -2492,11 +2499,18 @@ class MirrorPlane(Mirror):
 	_IsAnalytic = False
 	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 					  'XYStart', 'XYCentre', 'XYEnd']
-
+	_CommonInputSets = [(('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
 	#================================
 	#  FUN: __init__[MirroPlane]
 	#================================
-	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0, **kwargs):
+	def __init__(self,
+			   L: 'user1'  = None,
+			   AngleGrazing :'user1' = None,
+			   XYLab_Centre = [0,0],
+			   AngleIn : 'user1' = 0,
+			   **kwargs):
 		super().__init__(**kwargs)
 		'''
 		Parameters
@@ -2830,6 +2844,16 @@ class MirrorElliptic(Mirror):
 	_TypeDescr = "KB Mirror"
 	_Behaviour = OPTICS_BEHAVIOUR.Focus
 	_IsAnalytic = False
+	_CommonInputSets = [(('f1','Front focal length (p)' ),
+						('f2','Rear focal length (q)'),
+					   ('Alpha','Grazing angle'),
+					   ('L','Length')),
+					  (('a','Major axis'),
+						('b','Minor axis'),
+						('XProp_Centre','Absolute X'),
+						( 'L','Length'))
+					  ]
+
 #	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']
 
@@ -3536,7 +3560,7 @@ class MirrorElliptic(Mirror):
 
 		'''
 		#@todo: si dovrebbe decidere chi spaziare, se X o Y a seconda della tangente locale.
-
+		N = int(N)
 		# Shall I use  the Nominal Length L or Measured one?
 		#-----------------------------------------------------------------
 		if L==None: # the stored length self.L is used, hence the stored XYStart
@@ -3549,6 +3573,7 @@ class MirrorElliptic(Mirror):
 		# Evaluating the ellipse (in the Self Reference)
 		#-----------------------------------------------------------------
 		if self._EvalWithX == True:
+
 			x = np.linspace(XYProp_Start[0], XYProp_End[0],N)
 			y = self._EvalMirrorYProp(x, Sign)
 		else:
@@ -4187,8 +4212,10 @@ class MirrorSpheric(Mirror):
 	_IsAnalytic = False
 #	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']
-
-
+	_CommonInputSets = [(('R','Curvature Radius'),
+						('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
 
 
 	#================================
@@ -4197,7 +4224,6 @@ class MirrorSpheric(Mirror):
 	def __init__(self, R, Alpha = None, L = None, XSelf_Centre = None,
 			  MirXMid = None, XYOrigin = np.array([0,0]), RotationAngle = 0):
 		'''
-
 		Parameters
 		-------------------------
 		R : float
@@ -5078,6 +5104,10 @@ class MirrorSpheric(Mirror):
 #==============================================================================
 class Detector(MirrorPlane):
 	_TypeStr = 'DT'
+	_CommonInputSets = [(('L','Length' ),
+						('AngleGrazing','Grazing Angle')),
+					  ]
+
 	def __init__(self, L=None, AngleGrazing=None, XYLab_Centre=[0,0], AngleIn=0, **kwargs):
 		# UseAsReference = False => Make detector transparent by default
 		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)
@@ -5170,7 +5200,7 @@ class Slits(OpticsNumerical):
 		self.XY = array([XPosition, YPosition])
 		self.SmallDisplacements = Optics._SmallDisplacements()
 		self.ComputationSettings = Optics._ComputationSettings()
-		self.Orientation = OPTICS_ORIENTATION.ANY
+		self.Orientation = OPTICS_ORIENTATION.Any
 
 		OpticsNumerical
 		self._Transformation_List = [ [], [], [] ]

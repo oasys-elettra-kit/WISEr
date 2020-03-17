@@ -13,7 +13,7 @@ from __future__ import division
 import numpy as np
 #import cmath as cm
 from numpy import sum, cos, sin, tan, pi, array, arange, polyval, dot, exp, real, sqrt
-from LibWISEr.ToolLib import Debug
+from LibWiser.ToolLib import Debug
 from numba import jit, prange
 
 from  scipy import ndimage
@@ -552,6 +552,11 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
         Coordinates of the start plane
     xb, yb : 1d array float
         Coordinates of the final plane
+    TODO: Future normalization
+    AngleGrazing : float
+        Grazing angle
+    L : float
+        Mirror length
     The computation is performed on the elements
     xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
     """

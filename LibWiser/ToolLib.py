@@ -6,13 +6,14 @@ Created on Thu Jan 12 11:58:09 2017
 """
 from __future__ import division
 import scipy
-import LibWISEr.must  as must
-from LibWISEr.must import *
+import LibWiser.must  as must
+from LibWiser.must import *
 from collections import namedtuple
-from LibWISEr.Units import Units
+from LibWiser.Units import Units
 import inspect
 import logging
 import os
+from pathlib import Path
 from scipy.signal import square
 from pathlib import Path as MakePath
 
@@ -45,15 +46,16 @@ def PathJoin (path, *paths):
 	> d:folder
 	'''
 	# Workaround, for handling Windows Units Letters
-	if path[1] == ':':
-		path = path + os.path.sep
+	# TODO: Fix this behaviour on UNIX
+	# if path[1] == ':':
+	# 	path = path + os.path.sep
 
 	return os.path.join(path, *paths )
 
 #================================
 #  PathCreate
 #================================
-def PathCreate(Path, IsFile = True):
+def PathCreate(PathToTry, IsFile = True):
 	'''
 	Create a path, if not existing.
 
@@ -69,11 +71,12 @@ def PathCreate(Path, IsFile = True):
 		It must be set to True when Path is a path to a file
 
 	'''
-	Path = os.path.dirname(Path) if IsFile else Path
-	if os.path.exists(Path):
+	PathToTry = Path(PathToTry)
+	PathToTry = PathToTry.parent if IsFile else PathToTry
+	if os.path.exists(PathToTry):
 		return False
 	else:
-		os.makedirs(Path)
+		os.makedirs(PathToTry)
 		return True
 
 #================================

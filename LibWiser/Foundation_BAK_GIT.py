@@ -6,17 +6,16 @@ Author michele.manfredda@elettra.eu
 '''
 
 from __future__ import division
-from LibWiser.must import *
-from LibWiser import Optics, Rayman as rm, ToolLib as tl
-from LibWiser.ToolLib import  Debug
+from LibWISEr.must import *
+from LibWISEr import Optics, Rayman as rm, ToolLib as tl
+from LibWISEr.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
 from enum import Enum
-import time
 
-from LibWiser.Optics import TypeOfAngle
+from LibWISEr.Optics import TypeOfAngle
 
 
 #=============================
@@ -887,8 +886,7 @@ class OpticalElement(TreeItem):
 
 		Dev notes
 		-----
-		It uses the distance from source and requires XYCentre to be already computed.
-		Best version (20201023) - AF + MM
+		it uses the distance from source and requires XYCentre to be already computed.
 		'''
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
@@ -1035,12 +1033,10 @@ class BeamlineElements(Tree):
 	@staticmethod
 	def ApplyPositioningDirectives(oeY: OpticalElement):
 		'''
-
 			Parameters
 			------------------
 			oeY : OpticalElement
 				The optical element to place
-
 			Behavior
 			------------------
 			- If PositioningDirectives has ReferTo='locked' then the positioning of the present element is not computed.
@@ -1052,11 +1048,9 @@ class BeamlineElements(Tree):
 			- Downstream focus will find the firs element (with the same orientation) that has f2 as attribute, then
 			will use f2 as positioning distance
 			- UseAsReference=False means that the Element is not considerend for positioning other elements.
-
 			Developer notes
 			------------------
 			Bases on: XYCentre, SetXYAngle_Centre,  GetParent(...), DistanceFromParent
-
 		'''
 		Pd = oeY.PositioningDirectives
 
@@ -1178,9 +1172,6 @@ class BeamlineElements(Tree):
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
 		return NList, NameList
 
-	# ================================================
-	#  FUN: ComputeFields
-	# ================================================
 	def ComputeFields(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True):
 		"""
 		Select the orientations and pass them individually to ComputeFieldsMediator, which is nothing else but the old
@@ -1189,14 +1180,15 @@ class BeamlineElements(Tree):
 		Parameters
 		-----
 		"""
+
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
 
 	# ================================================
-	#  FUN: ComputeFieldsMediator
+	#  FUN: ComputeFields
 	# ================================================
 	def ComputeFieldsMediator(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True,
-							  Orientation=Optics.OPTICS_ORIENTATION.ANY) -> OpticalElement.ComputationData:
+							  Orientation=Optics.OPTICS_ORIENTATION.ANY) -> OpticalElement.ComputationResults:
 		"""
 		Perform a single simulation along the beamline.
 		This is the first function of this kind that we have created, and it does not do averages if
@@ -1230,12 +1222,9 @@ class BeamlineElements(Tree):
 			TotalPath = 0  # path from the last active element used.
 			N = 0
 
+		PropInfo.oeLast = self.FirstItem
+
 		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
-
-		if len(oeList) < 2:
-			return None
-
-		PropInfo.oeLast = self.FirstItem if oeStart.Parent is None else oeStart.GetParent(SameOrientation=True)
 
 		#		oeStart = self.FirstItem if oeStart == None else oeStart
 		#		oeEnd = self.LastItem if oeEnd == None else oeEnd
@@ -1657,12 +1646,8 @@ class BeamlineElements(Tree):
 					_.CoreOptics.Orientation == Orientation):
 				oeListOriented.append(_)
 
-		if len(oeListOriented) == 0:
-			oeStart = None
-			oeEnd = None
-		else:
-			oeStart = oeListOriented[0]
-			oeEnd = oeListOriented[-1]
+		oeStart = oeListOriented[0]
+		oeEnd = oeListOriented[-1]
 
 		return oeListOriented, oeStart, oeEnd
 
@@ -2080,216 +2065,8 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	# Analyze the obtained caustics (minumum value, etc)
 
 	return (ResultList, HewList, SigmaList, More)
-# ================================================
-#  FUN: FocusFind
-# ================================================
-def FocusFind(oeFocussing,	  DefocusRange = (-20e-3, 20e-3),
-			  DetectorSize=50e-6,
-			  MaxIter = 21,
-			  AngleInNominal=np.deg2rad(90)):
-	'''
-	Find the best focus. Similar to FocusSweep, except that it does not provide the
-	full sampling of the DefocusRange, but it uses an optimization algorithms to find
-	the best focus as fast as possible.
-
-	Faster, perhaps less fancy.
-
-	For automation purposes, when producing publication-quality plots,
-	it could be a nice idea to use feed FocusSweep with the
-	results of FocusFind.
-
-	Parameters
-	------
-	oeFocussing : Focussing element
-	oeFocussing : optical element that focusses radiation
-	DefocusList : array like
-		List of defocus distances
-
-	Return
-	--------
-	Results : struct-like class
-		with the following attributes
-
-	- BestField : 1d-array (complex)
-				Field at the best focus
-	- BestDefocus : scalar (real)
-				Defocus of the best spot
-	- BestHew : scalar (real)
-				Half energy width of the best spot
-
-	- OptResult : OptimizationResult object
-				Contains the results of the optimization
-
-	Notes
-	--------
-	In the test I did, convergence was reached within few (5-7) iterations,
-	with BestDefocus of the order of 10mm (which was a pretty high value, indeed!).
-	N of samples used: 1e4, lambda=2nm [MMan2020]
-
-	'''
-
-	from scipy import optimize as opt
-
-	oeFocussing = copy.deepcopy(oeFocussing)
-	# creating dummydetector
-	# ------------------------------------------------------------
-	d_k = Optics.Detector(
-		L=DetectorSize,
-		AngleGrazing=AngleInNominal)
-
-	d_pd = PositioningDirectives(
-		ReferTo='upstream',
-		PlaceWhat='centre',
-		PlaceWhere='downstream focus',
-		Distance=0)
-	d = OpticalElement(
-		d_k,
-		PositioningDirectives=d_pd,
-		Name='detector')
-
-	oeFocussing._IsSource = True  # MUSTBE!
-	oeFocussing.PositioningDirectives.ReferTo = 'locked'
-	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
-	NSamples = oeFocussing.ComputationResults.NSamples
-	oeFocussing.ComputationSettings.NSamples = NSamples
-	oeFocussing.ComputationSettings.UseCustomSampling = True
-
-	d.ComputationSettings.NSamples = NSamples
-	d.ComputationSettings.UseCustomSampling = True
-
-	# Bemaline elments
-	# ------------------------------------------------------------
-	t = None
-	t = BeamlineElements()
-	t.Append(oeFocussing)
-	t.Append(d)
-
-	# Buffer Variabnles
-	#------------------------------------------------------------
-	DefocusList = []
 
 
-	# Function to Minimize
-	# ------------------------------------------------------------
-	def ComputeHew(Defocus, d,t):
-		# I set the Position the detector at Defocus = Defocus
-		# ------------------------------------------------------------
-		d.PositioningDirectives.Distance = Defocus
-		t.RefreshPositions()
-		# Perform the computation
-		t.ComputeFields(Verbose=False)
-		I = abs(d.ComputationData.Field) ** 2
-		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
-
-		return Hew
-
-	OptResult = opt.minimize_scalar(ComputeHew,
-								 method='bounded',
-								 bounds = DefocusRange,
-								 options = {'maxiter' : MaxIter, 'disp' : True},
-								 args = (d,t)
-								 )
-#	OptResult = opt.bisect(HewToMinimize,
-#								a = DefocusRange[0],
-#								b = DefocusRange[1],
-#								full_output = True,
-#								xtol = 0.3e-3,
-#								args = (d,t)
-#								 )
-
-#	OptResult = opt.minimize(HewToMinimize,
-#								  x0 = 2.5 ,
-#								method = 'Powell',
-#								options = {'xtol' :  0.2e-3},
-#								args = (d,t)
-#								 )
-	class Results():
-		pass
-
-	Results.BestField = d.ComputationData.Field
-	Results.BestDefocus = OptResult.x
-	Results.BestHew = OptResult.fun
-	Results.OptResult = OptResult
-
-	return Results
-
-# ================================================
-#  FUN: FocusFind
-# ================================================
-def FocusSweep2(oeFocussing,
-			  DefocusList ,
-			  DetectorSize=50e-6,
-			  AngleInNominal=np.deg2rad(90)):
-	'''
-
-	Debug purposes
-
-	'''
-
-	from scipy import optimize as opt
-	oeFocussing = copy.deepcopy(oeFocussing)
-	# creating dummydetector
-	# ------------------------------------------------------------
-	d_k = Optics.Detector(
-		L=DetectorSize,
-		AngleGrazing=AngleInNominal)
-
-	d_pd = PositioningDirectives(
-		ReferTo='upstream',
-		PlaceWhat='centre',
-		PlaceWhere='downstream focus',
-		Distance=0)
-	d = OpticalElement(
-		d_k,
-		PositioningDirectives=d_pd,
-		Name='detector')
-
-	oeFocussing._IsSource = True  # MUSTBE!
-	oeFocussing.PositioningDirectives.ReferTo = 'locked'
-	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
-	NSamples = oeFocussing.ComputationResults.NSamples
-	oeFocussing.ComputationSettings.NSamples = NSamples
-	oeFocussing.ComputationSettings.UseCustomSampling = True
-
-	d.ComputationSettings.NSamples = NSamples
-	d.ComputationSettings.UseCustomSampling = True
-
-	# Bemaline elments
-	# ------------------------------------------------------------
-	t = None
-	t = BeamlineElements()
-	t.Append(oeFocussing)
-	t.Append(d)
-
-	# Buffer Variabnles
-	#------------------------------------------------------------
-	N = len(DefocusList)
-	HewList = np.zeros(N)
-
-	# ComputeHew
-	# ------------------------------------------------------------
-	def ComputeHew(Defocus, d,t):
-		# I set the Position the detector at Defocus = Defocus
-		# ------------------------------------------------------------
-		d.PositioningDirectives.Distance = Defocus
-		t.RefreshPositions()
-
-		# Perform the computation
-		t.ComputeFields(Verbose=False)
-		I = abs(d.ComputationData.Field) ** 2
-		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
-
-		return Hew
-
-	# Focus Sweep
-	# ------------------------------------------------------------
-	for iDefocus, Defocus in enumerate( DefocusList):
-		Hew = ComputeHew(Defocus, d,t)
-		HewList[iDefocus] = Hew
-
-	return HewList
 #================================================
 #  FUN: ZSweep
 #================================================

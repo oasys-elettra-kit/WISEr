@@ -31,7 +31,6 @@ from LibWISEr.Foundation import OpticalElement
 
 
 # Common numerical/scientifical base
-import winsound
 import matplotlib as mp
 import matplotlib.pyplot as pp
 import numpy as np
