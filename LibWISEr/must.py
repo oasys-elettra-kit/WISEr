@@ -10,10 +10,12 @@ from importlib import reload
 from numpy import  cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, angle, dot, exp, arcsin, arccos, real, imag, angle, copy
 from numpy.lib.scimath import sqrt
 from numpy.linalg import norm
+import pylab
 import matplotlib.pyplot as plt
 import matplotlib.pyplot
 plot =  matplotlib.pyplot.plot
 from matplotlib.ticker import FormatStrFormatter
+
 import time
 from scipy.interpolate import interp1d
 
@@ -21,6 +23,12 @@ from matplotlib.ticker import MultipleLocator
 from os.path import join as PathJoin
 from pathlib import Path as MakePath
 from LibWISEr.Scrubs import DataContainer, ListAttr, ListAttrRecursive
+
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+
+
 
 
 #ax2.yaxis.set_minor_locator(minorLocator)

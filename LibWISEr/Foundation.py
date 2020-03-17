@@ -1082,6 +1082,8 @@ class BeamlineElements(Tree):
 			------------------
 			Bases on: XYCentre, SetXYAngle_Centre,  GetParent(...), DistanceFromParent
 
+			Curiosity: why is this function here? And it is not a member of Optical element?
+
 		'''
 		Pd = oeY.PositioningDirectives
 

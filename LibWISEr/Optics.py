@@ -975,6 +975,7 @@ class SourceGaussian(OpticsAnalytical):
 	_IsAnalytic = True
 
 
+
 	#================================================
 	#	 __init__
 	#================================================
@@ -2502,6 +2503,7 @@ class MirrorPlane(Mirror):
 	_CommonInputSets = [(('L','Length' ),
 						('AngleGrazing','Grazing Angle')),
 					  ]
+	_MementoVariables = ('_L')
 	#================================
 	#  FUN: __init__[MirroPlane]
 	#================================
@@ -2853,6 +2855,7 @@ class MirrorElliptic(Mirror):
 						('XProp_Centre','Absolute X'),
 						( 'L','Length'))
 					  ]
+	_MementoVariables = ('f1', 'f2', '_AngleGrazingNominal', '_L', '_Sign')
 
 #	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']

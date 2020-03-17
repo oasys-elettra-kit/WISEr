@@ -15,7 +15,7 @@ import logging
 import os
 from scipy.signal import square
 from pathlib import Path as MakePath
-
+import LibWISEr.Paths as Paths
 #================================
 #  FUN: PathSplit
 #================================
@@ -138,12 +138,49 @@ class Debug():
 
 	On = True
 	_OldValue = True
+
+	@staticmethod
+	def MakeTmpH5File(Name):
+		return MakePath( Paths.Main / (Name + '.h5'))
+
+	PathTemporaryH5File  = MakePath(Paths.Main / 'tmp_file2.h5')
+#	PathTemporaryH5File  = ''
 	'''
 	logging.basicConfig(filename = FileName, filemode='w', format='%(message)s || %(asctime)s')
 	logging.warning('Starting simulation: N = %d', N)
 	logging.warning(Str)
 
 	'''
+	import h5py
+	#================================
+	#  PutData
+	#================================
+	def PutData(Name,Value, FileName = None):
+		'''
+		Put data to the temporary H5File
+		'''
+		Path = Debug.PathTemporaryH5File if FileName is None else MakePath( Paths.Main / (FileName + '.h5'))
+		FileIO.SaveToH5(Path, [(Name, Value)], dict(), Mode = 'a')
+
+	#================================
+	#  GetData
+	#================================
+	def GetData(Name, FileName= None):
+		'''
+		Read data from the temporary H5File
+		'''
+		Path = Debug.PathTemporaryH5File if FileName is None else MakePath( Paths.Main / (FileName + '.h5'))
+		try:
+			File = h5py.File(Path)
+			Data = File[Name]
+			File.close()
+			return Data
+		except:
+			File.close()
+			return None
+
+
+
 
 	def Print(Str = '', NIndent = 0, Header = False):
 		if Debug.On :
@@ -1989,8 +2026,7 @@ class FileIO:
 	#==============================================
 	# FUN SaveToH5
 	#==============================================
-
-	def SaveToH5(FileName='output.hdf5', GroupNames=None, values=None):
+	def SaveToH5b(FileName='output.hdf5', GroupNames=None, values=None):
 		"""
 		Save to hdf5 file.
 
@@ -2029,9 +2065,10 @@ class FileIO:
 	#==============================================
 	# FUN SaveToH5t
 	#==============================================
-	def SaveToH5t(FileName='output.hdf5', GroupValueTuples = None,
+	def SaveToH5(FileName='output.hdf5', GroupValueTuples = None,
 			   Attributes = None,
-			   ExpandDataContainers = True):
+			   ExpandDataContainers = True,
+			   Mode = 'w'):
 		"""
 		Save to hdf5 file. "i" stands for "tuples", which is the data input data type.
 
@@ -2092,7 +2129,7 @@ class FileIO:
 
 		import h5py # For hdf5 files
 
-		DataFile = h5py.File(FileName, 'w')
+		DataFile = h5py.File(FileName, mode = Mode)
 
 		# loop on each tuple in the form: (Path, Value)
 		# Path is actually referred to as 'group'
@@ -2114,14 +2151,25 @@ class FileIO:
 
 			# Do normal operations
 			else:
+				# This try block handle the case you are trying to modify a field (group) that
+				# already exists.
+				try:
+					del DataFile[GroupName]
+				except:
+					pass
+
 				DataFile.create_dataset(GroupName, data=Value)
-		Items = list(Attributes.items())
-		for Attr in Items:
-			DataFile.attrs[Attr[0]] = Attr[1]
+
+		if Attributes is not None:
+			Items = list(Attributes.items())
+			for Attr in Items:
+				DataFile.attrs[Attr[0]] = Attr[1]
 #		DataFile.attrs = Attributes
 		DataFile.close()
 
 		return None
+
+	SaveToH5t = SaveToH5
 
 class CommonPlots:
 
@@ -2192,7 +2240,7 @@ class CommonPlots:
 				y = y
 
 			# --- plot x,y
-			plt.plot(x,y)
+			plt.plot(x,y, **kwargs)
 			# --- layout
 			plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
 			plt.xlabel(XUnitPrefix+'m')
