@@ -6,7 +6,7 @@ Created on Mon Jan 13 13:53:46 2020
 
 Test. still do not know if it makes sense....
 """
-import LibWISEr.WiserImport as lw
+import LibWiser.WiserImport as lw
 
 
 

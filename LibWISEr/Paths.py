@@ -5,7 +5,7 @@ Created on Thu Jan  2 11:41:49 2020
 @author: Mike
 """
 
-import LibWISEr.__init__ as Init
+import LibWiser.__init__ as Init
 from pathlib import Path as MakePath
 #================================================================
 #  GetWiserPath

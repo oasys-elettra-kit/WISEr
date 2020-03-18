@@ -12,16 +12,16 @@ import numpy as np
 import winsound
 import matplotlib as mp
 import matplotlib.pyplot as pp
-import LibWISEr.Rayman as rm
-import LibWISEr.Foundation as Fundation
-import LibWISEr.Optics as Optics
-import LibWISEr.ToolLib as tl
-import LibWISEr.ToolLib
-from LibWISEr.must import *
-from LibWISEr.Foundation import OpticalElement
+import LibWiser.Rayman as rm
+import LibWiser.Foundation as Fundation
+import LibWiser.Optics as Optics
+import LibWiser.ToolLib as tl
+import LibWiser.ToolLib
+from LibWiser.must import *
+from LibWiser.Foundation import OpticalElement
 from numpy import array
 import csv
-#import LibWISEr.FermiSource as Fermi
+#import LibWiser.FermiSource as Fermi
 
 importlib.reload(Fundation)
 importlib.reload(Optics)

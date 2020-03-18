@@ -12,8 +12,8 @@ Waist0E = Waist0I/sqrt(2) = Sigma0I/2
 #%%
 import numpy as np
 from numpy import pi, sqrt
-import LibWISEr.Foundation
-import LibWISEr.Optics
+import LibWiser.Foundation
+import LibWiser.Optics
 
 class Info:
 	FermiFactor = {'fel1' : 1.25, 'fel2':1.5}

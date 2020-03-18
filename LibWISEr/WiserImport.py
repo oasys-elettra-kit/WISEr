@@ -13,22 +13,22 @@ import importlib
 
 # LibWISEr aliases
 #=======================================================================
-from LibWISEr.must import *   #continuously subject to  revision and discussion
+from LibWiser.must import *   #continuously subject to  revision and discussion
 
-import LibWISEr.ToolLib as tl
+import LibWiser.ToolLib as tl
 ToolLib  = tl
-import LibWISEr.Paths as Paths
-import LibWISEr.Rayman as rm
+import LibWiser.Paths as Paths
+import LibWiser.Rayman as rm
 Rayman = rm
-import LibWISEr.Foundation as Foundation
-import LibWISEr.Optics as Optics
-import LibWISEr.Noise as Noise
-import LibWISEr.FermiSource as Fermi
-import LibWISEr.Scrubs
-import LibWISEr.Units as Units
+import LibWiser.Foundation as Foundation
+import LibWiser.Optics as Optics
+import LibWiser.Noise as Noise
+import LibWiser.FermiSource as Fermi
+import LibWiser.Scrubs
+import LibWiser.Units as Units
 # Worth of mention objects / Frequently used aliases
 #=======================================================================
-from LibWISEr.Foundation import OpticalElement
+from LibWiser.Foundation import OpticalElement
 
 
 # Common numerical/scientifical base

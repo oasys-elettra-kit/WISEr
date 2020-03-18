@@ -7,7 +7,7 @@ Created on Mon Jan 13 13:51:20 2020
 from pathlib import Path
 import numpy as np
 
-import LibWISEr.WiserImport as lw
+import LibWiser.WiserImport as lw
 import enum
 
 class ObsUnit():

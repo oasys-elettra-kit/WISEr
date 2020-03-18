@@ -6,9 +6,9 @@ Author michele.manfredda@elettra.eu
 '''
 
 from __future__ import division
-from LibWISEr.must import *
-from LibWISEr import Optics, Rayman as rm, ToolLib as tl
-from LibWISEr.ToolLib import  Debug
+from LibWiser.must import *
+from LibWiser import Optics, Rayman as rm, ToolLib as tl
+from LibWiser.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
@@ -16,7 +16,7 @@ import copy
 from enum import Enum
 import time
 
-from LibWISEr.Optics import TypeOfAngle
+from LibWiser.Optics import TypeOfAngle
 
 
 #=============================
@@ -834,32 +834,10 @@ class OpticalElement(TreeItem):
 		distances = np.array([oe.DistanceFromParent for oe in ItemListSameOrientation])
 		return sum(distances) + self.DistanceFromParent
 
-
-	# ================================================
-	#	FUNC: GetChildren
-	# ================================================
-	def GetChild(self, SameOrientation=False):
-		'''
-		Returns cihldren of an element accounting for the following flags> SameOrientation, MustBeReference.
-
-		Parameters
-		-----
-
-		SameOrientation : bool
-			if Ture, it returns the first parent elemenents for which .CoreOptics.Orientation is
-			the same as self object.
-
-		'''
-		DownstreamItemList = self.DonwstreamItemList
-
-		for Item in DownstreamItemList:
-			if HaveSameOrientation(oeX,oeY):
-				return Item
-		return None
-
 	# ================================================
 	#	FUNC: GetParent
 	# ================================================
+
 	def GetParent(self, SameOrientation=False, OnlyReference=False):
 		'''
 		Returns the first parent accounting for the following flags> SameOrientation, OnlyReference.
@@ -876,10 +854,10 @@ class OpticalElement(TreeItem):
 
 		'''
 
-#		def HaveSameOrientation(oeX, oeY):
-#			return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
-#			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
-#			 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
+		#def HaveSameOrientation(oeX, oeY):
+		#	return ((oeX.CoreOptics.Orientation == oeY.CoreOptics.Orientation) or
+		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
+		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 
 		if SameOrientation and OnlyReference:
 			for oe in self.UpstreamItemList:
@@ -915,8 +893,7 @@ class OpticalElement(TreeItem):
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
 
-
-	#===========================================================================
+#===========================================================================
 # 	CLASS: BeamlineElements
 #===========================================================================
 class BeamlineElements(Tree):
@@ -1205,6 +1182,9 @@ class BeamlineElements(Tree):
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
 		return NList, NameList
 
+	# ================================================
+	#  FUN: ComputeFields
+	# ================================================
 	def ComputeFields(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True):
 		"""
 		Select the orientations and pass them individually to ComputeFieldsMediator, which is nothing else but the old
@@ -1220,10 +1200,10 @@ class BeamlineElements(Tree):
 
 		self._TotalComputationTimeMinutes = (Toc-Tic)/60
 	# ================================================
-	#  FUN: ComputeFields
+	#  FUN: ComputeFieldsMediator
 	# ================================================
 	def ComputeFieldsMediator(self, oeStart=None, oeEnd=None, Dummy=False, Verbose=True,
-							  Orientation=Optics.OPTICS_ORIENTATION.ANY) -> OpticalElement.ComputationResults:
+							  Orientation=Optics.OPTICS_ORIENTATION.ANY) -> OpticalElement.ComputationData:
 		"""
 		Perform a single simulation along the beamline.
 		This is the first function of this kind that we have created, and it does not do averages if
@@ -1257,9 +1237,12 @@ class BeamlineElements(Tree):
 			TotalPath = 0  # path from the last active element used.
 			N = 0
 
-		PropInfo.oeLast = self.FirstItem
-
 		oeList, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
+
+		if len(oeList) < 2:
+			return None
+
+		PropInfo.oeLast = self.FirstItem if oeStart.Parent is None else oeStart.GetParent(SameOrientation=True)
 
 		#		oeStart = self.FirstItem if oeStart == None else oeStart
 		#		oeEnd = self.LastItem if oeEnd == None else oeEnd
@@ -1681,8 +1664,12 @@ class BeamlineElements(Tree):
 					_.CoreOptics.Orientation == Orientation):
 				oeListOriented.append(_)
 
-		oeStart = oeListOriented[0]
-		oeEnd = oeListOriented[-1]
+		if len(oeListOriented) == 0:
+			oeStart = None
+			oeEnd = None
+		else:
+			oeStart = oeListOriented[0]
+			oeEnd = oeListOriented[-1]
 
 		return oeListOriented, oeStart, oeEnd
 
