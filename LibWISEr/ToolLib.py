@@ -6,16 +6,16 @@ Created on Thu Jan 12 11:58:09 2017
 """
 from __future__ import division
 import scipy
-import LibWISEr.must  as must
-from LibWISEr.must import *
+import LibWiser.must  as must
+from LibWiser.must import *
 from collections import namedtuple
-from LibWISEr.Units import Units
+from LibWiser.Units import Units
 import inspect
 import logging
 import os
 from scipy.signal import square
 from pathlib import Path as MakePath
-import LibWISEr.Paths as Paths
+import LibWiser.Paths as Paths
 #================================
 #  FUN: PathSplit
 #================================

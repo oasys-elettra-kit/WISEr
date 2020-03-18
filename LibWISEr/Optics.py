@@ -5,9 +5,9 @@ Created on Mon Aug 08 16:10:57 2016
 @author: Mic
 :math:`y = m x + q`
 """
-import LibWISEr.ToolLib as tl
-import LibWISEr.Noise as Noise
-import LibWISEr.Rayman as rm
+import LibWiser.ToolLib as tl
+import LibWiser.Noise as Noise
+import LibWiser.Rayman as rm
 
 import matplotlib.pyplot as plt
 import numpy as np
