@@ -22,7 +22,7 @@ from scipy.interpolate import interp1d
 from matplotlib.ticker import MultipleLocator
 from os.path import join as PathJoin
 from pathlib import Path as MakePath
-from LibWISEr.Scrubs import DataContainer, ListAttr, ListAttrRecursive
+from LibWiser.Scrubs import DataContainer, ListAttr, ListAttrRecursive
 
 
 from mpl_toolkits.mplot3d import Axes3D
