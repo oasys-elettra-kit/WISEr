@@ -418,7 +418,7 @@ class Tree(object):
 
 			ItemA = self._Items[ExistingName]
 			# INSERT AFTER (default)
-			if Mode == INSERT_MODE.After :
+			if Mode == INSERT_MODE.After:
 				# Update NewItem (second, or middle)
 				NewItem.Parent = ItemA
 				NewItem.Children = ItemA.Children
@@ -451,7 +451,6 @@ class Tree(object):
 		# ASSIGNMENT
 #		TmpDict = {NewName : NewItem}
 		self._Items[NewName] = NewItem
-
 
 		self._ActiveItem= NewItem
 
