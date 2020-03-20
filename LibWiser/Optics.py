@@ -1103,7 +1103,7 @@ class SourceGaussian(OpticsAnalytical):
 		'''
 		k = 2 * np.pi / self.Lambda
 		Ph = -((k*z + k *r**2/2/self.RCurvature(z) - self.GouyPhase(z)))
-		ZeroPos = (z==0)  # gestisto eventuale singolarità nella fase
+		ZeroPos = (z==0)  # gestisto eventuale singolarit?? nella fase
 		try:
 			Ph[ZeroPos] = 0
 		except:
@@ -1202,8 +1202,8 @@ class SourceGaussian(OpticsAnalytical):
 		(x,y) = rm._MatchArrayLengths(x,y)
 		'''
 		in qusta funciton ho introdotto il concetto per cui
-		x è la coordinata nel sistema di riferimento esterno
-		z è la distanza dal waist.
+		x ?? la coordinata nel sistema di riferimento esterno
+		z ?? la distanza dal waist.
 		'''
 
 		#@todo completare i displacements
@@ -1345,7 +1345,7 @@ class SourceGaussian(OpticsAnalytical):
 #	def Phase(self, z,y):
 #		k = 2 * np.pi / self.Lambda
 #		Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
-#		ZeroPos = (z==0)  # gestisto eventuale singolarità nella fase
+#		ZeroPos = (z==0)  # gestisto eventuale singolarit?? nella fase
 #		Ph[ZeroPos] = 0
 #		return Ph
 #	#================================================
@@ -1370,7 +1370,7 @@ class SourceGaussian(OpticsAnalytical):
 #		k = 2 * np.pi / self.Lambda
 #
 #		Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
-#		ZeroPos = (z==0)  # gestisto eventuale singolarità nella fase
+#		ZeroPos = (z==0)  # gestisto eventuale singolarit?? nella fase
 #		try:
 #			Ph[ZeroPos] = 0
 #		except:
@@ -1390,8 +1390,8 @@ class SourceGaussian(OpticsAnalytical):
 #		(x,y) = _MatchArrayLengths(x,y)
 #		'''
 #		in qusta funciton ho introdotto il concetto per cui
-#		x è la coordinata nel sistema di riferimento esterno
-#		z è la distanza dal waist.
+#		x ?? la coordinata nel sistema di riferimento esterno
+#		z ?? la distanza dal waist.
 #		Questo fa si Waist(z), Radius(z) e simili vogliano l z
 #		'''
 #
@@ -2436,7 +2436,7 @@ class Mirror(OpticsNumerical):
 #	# FigureErrorAddToIdealProfile [Mirror]
 #	#================================
 #	def FigureErrorAddToIdealProfile(self, myResidual):
-#		'''Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che è ciò che accate se Options.)
+#		'''Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che ?? ci?? che accate se Options.)
 #		Requires
 #		-------------------
 #		- GetXY_IdealMirror(N)
@@ -2699,7 +2699,7 @@ class MirrorPlane(Mirror):
 	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle =  TypeOfAngle.InputNominal, **kwargs ):
 		'''
 		Set the element XYCentre and orientation angle.
-		CHECK CONTROLLARE: non mi ricordo più che cosa siano gli angoli
+		CHECK CONTROLLARE: non mi ricordo pi?? che cosa siano gli angoli
 		'''
 
 		self.XYCentre = XYLab_Centre
@@ -3759,7 +3759,7 @@ class MirrorElliptic(Mirror):
 	# _AddResidualToMirrorElliptic
 	#================================
 	def _AddResidualToMirrorElliptic(self, myResidual):
-		# Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che è ciò che accate se Options.)
+		# Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che ?? ci?? che accate se Options.)
 		N = len(myResidual)
 		[Mir_x, Mir_y] = self.GetXY_IdealMirror(N)
 		ThetaList = self._LocalTangent(Mir_x, Mir_y)
@@ -4814,7 +4814,7 @@ class MirrorSpheric(Mirror):
 	# _AddResidualToMirrorElliptic
 	#================================
 	def _AddResidualToMirrorElliptic(self, myResidual):
-		# Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che è ciò che accate se Options.)
+		# Assume che la lunghezza fisica di myResidual sia uguale a quella di self.L (che ?? ci?? che accate se Options.)
 		N = len(myResidual)
 		[Mir_x, Mir_y] = self.GetXY_IdealMirror(N)
 		ThetaList = self._LocalTangent(Mir_x, Mir_y)
@@ -5191,7 +5191,7 @@ class Slits(OpticsNumerical):
 	_IsAnalytic = False
 	_PropList = ['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 				 'XYStart', 'XYCentre', 'XYEnd']
-
+	_MementoVariables = ('_L')
 	# ================================
 	#  FUN: __init__
 	# ================================
@@ -5382,7 +5382,7 @@ class Slits(OpticsNumerical):
 	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle=TypeOfAngle.InputNominal, **kwargs):
 		'''
 		Set the element XYCentre and orientation angle.
-		CHECK CONTROLLARE: non mi ricordo più che cosa siano gli angoli
+		CHECK CONTROLLARE: non mi ricordo pi?? che cosa siano gli angoli
 		'''
 
 		self.XYCentre = XYLab_Centre
