@@ -1277,7 +1277,7 @@ class BeamlineElements(Tree):
 			# case: the present element must be Ignored
 			# ----------------------------------------------
 			elif (oeThis.ComputationSettings.Ignore == True):
-				PropInfo.TotalPath += oeThis.DistanceFromParent
+				PropInfo.TotalPath += oeThis.GetDistanceFromParent(SameOrientation=True, OnlyReference=False)
 				PropInfo.N += 1
 
 			# ----------------------------------------------
@@ -1295,7 +1295,7 @@ class BeamlineElements(Tree):
 
 					# Transform oeThis --> oeV (virtual optical element)
 					oeV = self._MakeVirtual(oeThis, PropInfo.oeLast,
-											PropInfo.TotalPath + oeThis.DistanceFromParent) if PropInfo.N > 0 else oeThis
+											PropInfo.TotalPath + oeThis.GetDistanceFromParent(SameOrientation=True, OnlyReference=False)) if PropInfo.N > 0 else oeThis
 					NSamples = oeV.GetNSamples(Lambda)
 
 					xV, yV = oeV.GetXY(NSamples)
