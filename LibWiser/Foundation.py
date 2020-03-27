@@ -580,8 +580,7 @@ class OpticalElement(TreeItem):
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			# Additional Stuff (such as the distance from previous element, etc...)
 
-			Str += '\t\tDeltaZ=%0.2f m, Z=%0.2f m' % (self.DistanceFromParent,
-												 self.DistanceFromSource)
+			Str += '\t\tDeltaZ=%0.2f m, Z=%0.2f m' % (self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource)
 
 
 			return Str
@@ -891,6 +890,25 @@ class OpticalElement(TreeItem):
 		'''
 		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
 		return result
+
+	def GeneralDistanceFromParent(self, Orientation=True, Reference=True):
+		'''
+		Generalized DistanceFromParent. As DistanceFromParent is a property and linked to a lot of other things
+		in the code, this was added later for correct __str__ behaviour.
+		It corresponds to the optical distance between the element (self) and the first optical element with the
+		Orientation and Reference.
+		>>> self.GetParent(SameOrientation=Orientation, OnlyReference=Reference))
+		'''
+
+		if self.Parent != None:
+			distance = np.linalg.norm(self.XYCentre - self.GetParent(SameOrientation=Orientation, OnlyReference=Reference).XYCentre)
+		elif self.Parent == None:
+			distance = 0
+		else:
+			raise ValueError('Something wrong in GeneralDistanceFromParent!')
+
+		return distance
+
 
 #===========================================================================
 # 	CLASS: BeamlineElements
