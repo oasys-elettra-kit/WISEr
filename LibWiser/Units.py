@@ -16,8 +16,9 @@ Created on Mon Nov 11 16:12:18 2019
 #					 UnitMath : str = None,
 #					 SiPrefixPreferred  : str = None  )
 
-from engineering_notation import EngNumber
-
+import engineering_notation
+from engineering_notation import EngNumber, EngUnit
+import numpy as np
 
 def SmartFormatter(x):
 	'''
@@ -33,8 +34,37 @@ def SmartFormatter(x):
 	else:
 		return str(x)
 
+
+def GetSiUnitScale(x):
+	'''
+	Get the most convenient SI unit for representing x.
+	e.g.
+		x=1e-7 => n
+		x=1e-6 => u
+		x=1e-5 => u
+		x=1e-4 => u
+
+   if x is an array, it uses the mean value
+	'''
+
+	if type(x) is np.ndarray:
+		x = np.mean(x)
+
+	if (type(x) is float) or (type(x) is np.float64):
+		StrUnit = EngUnit(x).eng_num.to_pn()
+		tok = StrUnit[-1]
+		NewStrUnit = ''
+		try:
+			a = int(tok)
+			NewStrUnit = ''
+		except:
+			NewStrUnit = tok
+		return NewStrUnit
+	else:
+		return ''
+
 class Units:
-	SiPrefixes = { 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
+	SiPrefixes = { 'a':1e-18, 'f':1e-15, 'p':1e-12, 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
 	@staticmethod
 	def UnitString2UnitScale(UnitString : str):
 		''' Scans a unit string (e.g. mm, um, km) and returns the corresponding

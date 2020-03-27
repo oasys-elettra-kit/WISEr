@@ -2002,11 +2002,15 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	oeFocussing : Focussing element
 	oeFocussing : optical element that focusses radiation
 	DefocusList :
+
 	Return
 	--------
 	ResultList : a list of OpticalElement._ClassComputationResults
+
 	HewList : an array of Half Energy Width of the INTENISTY
+
 	SigmaList : an array of Sigma, computed as result of gaussian fitting ON THE INTENSITY
+
 	More :	Other stuff
 	'''
 	DistanceList = DefocusList

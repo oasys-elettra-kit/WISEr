@@ -11,7 +11,7 @@ import importlib
 
 
 
-# LibWISEr aliases
+# LibWiser aliases
 #=======================================================================
 from LibWiser.must import *   #continuously subject to  revision and discussion
 

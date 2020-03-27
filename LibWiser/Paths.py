@@ -12,7 +12,7 @@ from pathlib import Path as MakePath
 #================================================================
 def GetWiserPath():
 	'''
-	Returns the parent folder containing LibWISEr folder
+	Returns the parent folder containing LibWiser folder
 
 	'''
 	WorkingFile = MakePath(Init.__file__)
@@ -25,7 +25,14 @@ def GetRepositoryPath():
 	WorkingFile = MakePath(Init.__file__)
 	return WorkingFile.parent.parent
 
+def GetRepositoryParentPath():
+	WorkingFile = MakePath(Init.__file__)
+	return WorkingFile.parent.parent.parent
+
+
+Tmp = MakePath(GetRepositoryParentPath(), 'WISEr_Tmp')
 Main = GetRepositoryPath() # the WiserPath variable is sent to the namespace
 LibWiser = GetWiserPath()
 Metrology =  MakePath(Main, 'Metrology')
 MetrologyFermi =  MakePath(Main, 'Metrology', 'FERMI')
+
