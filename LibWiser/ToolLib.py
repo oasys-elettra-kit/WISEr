@@ -54,6 +54,11 @@ def PathJoin (path, *paths):
 #================================
 #  PathCreate
 #================================
+def PathGetFileNameWithoutExtension(Path):
+	return os.path.splitext[0]
+#================================
+#  PathCreate
+#================================
 def PathCreate(Path, IsFile = True):
 	'''
 	Create a path, if not existing.
@@ -103,7 +108,7 @@ def ExecFile(FilePath):
 ##================================================================
 #def GetWiserPath():
 #	'''
-#	Returns the parent folder containing LibWISER fodler
+#	Returns the parent folder containing LibWiser fodler
 #
 #	Architecture Notes
 #	----
@@ -394,7 +399,7 @@ def RotXY(x,y, Theta = 0, CentreOfRotation = np.array([0,0])):
 	'''
 	if Theta == 0:
 		return (np.array(x), np.array(y))
-	Theta = -Theta # non so perché il -1, odio le matrici di rotazione.
+	Theta = -Theta # non so perch?? il -1, odio le matrici di rotazione.
 	Vxy = np.column_stack((x,y))
 	U  = dot(Vxy - CentreOfRotation, RMat(Theta)) + CentreOfRotation
 	return (U[:,0], U[:,1])
@@ -656,7 +661,7 @@ def L_2_XY(f, L, XStart,  Sign = +1, Tolerance = 1e-3, GuessStep = 1e-4, iMax = 
 
 		if LSum >= L: # raggiunta la lunghezza
 			if (LSum - L) > Tolerance:
-				# ripeti con step più piccolo
+				# ripeti con step pi?? piccolo
 				pass #???
 			else:
 				return (XNew, YNew)
@@ -2123,7 +2128,7 @@ class FileIO:
 		"""
 		PathValueTuples  = GroupValueTuples
 		from Scrubs import ListAttr, ListAttrRecursive
-		from LibWISEr.Scrubs import DataContainer # otherwise the type match does not work properly
+		from LibWiser.Scrubs import DataContainer # otherwise the type match does not work properly
 		# Ensures that the path exists
 		PathCreate(FileName, True)
 
@@ -2211,9 +2216,15 @@ class CommonPlots:
 
 		'''
 		try:
+			x = OptElement.Results.S
+
 			plt.figure(FigureIndex, **kwargs)
 
+			if XUnitPrefix is None:
+				XUnitPrefix = Units.GetSiUnitScale(x)
 			XUnitScale = Units.SiPrefixes[XUnitPrefix]
+
+
 			x = OptElement.Results.S / XUnitScale
 			A  = abs(OptElement.ComputationData.Field)
 			I = A**2

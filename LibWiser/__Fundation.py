@@ -6,15 +6,15 @@ Author michele.manfredda@elettra.eu
 '''
 
 from __future__ import division
-from LibWISEr.must import *
-from LibWISEr import Optics, Rayman as rm, ToolLib as tl
-from LibWISEr.ToolLib import  Debug
+from LibWiser.must import *
+from LibWiser import Optics, Rayman as rm, ToolLib as tl
+from LibWiser.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
 
-from LibWISEr.Optics import TypeOfAngle
+from LibWiser.Optics import TypeOfAngle
 
 
 #=============================
