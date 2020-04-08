@@ -2185,6 +2185,14 @@ class CommonPlots:
 		return Metrology.PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs )
 
 	#=============================================================#
+	# FUN FigureError
+	#=============================================================#
+	def FigureErrorUsed(OpticalElement, Index = 0,  FigureIndex = None, **kwargs ):
+		return Metrology.PlotFigureError(OpticalElement, Index = 0,  LastUsed = True ,
+								   FigureIndex = None,
+								   AppendToTitle = ' (Used in computation)', **kwargs )
+
+	#=============================================================#
 	# FUN RadiationAtOpticalElement
 	#=============================================================#
 	def RadiationAtOpticalElement(OptElement,
@@ -2534,7 +2542,7 @@ class Metrology:
 	#=============================================================#
 	# FUN PlotFigureError
 	#=============================================================#
-	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, **kwargs ):
+	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, AppendToTitle = '', **kwargs ):
 		'''
 		Type: Helper/Developer function
 		-----
@@ -2563,7 +2571,7 @@ class Metrology:
 			y = Item.CoreOptics.FigureErrors[Index]
 			dx = Item.CoreOptics.FigureErrorSteps[Index]
 			x = np.linspace(0,len(y) * dx, len(y))
-			TitleStr = 'Figure Error[%d/%d]' % (Index + 1,Tot)
+			TitleStr = 'Figure Error[%d/%d]' % (Index + 1,Tot)  + AppendToTitle
 		'''
 		Notes: Index +1 => In order so that the maximum is e.h. 5/5 and min is 1/5
 		'''
