@@ -1,5 +1,6 @@
 # WISEr
-WISEr: Wavefront Simulation Software, the Reloaded version. 
+WISEr: Wavefront Simulation Software Reloaded. The Library 
+
 WISEr is a physical optics package, currently based on Huygens-Fresnel propagation integral, conceived for simulating the optical performances of X-Ray Mirrors. 
 At a glance:
 - It operates with 1d optical elements, with monochromatic 
