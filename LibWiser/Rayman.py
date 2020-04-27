@@ -587,7 +587,7 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     return EbTok
 
 #==============================================================================
-# 	FUN: HuygensIntegral_1d_Kernel_Beta
+# 	FUN: HuygensIntegral_1d_Kernel_Beta   o
 #==============================================================================
 #@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
 #def HuygensIntegral_1d_Kernel_Beta(wl, Ea, xa, ya, xb, yb):
