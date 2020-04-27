@@ -62,6 +62,7 @@ def GetSiUnitScale(x):
 		return NewStrUnit
 	else:
 		return ''
+GetEngLetter = GetSiUnitScale
 
 class Units:
 	SiPrefixes = { 'a':1e-18, 'f':1e-15, 'p':1e-12, 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }

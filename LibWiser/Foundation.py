@@ -7,6 +7,7 @@ Author michele.manfredda@elettra.eu
 
 from __future__ import division
 from LibWiser.must import *
+import LibWiser
 from LibWiser import Optics, Rayman as rm, ToolLib as tl
 from LibWiser.ToolLib import  Debug
 import inspect
@@ -39,7 +40,7 @@ class INSERT_MODE:
 #===========================================================================
 # 	STRUCT: ComputationResults
 #===========================================================================
-class ComputationResults(object):
+class ComputationResults(LibWiser.Scrubs.DataContainer):
 	def __init__(self):
 		self.Lambda = 0         #wavelength used
 		self.NSamples = None
@@ -60,7 +61,7 @@ class ComputationResults(object):
 		except:
 			return None
 
-#===========================================================================
+	#===========================================================================
 # 	STRUCT: PropagationDirectives
 #===========================================================================
 class PropagationInfo(object):
@@ -585,7 +586,7 @@ class OpticalElement(TreeItem):
 
 			return Str
 	#==========================================
-	# FUN: ComputeSampling[OpticalElement]
+	# FUN: GetNSamples[OpticalElement]
 	#==========================================
 	def GetNSamples(self, Lambda = None):
 		'''
@@ -1153,9 +1154,10 @@ class BeamlineElements(Tree):
 				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
 				'''
 
-				#FIX 4 Aljosa :)
+				#FIX 4 Aljosa
 				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
 					realDistance = oeXSameOrientation.CoreOptics.f2
+
 				else: # Find the first suitable one
 					oeXSameOrientationCurrent = oeXSameOrientation
 					realDistance = oeXSameOrientationCurrent.DistanceFromParent
@@ -1183,12 +1185,19 @@ class BeamlineElements(Tree):
 	#================================================
 	#  FUN: GetSamplingList
 	#================================================
-	def GetSamplingList(self, Verbose = True):
+	def GetSamplingList(self, Verbose = True, ForceAutoSampling = False):
 		"""
 		Helper function (for debug, not used by the computation engine)
 		Returns a list containing the sampling used for each optical element
 
 		"""
+		# temporarily set the UseCustomSampling to True, if required
+		Memento = []
+		if ForceAutoSampling:
+			for Item in self.ItemList:
+				Memento.append(Item.ComputationSettings.UseCustomSampling)
+				Item.ComputationSettings.UseCustomSampling = False
+
 		self.ComputeFields(oeStart = None, oeEnd = None, Dummy = True, Verbose = False)
 		NList = []
 		NameList = []
@@ -1197,6 +1206,11 @@ class BeamlineElements(Tree):
 			NameList.append(Oe.ComputationResults.Name)
 			if Verbose:
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
+
+		# restore the UseCustomSampling
+		if ForceAutoSampling:
+			for i,Item in enumerate(self.ItemList):
+				Item.ComputationSettings.UseCustomSampling = Memento[i]
 		return NList, NameList
 
 	# ================================================
@@ -1281,15 +1295,20 @@ class BeamlineElements(Tree):
 
 		k = 0
 		Ind = 1
-		for oeThis in oeList:
-			Debug.Print('\n\nCompute Fields>>-----------------\n\t Processing: ' + '\t' + oeThis.Name)
+		NoeList = len(oeList)
+		for ioeThis, oeThis in enumerate(oeList):
+#			Debug.Print(50 * '=')
+			Debug.Print('Compute Fields %d/%d' %( ioeThis	, NoeList), NIndent = 0, Header = True)
+#			Debug.Print(50 * '=')
+
+			Debug.Print('\tProcessing:\t'  + oeThis.Name)
 			# ----------------------------------------------
 			# case: the present element is the Source
 			# ----------------------------------------------
 			if oeThis.IsSource == True:
 				# if oeThis.CoreOptics._Behaviour == 'source' : # This was the first way to do it
 				Action = 'no Action'
-				Debug.print('\t Action:' + Action)
+				Debug.print('\tAction:' + Action)
 				pass
 			# ----------------------------------------------
 			# case: the present element must be Ignored
@@ -1309,7 +1328,7 @@ class BeamlineElements(Tree):
 				# I require to transform oeThis --> Virtual(oeThis)
 				if PropInfo.oeLast.CoreOptics._IsAnalytic == True:
 					Action = 'Evaluating analytical function (of previous OE on THIS one)'
-					Debug.print('Action: ' + Action, Ind)
+					Debug.print('\tAction: ' + Action, Ind)
 
 					# Transform oeThis --> oeV (virtual optical element)
 					oeV = self._MakeVirtual(oeThis, PropInfo.oeLast,
@@ -1327,10 +1346,10 @@ class BeamlineElements(Tree):
 						xThis = None
 						yThis = None
 					else:
-						Debug.print('Computing field (Analytic)', Ind + 1, True)
-						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('target object = %s' % oeThis.Name, Ind + 1)
-						Debug.pr('NSamples', Ind + 1)
+#						Debug.print('Computing field (Analytic)', Ind , True)
+#						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind + 1)
+#						Debug.print('target object = %s' % oeThis.Name, Ind + 1)
+#						Debug.pv('NSamples', Ind + 1)
 
 						# --------------------------------------------
 						# DATA ==>  Storage
@@ -1342,13 +1361,15 @@ class BeamlineElements(Tree):
 						# -----------------------------------------------------
 
 						xThis, yThis = oeThis.GetXY(NSamples)
-						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
-						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
-						Debug.print('xLast = -- not defined', Ind + 1)
-						Debug.print('yLast = -- not defined', Ind + 1)
-						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
-						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
+#						Debug.Print('Detailed info', NInd = Ind + 1)
+#						Debug.Print(20 * '.', NInd = Ind+1)
+#						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
+#						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
+#						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
+#						Debug.print('xLast = -- not defined', Ind + 1)
+#						Debug.print('yLast = -- not defined', Ind + 1)
+#						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
+#						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
 
 					PropInfo.N = 0
 					PropInfo.TotalPath = 0
@@ -1382,12 +1403,12 @@ class BeamlineElements(Tree):
 						oeThis.Results.Field = 0
 						xThis = None
 						yThis = None
-
+						Debug.pr('NSamples', Ind + 1)
 					else:
-						Debug.print('Computing field (Numeric)', Ind + 1)
-						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('target object = %s' % oeThis.Name, Ind + 1)
-						Debug.print('NSamples', Ind + 1)
+#						Debug.print('Computing field (Numeric)', Ind)
+#						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
+#						Debug.print('target object = %s' % oeThis.Name, Ind )
+#						Debug.pr('NSamples', Ind + 1)
 
 						# definizione di promemoria
 						# EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
@@ -1400,14 +1421,28 @@ class BeamlineElements(Tree):
 							NPools=1)
 
 						xLast, yLast = PropInfo.oeLast.GetXY(NSamples)
-						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
-						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
-						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
-						Debug.print('xLast = -- not defined', Ind + 1)
-						Debug.print('yLast = -- not defined', Ind + 1)
-						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
-						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
+#						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
+#						Debug.print('oeThis.Name = %s' % oeThis.Name, Ind + 1)
+#						Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind + 1)
+#						Debug.print('xLast = -- not defined', Ind + 1)
+#						Debug.print('yLast = -- not defined', Ind + 1)
+#						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
+#						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
 
+					Debug.print('Computing field (Numeric)', Ind)
+					Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
+					Debug.print('target object = %s' % oeThis.Name, Ind )
+					Debug.Print('NSamples =%d' % NSamples, Ind)
+
+					Debug.Print('More info', NIndent = Ind )
+					Debug.Print(20 * '.', NIndent= Ind)
+					Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind )
+					Debug.print('oeThis.Name = %s' % oeThis.Name, Ind )
+					Debug.print('len(oeThis.ComputedField) = %d' % len(oeThis.Results.Field), Ind )
+#					Debug.print('xLast = -- not defined', Ind + 1)
+#					Debug.print('yLast = -- not defined', Ind + 1)
+					Debug.print('len xThis = %d' % len(xThis), Ind )
+					Debug.print('len yThis = %d' % len(yThis), Ind )
 				# ----------------------------------------------
 				# DATA => Storage
 				# ----------------------------------------------

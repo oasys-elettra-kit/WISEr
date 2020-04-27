@@ -26,7 +26,6 @@ def Exists(var):
 #==============================================================================
 class DataContainer():
 	'''
-	Brilliant classe ever B-)
 
 	DataContainer class is a struct-like object conceived for easy-to-use data
 	storage. It is designed with user-friendliness in mind rather than performance.

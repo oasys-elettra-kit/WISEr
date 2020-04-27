@@ -573,7 +573,7 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
         ybi = yb[i]
         # Preliminary normalisation
         # 17/01/2017
-        # Normalization = self.L * self.(Alpha)/(Lambda * )
+#        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
         # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
 
         RList = np.sqrt((xa - xbi)**2 + (ya - ybi)**2)
