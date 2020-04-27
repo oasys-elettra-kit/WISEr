@@ -319,8 +319,8 @@ class OpticsNumerical(Optics):
 		'''
 		N = len(x1)
 		x0, y0 = self.GetXY(N)
-		tl.Debug.Print('Computing Field: N  = %d' % N)
-		tl.Debug.pr('Lambda')
+		tl.Debug.Print('Evaluating Field: N  = %d (EvalField)' % N, NIndent =3 )
+		tl.Debug.pr('\t\t\tLambda')
 
 		#ad hoc correction: multiply by transmission function before propagation
 		E0 = E0 * self.TransmissionFunction(x0,y0)
@@ -632,7 +632,7 @@ class OpticsNumerical(Optics):
 
 		Notice: SmallDisplacements affect the GetXY function
 		'''
-		tl.Debug.Print('Applying small displacements', 3, True)
+		tl.Debug.Print('Applying small displacements', 3, False)
 #		XYTranslation = self._Transformation_List[0][i]
 #		Rotation = self._Transformation_List[1][i]
 #		RotationCentre = self._Tranisformation_List[2][i]
@@ -648,9 +648,9 @@ class OpticsNumerical(Optics):
 		xNew = xLab + DeltaX
 		yNew = yLab + DeltaY
 
-		tl.Debug.pv('DeltaX')
-		tl.Debug.pv('DeltaY')
-		tl.Debug.Print(self.SmallDisplacements.Rotation)
+		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
+		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
+		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
 
 		return(xNew, yNew)
 

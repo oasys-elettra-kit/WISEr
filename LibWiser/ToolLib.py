@@ -2398,6 +2398,14 @@ class Metrology:
 		HighDuty : float (0 to 1)
 			Duty cycle of the high period
 
+		Return
+		-------
+		GratingProfile : array like
+			Height profile (m) of the grating.
+
+		Step : scalar
+			Lateral step, corresponding to L0/N (yep, it is not so interesting).
+
 
 		'''
 
@@ -2542,7 +2550,8 @@ class Metrology:
 	#=============================================================#
 	# FUN PlotFigureError
 	#=============================================================#
-	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None, AppendToTitle = '', **kwargs ):
+	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None,
+					 AppendToTitle = '', fmt = '-', **kwargs ):
 		'''
 		Type: Helper/Developer function
 		-----
@@ -2578,7 +2587,7 @@ class Metrology:
 
 		PlotLabel  = '[%d/%d, L=%0.1f mm out of %0.1f mm]' % (Index + 1,Tot, x[-1] - x[0], OpticalElement.CoreOptics.L)
 		plt.figure(FigureIndex, **kwargs)
-		plot(x * 1e3,y * 1e9, label = PlotLabel)
+		plot(x * 1e3,y * 1e9, '.-', label = PlotLabel)
 		plt.xlabel('mm')
 		plt.ylabel('nm')
 		plt.title(Item.Name + TitleStr)
