@@ -569,14 +569,14 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     EbTok = np.zeros(EbTokN, dtype=np.complex128)
 
     for i in prange(0, EbTokN):
-        xbi = xb[i]
-        ybi = yb[i]
+#        xbi = xb[i]
+#        ybi = yb[i]
         # Preliminary normalisation
         # 17/01/2017
 #        Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
         # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
 
-        RList = np.sqrt((xa - xbi)**2 + (ya - ybi)**2)
+        RList = np.sqrt((xa - xb[i])**2 + (ya - yb[i])**2)
 
         #EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
         D = Ea / RList * np.exp(-1j * k * RList)
@@ -585,9 +585,72 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     EbTok = 1. / np.sqrt(wl) * EbTok
 
     return EbTok
+
 #==============================================================================
-# 	FUN: HuygensIntegral_1d_Kernel_Dark
+# 	FUN: HuygensIntegral_1d_Kernel_Beta   o
 #==============================================================================
+#@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
+#def HuygensIntegral_1d_Kernel_Beta(wl, Ea, xa, ya, xb, yb):
+#	"""
+#	Parameters
+#	--------------------
+#	wl : float
+#		Wavelength (m)
+#	Ea : 1d complex array
+#		Electromagnetic Field
+#	xa, ya : 1d array float
+#		Coordinates of the start plane
+#	xb, yb : 1d array float
+#		Coordinates of the final plane
+#	The computation is performed on the elements
+#	xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
+#
+#	Notes
+#	-------------------
+#	The order of the integration loop, if compared to the first version, is reversed.
+#	That is, the slowly-varying-variable is on the starting plane. This is less suitable
+#	for the manual division of the workload into workers (parallel computing), but with
+#	automatic parallelization there was no need of doing that.
+#	Conversely, I can use the new structure to introduce a threshold on the illuminating field.
+#	If Ea<0 then skip.
+#
+#	Feature still under test.
+#	Threshold hardcoded.
+#	"""
+#
+#	k = 2. * np.pi / wl
+#
+#	bStart = 0
+#	# bEnd = prod(int64(xb.shape))
+#	bEnd = 1.
+#	for x in xb.shape:
+#		bEnd = x * bEnd
+#
+#	TokN = np.int32(bEnd - bStart)
+#	Eb = np.zeros(TokN, dtype=np.complex128)
+#	EaAbs = np.zeros(TokN, dtype=np.float64)
+#
+#	EaAbs = np.real(np.sqrt(Ea**2))
+#	EaMax = np.amax(EaAbs)
+#	for i in prange(0, TokN):
+#		# Preliminary normalisation
+#		# 17/01/2017
+##		Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
+#		# R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
+#
+#		if EaAbs[i] < EaMax*1e-4:
+#			continue
+#		RList = np.sqrt((xa[i] - xb)**2 + (ya[i] - yb)**2)
+#
+#		#EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
+#		Eb += Ea[i] / RList * np.exp(-1j * k * RList)
+#
+#	Eb = 1. / np.sqrt(wl) * Eb
+#
+#	return Eb
+##==============================================================================
+## 	FUN: HuygensIntegral_1d_Kernel_Dark
+##==============================================================================
 #@jit(nopython=True, nogil=True, parallel=True)
 #def HuygensIntegral_1d_Kernel_Dark(Lambda, Ea, xa, ya, xb, yb, bStart=np.int64(-1), bEnd=np.int64(0)):
 #    """
