@@ -628,7 +628,8 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
 #
 #	TokN = np.int32(bEnd - bStart)
 #	Eb = np.zeros(TokN, dtype=np.complex128)
-#	EaAbs = np.zeros(TokN, dtype=np.float64)
+#	A = np.zeros(TokN, dtype=np.complex128)
+##	EaAbs = np.zeros(TokN, dtype=np.float64)
 #
 #	EaAbs = np.real(np.sqrt(Ea**2))
 #	EaMax = np.amax(EaAbs)
@@ -638,12 +639,13 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
 ##		Normalization = self.L * self.Alpha/(np.sqrt(Lambda))
 #		# R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
 #
-#		if EaAbs[i] < EaMax*1e-4:
+#		if EaAbs[i] < EaMax*1e-3:
 #			continue
-#		RList = np.sqrt((xa[i] - xb)**2 + (ya[i] - yb)**2)
 #
-#		#EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
-#		Eb += Ea[i] / RList * np.exp(-1j * k * RList)
+#		RList = np.sqrt((xa[i] - xb)**2 + (ya[i] - yb)**2)
+#		A =  Ea[i] / RList * np.exp(-1j * k * RList)
+#		Eb = Eb + A
+#		Eb += A # this does not work.... misterious!
 #
 #	Eb = 1. / np.sqrt(wl) * Eb
 #

@@ -1145,7 +1145,7 @@ class BeamlineElements(Tree):
 				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
 			# =============================================================================================
-			#  Set the XYCentre1   at the Dowstream focus
+			#  Set the XYCentre1   at the Dowstream focus. Used for detectors
 			# =============================================================================================
 			elif Pd.What == 'centre' and Pd.Where == 'downstream focus':
 				# When doing FocusSweep, use 'locked' for the virtual source and go into this case...

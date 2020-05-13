@@ -86,18 +86,6 @@ class DataContainer():
 		for Item in Items:
 			setattr(self,Item[0], Item[1]) # e.g. ParameterName = ParameterValue
 
-	#==============================
-	#  FUN: __repr__
-	#==============================
-#	def __repr__(self):
-#		AttrStrList, AttrStrObj = ListAttr(self, ReturnObject = True)
-#
-#		Str = str(type(self)) + '\n'
-#		for i,AttrStr in enumerate(AttrStrList):
-#			Str = Str + AttrStr + ':\t' + str(AttrStrObj[i]) + '\n'
-#
-#		return Str
-
 #	#==============================
 	#  FUN: __str__
 	#==============================
