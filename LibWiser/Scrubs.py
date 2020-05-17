@@ -75,6 +75,21 @@ class DataContainer():
 	print(D)
 
 	'''
+
+
+	#==============================
+	#  FUN: __init__
+	#==============================
+	@staticmethod
+	def _GetNonMagicAttributes():
+		Attrs = dir(DataContainer)
+		AttrList = []
+		for Attr in Attrs:
+			if Attr[0] != '_':
+					AttrList.append(Attr)
+		return AttrList
+
+
 	#==============================
 	#  FUN: __init__
 	#==============================
@@ -100,9 +115,12 @@ class DataContainer():
 		Uses the GetSubItems function.
 		'''
 
+		Values = [locals()[_] for _ in GetNonMagicAttributes()]
+		a = '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in Values])
 		SubItems = self._GetSubItems()
-		return '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in SubItems])
+		b =  '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in SubItems])
 
+		return a + '\n' + b
 
 
 	#==============================
@@ -110,7 +128,7 @@ class DataContainer():
 	#==============================
 	def _GetItems(self):
 		'''
-		Returns a list of tuples
+		Returns a list of tuples in the form (attribute, object)
 		'''
 		Attr, Obj = ListAttr(self)
 

@@ -9,6 +9,7 @@ from __future__ import division
 from LibWiser.must import *
 import LibWiser
 from LibWiser import Optics, Rayman as rm, ToolLib as tl
+from LibWiser import Rayman
 from LibWiser.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
@@ -50,16 +51,35 @@ class ComputationResults(LibWiser.Scrubs.DataContainer):
 		self.S = None   #the sampled points along the OE longitudinal axis
 		self.Action = None
 		self.Name = ''
-		'''
-		Field : can be either automatically filled as the result of propagation, or
-		"manually" filled as the input field (i.e. the beginning of a propagation chain).
-		'''
+
+	#============================
+	# PROP Intensity
+	#============================
 	@property
 	def Intensity(self):
 		try:
 			return abs(self.Field)**2
 		except:
 			return None
+
+	#============================
+	# PROP Hew
+	#============================
+	@property
+	def Hew(self):
+		'''
+		returns the Half energy width
+		'''
+
+		Step = np.mean(np.diff(self.S))
+		Hew, iHew = Rayman.HalfEnergyWidth_1d(self.Intensity, UseCentreOfMass = False, Step = Step)
+
+		return Hew
+		'''
+		Field : can be either automatically filled as the result of propagation, or
+		"manually" filled as the input field (i.e. the beginning of a propagation chain).
+		'''
+
 
 	#===========================================================================
 # 	STRUCT: PropagationDirectives
@@ -349,6 +369,15 @@ class Tree(object):
 	def LastItem(self):
 		return self.ItemList[self.NItems-1]
 
+	#================================================
+	#	PROP: Name
+	#================================================
+	@property
+	def Name(self):
+		return self._Name
+	@Name.setter
+	def Name(self,x):
+		self._Name = str(x)
 
 	#================================================
 	#	ItemList
@@ -2153,9 +2182,9 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 # ================================================
 #  FUN: FocusFind
 # ================================================
-def FocusFind(oeFocussing,	  DefocusRange = (-20e-3, 20e-3),
-			  DetectorSize=50e-6,
-			  MaxIter = 21,
+def FocusFind(oeFocussing,	  DefocusRange = (-30e-3, 30e-3),
+			  DetectorSize=200e-6,
+			  MaxIter = 31,
 			  AngleInNominal=np.deg2rad(90)):
 	'''
 	Find the best focus. Similar to FocusSweep, except that it does not provide the
@@ -2257,9 +2286,16 @@ def FocusFind(oeFocussing,	  DefocusRange = (-20e-3, 20e-3),
 	OptResult = opt.minimize_scalar(ComputeHew,
 								 method='bounded',
 								 bounds = DefocusRange,
+								 tol = 1e-5,
 								 options = {'maxiter' : MaxIter, 'disp' : True},
 								 args = (d,t)
 								 )
+#	OptResult = opt.minimize_scalar(ComputeHew,
+#								 method='brent',
+#								 bounds = DefocusRange,
+#								 options = {'maxiter' : MaxIter, 'disp' : True},
+#								 args = (d,t)
+#								 )
 #	OptResult = opt.bisect(HewToMinimize,
 #								a = DefocusRange[0],
 #								b = DefocusRange[1],
