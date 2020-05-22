@@ -887,25 +887,29 @@ class OpticalElement(TreeItem):
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 
-		if SameOrientation and OnlyReference:
-			for oe in self.UpstreamItemList:
-				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
-					GetParentResult = oe
-					break
-		elif SameOrientation and not OnlyReference:
-			for oe in self.UpstreamItemList:
-				if HaveSameOrientation(oe, self):
-					GetParentResult = oe
-					break
+		if self.Parent == None:
+			GetParentResult = None
+
 		else:
-			for oe in self.UpstreamItemList:
-				if OnlyReference:
-					if oe.CoreOptics.UseAsReference:
+			if SameOrientation and OnlyReference:
+				for oe in self.UpstreamItemList:
+					if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
 						GetParentResult = oe
 						break
-				elif not OnlyReference:
-					GetParentResult = oe
-					break
+			elif SameOrientation and not OnlyReference:
+				for oe in self.UpstreamItemList:
+					if HaveSameOrientation(oe, self):
+						GetParentResult = oe
+						break
+			else:
+				for oe in self.UpstreamItemList:
+					if OnlyReference:
+						if oe.CoreOptics.UseAsReference:
+							GetParentResult = oe
+							break
+					elif not OnlyReference:
+						GetParentResult = oe
+						break
 
 		return GetParentResult
 
