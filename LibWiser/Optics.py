@@ -5229,7 +5229,8 @@ class Slits(OpticsNumerical):
 		else:
 			tl.ErrMsg.InvalidInputSet
 
-		self.SmallDisplacements = False
+		# self.SmallDisplacements = False
+		self._FigureErrors = []
 		self._UpdateParameters_Lines()
 		self._UpdateParameters_XYStartEnd()
 		self.UseAsReference = False
@@ -5240,6 +5241,12 @@ class Slits(OpticsNumerical):
 	def __str__(self):
 		StrList = ['%s=%s' % (PropName, getattr(self, PropName)) for PropName in Slits._PropList]
 		return 'Slits \n' + 20 * '-' + '\n' + '\n'.join(StrList) + '\n' + 20 * '-'
+
+	# ================================
+	# PROP: FigureErrors
+	# ================================
+	@property
+	def FigureErrors(self): return self._FigureErrors
 
 	# ================================
 	#  PROP: AngleGrazingNominal
