@@ -17,6 +17,7 @@ import numpy as np
 import copy
 from enum import Enum
 import time
+import warnings
 
 from LibWiser.Optics import TypeOfAngle
 
@@ -607,6 +608,7 @@ class OpticalElement(TreeItem):
 			#		NameParent, self.Name, NameChildren, self.XYCentre[0], self.XYCentre[1])
 			#
 
+			print(self.GeneralDistanceFromParent(Reference=False))
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			# Additional Stuff (such as the distance from previous element, etc...)
 
@@ -887,29 +889,31 @@ class OpticalElement(TreeItem):
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 
-		if self.Parent == None:
-			GetParentResult = None
+		GetParentResult = None
 
+		if SameOrientation and OnlyReference:
+			for oe in self.UpstreamItemList:
+				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
+					GetParentResult = oe
+					break
+		elif SameOrientation and not OnlyReference:
+			for oe in self.UpstreamItemList:
+				if HaveSameOrientation(oe, self):
+					GetParentResult = oe
+					break
 		else:
-			if SameOrientation and OnlyReference:
-				for oe in self.UpstreamItemList:
-					if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
+			for oe in self.UpstreamItemList:
+				if OnlyReference:
+					if oe.CoreOptics.UseAsReference:
 						GetParentResult = oe
 						break
-			elif SameOrientation and not OnlyReference:
-				for oe in self.UpstreamItemList:
-					if HaveSameOrientation(oe, self):
-						GetParentResult = oe
-						break
-			else:
-				for oe in self.UpstreamItemList:
-					if OnlyReference:
-						if oe.CoreOptics.UseAsReference:
-							GetParentResult = oe
-							break
-					elif not OnlyReference:
-						GetParentResult = oe
-						break
+				elif not OnlyReference:
+					GetParentResult = oe
+					break
+
+		# Raise a warning in case if GetParent remains None
+		if GetParentResult == None:
+			warnings.warn("GetParent returned None!")
 
 		return GetParentResult
 
