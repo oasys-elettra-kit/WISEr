@@ -27,6 +27,7 @@ def SmartFormatter(x):
 	- EngNumber(x) if x is a float
 	- A smart formatting if x is decorated with UnitInfo object
 	- str(x) in any other case
+	:-)
 	'''
 
 	if type(x) is float:
