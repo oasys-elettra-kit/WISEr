@@ -39,13 +39,19 @@ def ThetaI(Lambda, Source = ''): # rad
 	FermiFactor = GetFermiFactorAuto(Lambda, Source)
 	return FermiFactor * Lambda * 1e9	* 1e-6
 
-def Waist0I(Lambda,Source =''):
-	return Lambda/np.pi/ThetaI(Lambda, Source)
+def Sigma0I(Lambda, Source =''):
+	return Lambda/2/np.pi/ThetaI(Lambda, Source)
 
 def Waist0E(Lambda,Source =''):
-	return Waist0I(Lambda, Source)*sqrt(2)
+#	return Waist0I(Lambda, Source)*sqrt(2)
+	return 2 * Sigma0I(Lambda, Source ='')
+def Waist0I(Lambda,Source =''):
+#	return Lambda/np.pi/ThetaI(Lambda, Source)
+	return Waist0E(Lambda,Source ='')/sqrt(2)
 
 # Returns the Sigma of the Intensity distributon of the fermi source
+
+
 def SigmaI(Lambda,z , Source =''):
 	DivI = ThetaI(Lambda, Source)
 	return DivI * z

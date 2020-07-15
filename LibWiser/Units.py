@@ -29,7 +29,7 @@ def SmartFormatter(x):
 	- str(x) in any other case
 	'''
 
-	if x is float:
+	if type(x) is float:
 		return EngNumber(x)
 	else:
 		return str(x)

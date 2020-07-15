@@ -115,11 +115,11 @@ class DataContainer():
 		Uses the GetSubItems function.
 		'''
 
-		Values = [locals()[_] for _ in GetNonMagicAttributes()]
-		a = '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in Values])
+#		Values = [locals()[_] for _ in GetNonMagicAttributes()]
+#		a = '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in Values])
 		SubItems = self._GetSubItems()
 		b =  '\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in SubItems])
-
+		a = ''
 		return a + '\n' + b
 
 
