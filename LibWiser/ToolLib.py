@@ -2258,8 +2258,9 @@ class CommonPlots:
 			else:
 				y = y
 
+
 			# --- plot x,y
-			plt.plot(x,y, **kwargs)
+			plt.plot(x,y)
 			# --- layout
 			plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
 			plt.xlabel(XUnitPrefix+'m')
@@ -2501,8 +2502,9 @@ class Metrology:
 
 		y : y data. Either height or slopes. See FileInfo.YUnit
 
-		FileInfo: data structure, containing
+		FileInfo: data structure (class), containing
 			FileName XUnit YUnit XScale YScale XStep
+			example: XStep = FileInfo.XStep
 		'''
 		FileInfo = namedtuple('FileInfo', 'FileName XUnit YUnit XScale YScale XStep Type')
 		with open(Path, 'r') as f:

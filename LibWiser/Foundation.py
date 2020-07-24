@@ -299,7 +299,7 @@ class Tree(object):
 #		self._Items = dict()
 		self._Items = OrderedDict()
 		self._ActiveItem = None
-
+		self._Name = ''
 		self._FirstItem = None
 
     #================================================
@@ -354,7 +354,7 @@ class Tree(object):
 				Itm1 = Itm0.Children[0]
 				StrList.append(Itm1.__disp__())
 				Itm0 = Itm1
-		return '\n'.join(StrList)
+		return 'Name:' + self.Name + 'n'+ 10*'=' + '\n'+ '\n'.join(StrList)
 
 	#================================================
 	#	FirstItem
@@ -578,8 +578,9 @@ class OpticalElement(TreeItem):
 		# There are 2 good reasons:
 		# 1. there is no need to wait for the other beamline elements to be deployed
 		# 2. another element may need the position of this element for its further 'absolute' positioning.
-		if PositioningDirectives.ReferTo == 'absolute' :
-			PositioningDirectives_UpdatePosition(self,None)
+		# mocambo
+#		if PositioningDirectives.ReferTo == 'absolute' :
+#			PositioningDirectives_UpdatePosition(self,None)
 
 		OpticalElement._LastInstance = 1301
     #================================================
@@ -2190,7 +2191,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 # ================================================
 #  FUN: FocusFind
 # ================================================
-def FocusFind(oeFocussing,	  DefocusRange = (-30e-3, 30e-3),
+def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 			  DetectorSize=200e-6,
 			  MaxIter = 31,
 			  AngleInNominal=np.deg2rad(90)):
@@ -2291,20 +2292,26 @@ def FocusFind(oeFocussing,	  DefocusRange = (-30e-3, 30e-3),
 
 		return Hew
 
+#	OptResult = opt.minimize_scalar(ComputeHew,
+#								 method='bounded',
+#								 bounds = DefocusRange,
+#								 tol = 1e-8,
+#								 options = {'maxiter' : MaxIter, 'disp' : True},
+#								 args = (d,t)
+#								 )
+
+
 	OptResult = opt.minimize_scalar(ComputeHew,
-								 method='bounded',
-								 bounds = DefocusRange,
-								 tol = 1e-5,
-								 options = {'maxiter' : MaxIter, 'disp' : True},
-								 args = (d,t)
-								 )
+								  args=(d,t), method='brent', tol=None, options={'maxiter': 31})
+
 #	OptResult = opt.minimize_scalar(ComputeHew,
 #								 method='brent',
 #								 bounds = DefocusRange,
 #								 options = {'maxiter' : MaxIter, 'disp' : True},
 #								 args = (d,t)
 #								 )
-#	OptResult = opt.bisect(HewToMinimize,
+#	OptResult = opt.minimize_scalar(ComputeHew,
+#								method='brent',
 #								a = DefocusRange[0],
 #								b = DefocusRange[1],
 #								full_output = True,
@@ -2388,12 +2395,11 @@ def FocusSweep2(oeFocussing,
 		# ------------------------------------------------------------
 		d.PositioningDirectives.Distance = Defocus
 		t.RefreshPositions()
-
 		# Perform the computation
 		t.ComputeFields(Verbose=False)
 		I = abs(d.ComputationData.Field) ** 2
 		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS) # Compute the HEW
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCentreOfMass = False) # Compute the HEW
 
 		return Hew
 
