@@ -16,6 +16,14 @@ import os
 from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
+
+
+#================================
+#  FUN: PathGetExtension
+#================================
+def PathGetExtension(Path):
+	filename, file_extension = os.path.splitext(Path)
+	return file_extension
 #================================
 #  FUN: PathSplit
 #================================
@@ -2258,8 +2266,9 @@ class CommonPlots:
 			else:
 				y = y
 
+
 			# --- plot x,y
-			plt.plot(x,y, **kwargs)
+			plt.plot(x,y)
 			# --- layout
 			plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
 			plt.xlabel(XUnitPrefix+'m')
@@ -2314,6 +2323,10 @@ class CommonPlots:
 
 
 class Metrology:
+
+
+
+
 	def AverageXYFiles(PathList, ReaderFunction, ReaderFunctionParams):
 		'''
 		Performs an average of X,Y files.
@@ -2501,8 +2514,9 @@ class Metrology:
 
 		y : y data. Either height or slopes. See FileInfo.YUnit
 
-		FileInfo: data structure, containing
+		FileInfo: data structure (class), containing
 			FileName XUnit YUnit XScale YScale XStep
+			example: XStep = FileInfo.XStep
 		'''
 		FileInfo = namedtuple('FileInfo', 'FileName XUnit YUnit XScale YScale XStep Type')
 		with open(Path, 'r') as f:
