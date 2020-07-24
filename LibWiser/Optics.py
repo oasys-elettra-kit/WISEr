@@ -2367,12 +2367,15 @@ class Mirror(OpticsNumerical):
 	#================================
 	# FigureErrorLoad
 	#================================
-	def FigureErrorLoad(self, h: float=None,
-							 Step: float=1e-3,
-							 File: str='',
-							 AmplitudeScaling: float=1,
-							 Append: bool=False,
-							 SubtractMean=False):
+	def FigureErrorLoad(self,
+						h: float=None,
+						Step: float=1e-3,
+						File: str='',
+						AmplitudeScaling: float=1,
+						Append: bool=False,
+						SubtractMean=False,
+						FileFormat=0,
+						SkipRows=0):
 
 		'''
 		Appends a 1darray to the list of Figure Errors.
@@ -2401,6 +2404,14 @@ class Mirror(OpticsNumerical):
 
 		Append : bool
 			If Append = False, it clears the existing list of FigureErrors.
+
+		FileFormat: 0, 1, 2
+			0: Single column (height)
+			1: Single column (slopes)
+			2: Two columns (position, height)
+
+		SkipRows: int
+			Number of rows to skip.
 
 		@ToRepair: adjustment of mirror length
 		'''
