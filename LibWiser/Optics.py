@@ -2503,13 +2503,13 @@ class Mirror(OpticsNumerical):
 		'''
 		if FileType == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY:
 
-			Height = ReadYFile(PathFile,  SkipLines )
+			Height = tl.ReadYFile(PathFile,  SkipLines )
 			Height *= YScaling
 			Step = Step
 
 		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+			x, Height = tl.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
@@ -2517,7 +2517,7 @@ class Mirror(OpticsNumerical):
 
 		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+			x, Height = tl.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
