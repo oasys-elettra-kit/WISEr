@@ -2503,21 +2503,21 @@ class Mirror(OpticsNumerical):
 		'''
 		if FileType == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY:
 
-			Height = tl.ReadYFile(PathFile,  SkipLines )
+			Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
 			Height *= YScaling
 			Step = Step
 
 		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = tl.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
 			Step = np.mean(np.diff(x))
 
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.SLOPE_ONLY:
 
-			x, Height = tl.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
@@ -2546,11 +2546,11 @@ class Mirror(OpticsNumerical):
 		# update the parent object
 		#-----------------------------------------------------------------------
 		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
-		self.FigureErrorLoad(h = Height,
-							   Step = Step,
-							   AmplitudeScaling = YScaling,
-							   Append = False,
-							   AmplitudeSign = np.sign(YScaling))
+		self.FigureErrorLoad(h=Height,
+							 Step=Step,
+							 AmplitudeScaling=YScaling,
+							 Append=False,
+							 AmplitudeSign=np.sign(YScaling))
 		return Height, Step
 
 #	#================================
