@@ -16,6 +16,14 @@ import os
 from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
+
+
+#================================
+#  FUN: PathGetExtension
+#================================
+def PathGetExtension(Path):
+	filename, file_extension = os.path.splitext(Path)
+	return file_extension
 #================================
 #  FUN: PathSplit
 #================================
@@ -2315,6 +2323,10 @@ class CommonPlots:
 
 
 class Metrology:
+
+
+
+
 	def AverageXYFiles(PathList, ReaderFunction, ReaderFunctionParams):
 		'''
 		Performs an average of X,Y files.

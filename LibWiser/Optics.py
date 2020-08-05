@@ -54,6 +54,13 @@ class OPTICS_BEHAVIOUR:
 	Split = 'split'
 	Slits = 'slits'
 
+class FIGURE_ERROR_FILE_FORMAT(Enum):
+	HEIGHT_ONLY = 0 	#  label: "Height (Y)"
+	POSITION_AND_HEIGHT = 2**1 #  label: "Position, Height (X,Y)"
+	SLOPE_ONLY = 2**2 #  label: "Slope (dY)"
+	ELETTRA_LTP_JAVA1 = 2**3 # label: "ELETTRA LTP-JAVA1"
+	ELETTRA_LTP_DOS = 2**4 # label: "ELETTRA LTP"
+
 def DiffractionMinimum(Lambda, D, z, Alpha = 0):
 	x0 = Lambda * z / D / np.sin(Alpha)
 	return x0
@@ -2000,6 +2007,8 @@ class Mirror(OpticsNumerical):
 			self.USE_FIGUREERROR = True
 			self.USE_ROUGHNESS = False
 
+
+
 	#================================
 	# __init__[Mirror]
 	#================================
@@ -2070,6 +2079,23 @@ class Mirror(OpticsNumerical):
 
 		return x,y
 
+
+	#================================
+	# _GetFigureErrorSummationSign
+	#================================
+	def _GetFigureErrorSummationSign(self):
+		'''
+		Basing on the direction of RayInNominal, it returns the sign that must have the height profile of the
+		figure error.
+
+		'''
+		Ray = self.RayInNominal
+		if np.abs(Ray.v[1]) > 1e-30: # if y component !=0
+			YSign = np.sign(Ray.v[1])
+			return - YSign
+		else:
+			XSign = np.sign(Ray.v[0])
+			return -XSign
 
 	#================================
 	# GetXY_IdealMirror(N) [class: mirror]
@@ -2196,11 +2222,14 @@ class Mirror(OpticsNumerical):
 		self.LastFigureErrorUsed = myResidual
 		self.LastFigureErrorUsedIndex = iFigureError
 
+		# Add figure error - FigureErrorAdd
 		# I Project the figure error on the Mirror Surface
 		# -----------------------------------------------------------------
+		# colpo di fulmine! :-)
 		ThetaList = self.Get_LocalTangentAngle(Mir_x, Mir_y)
-		Mir_xx = Mir_x + myResidual * np.sin(ThetaList)
-		Mir_yy = Mir_y + myResidual * np.cos(ThetaList)
+		ResidualToUse = myResidual * self._GetFigureErrorSummationSign()
+		Mir_xx = Mir_x + ResidualToUse * np.sin(ThetaList)
+		Mir_yy = Mir_y + ResidualToUse * np.cos(ThetaList)
 
 		if Reference == 'lab':
 			# Notice: This transformation is an IDENTITY by default. Only for specific
@@ -2367,12 +2396,16 @@ class Mirror(OpticsNumerical):
 	#================================
 	# FigureErrorLoad
 	#================================
-	def FigureErrorLoad(self, h: float=None,
-							 Step: float=1e-3,
-							 File: str='',
-							 AmplitudeScaling: float=1,
-							 Append: bool=False,
-							 SubtractMean=False):
+	def FigureErrorLoad(self,
+						h: float=None,
+						Step: float=1e-3,
+						File: str='',
+						AmplitudeScaling: float=1,
+						Append: bool=False,
+						SubtractMean=False,
+						FileFormat=0,
+						SkipRows=0,
+						AmplitudeSign = 1):
 
 		'''
 		Appends a 1darray to the list of Figure Errors.
@@ -2402,8 +2435,28 @@ class Mirror(OpticsNumerical):
 		Append : bool
 			If Append = False, it clears the existing list of FigureErrors.
 
+		FileFormat: 0, 1, 2
+			0: Single column (height)
+			1: Single column (slopes)
+			2: Two columns (position, height)
+
+		SkipRows: int
+			Number of rows to skip.
+
 		@ToRepair: adjustment of mirror length
 		'''
+		# WARNING
+		# I added this patch line on July 2020, afer creating  CoreOptics._GetFigureErrorSummationSign()
+		# because a) in principle there should not be need of inverting figure error sign manually and
+		# b) I have a lot of files where Amplitude is set to -1 manually. So the two effects would
+		# compensate.
+		#If you do want to invert amplitude, use InvertAmplitude = True instead
+
+		# begin patch
+		AmplitudeScaling = np.abs(AmplitudeScaling)
+		AmplitudeSign = np.sign(AmplitudeSign)
+		AmplitudeScaling *= AmplitudeSign
+		# end patch
 
 		# Data is read from file
 		if h is None and File!= '':
@@ -2431,6 +2484,74 @@ class Mirror(OpticsNumerical):
 	#================================
 	def FigureErrorRemove(self,i):
 		self._FigureErrors.remove(i)
+
+	#=============================================================#
+	# FUN FigureErrorLoadFromFile
+	#=============================================================#
+	def FigureErrorLoadFromFile(self, PathFile : str,
+						 FileType = FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY,
+						 Step = 1e-3,
+						 Delimiter = '\t',
+						 SkipLines = 0,
+						 XScaling = 1e-3,
+						 YScaling = 1,
+						 **kwargs):
+		'''
+		This function is a helper function that read a figure error file, then calls the
+		lower lever FigureErrorLoad function
+
+		'''
+		if FileType == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY:
+
+			Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			Height *= YScaling
+			Step = Step
+
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
+
+			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			x *= XScaling
+
+			Height *= YScaling
+			Step = np.mean(np.diff(x))
+
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.SLOPE_ONLY:
+
+			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			x *= XScaling
+
+			Height *= YScaling
+			Step = np.mean(np.diff(x))
+
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1:
+			x,h, ComputedStep = tl.Metrology.ReadLtpLtpJavaFileA(PathFile,
+												   Decimation = 2,
+													ReturnStep = True,
+													XScaling = 1e-3, # input is in mm
+													YScaling = 1e-3)    # input isk in mm
+			Height = h*YScaling
+			Step = ComputedStep
+
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS:
+			x,y,FileInfo  = tl.Metrology.ReadLtp2File(PathFile) # read slopes
+
+			if PathFile.suffix.upper() == '.SLP':
+				h = tl.Metrology.SlopeIntegrate(y,dx = FileInfo.XStep) # integrate slopes
+			elif PathFile.suffix.upper() == '.HGT':
+				h = y
+
+			Height = h
+			Step = FileInfo.XStep
+
+		# update the parent object
+		#-----------------------------------------------------------------------
+		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
+		self.FigureErrorLoad(h=Height,
+							 Step=Step,
+							 AmplitudeScaling=YScaling,
+							 Append=False,
+							 AmplitudeSign=np.sign(YScaling))
+		return Height, Step
 
 #	#================================
 #	# FigureErrorAddToIdealProfile [Mirror]
@@ -4156,7 +4277,7 @@ class MirrorElliptic(Mirror):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = True, **kwargs):
+	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = False, **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
@@ -5229,7 +5350,8 @@ class Slits(OpticsNumerical):
 		else:
 			tl.ErrMsg.InvalidInputSet
 
-		self.SmallDisplacements = False
+		# self.SmallDisplacements = False
+		self._FigureErrors = []
 		self._UpdateParameters_Lines()
 		self._UpdateParameters_XYStartEnd()
 		self.UseAsReference = False
@@ -5240,6 +5362,12 @@ class Slits(OpticsNumerical):
 	def __str__(self):
 		StrList = ['%s=%s' % (PropName, getattr(self, PropName)) for PropName in Slits._PropList]
 		return 'Slits \n' + 20 * '-' + '\n' + '\n'.join(StrList) + '\n' + 20 * '-'
+
+	# ================================
+	# PROP: FigureErrors
+	# ================================
+	@property
+	def FigureErrors(self): return self._FigureErrors
 
 	# ================================
 	#  PROP: AngleGrazingNominal

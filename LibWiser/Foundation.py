@@ -17,6 +17,7 @@ import numpy as np
 import copy
 from enum import Enum
 import time
+import warnings
 
 from LibWiser.Optics import TypeOfAngle
 
@@ -608,6 +609,7 @@ class OpticalElement(TreeItem):
 			#		NameParent, self.Name, NameChildren, self.XYCentre[0], self.XYCentre[1])
 			#
 
+			print(self.GeneralDistanceFromParent(Reference=False))
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			# Additional Stuff (such as the distance from previous element, etc...)
 
@@ -888,6 +890,8 @@ class OpticalElement(TreeItem):
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC) or
 		#	 (oeX.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ANY))
 
+		GetParentResult = None
+
 		if SameOrientation and OnlyReference:
 			for oe in self.UpstreamItemList:
 				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
@@ -907,6 +911,10 @@ class OpticalElement(TreeItem):
 				elif not OnlyReference:
 					GetParentResult = oe
 					break
+
+		# Raise a warning in case if GetParent remains None
+		if GetParentResult == None:
+			warnings.warn("GetParent returned None!")
 
 		return GetParentResult
 
@@ -1772,6 +1780,8 @@ class BeamlineElements(Tree):
 		Elements = self.ItemList
 		for Element in Elements:
 			Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth)
+            
+		plt.grid('on')
 
 	#================================================
 	#  FUN: PaintMiniatures
