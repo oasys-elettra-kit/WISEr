@@ -10,7 +10,6 @@ from importlib import reload
 from numpy import  cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, angle, dot, exp, arcsin, arccos, real, imag, angle, copy
 from numpy.lib.scimath import sqrt
 from numpy.linalg import norm
-import pylab
 import matplotlib.pyplot as plt
 import matplotlib.pyplot
 plot =  matplotlib.pyplot.plot

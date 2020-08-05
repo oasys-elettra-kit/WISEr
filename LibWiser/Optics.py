@@ -4277,7 +4277,7 @@ class MirrorElliptic(Mirror):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = True, **kwargs):
+	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = False, **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
