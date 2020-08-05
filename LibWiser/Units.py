@@ -3,7 +3,15 @@
 Created on Mon Nov 11 16:12:18 2019
 
 @author: Mike
+This is a clumsy class, but provides essentially 2 helpful functions.
+
+GetEngNumber(0.00015) => '150.0e-06'
+GetEngNumber(0.15) => '150.0e-03'
+GetEngNumber(0.15,0) => '150e-03'
+
+GetEngLetter(0.00015) =>'u'
 """
+
 #import enum
 #from enum import Enum, Flag
 
@@ -19,50 +27,6 @@ Created on Mon Nov 11 16:12:18 2019
 import engineering_notation
 from engineering_notation import EngNumber, EngUnit
 import numpy as np
-
-def SmartFormatter(x):
-	'''
-	Attempts a smart formatting of x.
-	It returns
-	- EngNumber(x) if x is a float
-	- A smart formatting if x is decorated with UnitInfo object
-	- str(x) in any other case
-	'''
-
-	if x is float:
-		return EngNumber(x)
-	else:
-		return str(x)
-
-
-def GetSiUnitScale(x):
-	'''
-	Get the most convenient SI unit for representing x.
-	e.g.
-		x=1e-7 => n
-		x=1e-6 => u
-		x=1e-5 => u
-		x=1e-4 => u
-
-   if x is an array, it uses the mean value
-	'''
-
-	if type(x) is np.ndarray:
-		x = np.mean(x)
-
-	if (type(x) is float) or (type(x) is np.float64):
-		StrUnit = EngUnit(x).eng_num.to_pn()
-		tok = StrUnit[-1]
-		NewStrUnit = ''
-		try:
-			a = int(tok)
-			NewStrUnit = ''
-		except:
-			NewStrUnit = tok
-		return NewStrUnit
-	else:
-		return ''
-GetEngLetter = GetSiUnitScale
 
 class Units:
 	SiPrefixes = { 'a':1e-18, 'f':1e-15, 'p':1e-12, 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
@@ -81,7 +45,70 @@ class Units:
 			By M Man
 		'''
 
-		return Units.SiPrefixes[UnitString.strip()[0]]
+		return  Units.SiPrefixes[UnitString.strip()[0]]
+
+def SmartFormatter(x):
+	'''
+	Attempts a smart formatting of x.
+	It returns
+	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
+	- A smart formatting if x is decorated with UnitInfo object [not implemented yet]
+	- str(x) in any other case
+	:-)
+	'''
+
+	if type(x) is float or type(x) is int:
+		return EngNumber(x)
+	else:
+		return str(x)
+
+def GetPrefixFactor(Prefix : str):
+	Prefix = Prefix.strip()[0] # trim white spaces and get first char, in case the input is "nm" instead of "n" or "mm" instead of m"
+	return Units.SiPrefixes[Prefix]
+
+def GetSiUnitScale(x):
+	'''
+	Get the most convenient SI unit for representing x.
+	e.g.
+		x=1e3 => k
+		x=1e-7 => n
+		x=1e-6 => u
+		x=1e-5 => u
+		x=1e-4 => u
+
+   if x is an array, it uses the mean value
+	'''
+
+	if type(x) is np.ndarray:
+		x = np.mean(x)
+
+	if (type(x) is float) or (type(x) is np.float64) or (type(x) is int):
+#		StrUnit = EngUnit(x).eng_num.to_pn()
+		StrUnit = str(EngNumber(x))
+		tok = StrUnit[-1]
+
+		if tok in Units.SiPrefixes.keys():
+			# it is a valid prefix like k,u,G,M etc...
+			return tok
+		else:
+			return ''
+
+def GetEngNumber(x, SignificantDigits = 1):
+	UnitLetter = GetSiUnitScale(x)
+	if UnitLetter == '':
+		return str(x)
+	else:
+		a = Units.UnitString2UnitScale(UnitLetter)
+		aString = '%0.0e' % a
+		ExpString = str(aString)[1:]
+		y = x/a
+		FormatterStr = '%s%df%s' % ("%0.", SignificantDigits, '%s')
+#		FormatterStr = '%0f%s'
+		Str = FormatterStr %(y, ExpString)
+		return Str
+GetEngLetter = GetSiUnitScale
+
+
 
 #class (Unit ='',  # e.g. 'm'
 #	   Name = '',   # e.g. 'FocalShift' if empty set equal to label.
