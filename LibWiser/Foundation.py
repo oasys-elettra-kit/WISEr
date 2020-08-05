@@ -1780,6 +1780,8 @@ class BeamlineElements(Tree):
 		Elements = self.ItemList
 		for Element in Elements:
 			Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth)
+            
+		plt.grid('on')
 
 	#================================================
 	#  FUN: PaintMiniatures
