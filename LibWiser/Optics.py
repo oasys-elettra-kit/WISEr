@@ -995,8 +995,9 @@ class SourceGaussian(OpticsAnalytical):
 		Waist0 : Waist size in the equation of the electromagnetic field (not the Intensity!)
 
 		'''
-		super().__init__(**kwargs)
-
+# 		super().__init__(**kwargs)
+		OpticsAnalytical.__init__(self,**kwargs)
+		
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
 		self.M2 = 1  # quality factor
@@ -1160,8 +1161,7 @@ class SourceGaussian(OpticsAnalytical):
 		# Normalized to the integrated power
 		#Ph = (k*z + k *y**2/2/self.RCurvature(z) - self.GouyPhase(z))
 		Norm =	 (self.Waist0 / self.Waist(z)) # Normalize peak to 1
-		A = np.exp(-r**2/self.Waist(z)**2)
-		E = Norm * A *	np.exp(1j * self.Phase(z, r))
+		E = Norm * self.Amplitude(r,z) * np.exp(1j * self.Phase(z, r))
 
 		# Normalize to the integrated power
 		I = np.abs(E)**2
@@ -1425,6 +1425,98 @@ class SourceGaussian(OpticsAnalytical):
 ##	 END CLASS: SourceGaussian
 ##==============================================================================
 
+
+#==============================================================================
+#	 CLASS: SourceGaussianLaguerre
+#==============================================================================
+class SourceGaussianLaguerreMode(SourceGaussian):
+	
+	#================================================
+	#	 __init__
+	#================================================
+	def __init__(self, Lambda, Waist0, M2 = 1, 
+			  n=0, # Laguerre coeff 
+			  l = 0, ## Laguerre coeff 
+			  phi = 0,# Azimuthal angle
+			  XYOrigin=[0,0], 
+			  AnglePropagation=0, 
+			  **kwargs):
+		'''
+		Defines a gaussian-Laguerre Mode.
+		(under test)
+		
+		
+		
+		
+		Parameters
+		----
+		Waist0 : Waist size in the equation of the electromagnetic field (not the Intensity!)
+		
+		n : Coefficient of L_n^l
+	
+		p : Coefficient of L_n^l
+		
+		Phi : Azimutal angle (since WISER is 1d,by default it is =0)
+		
+	
+		'''
+# 		super().super().__init__(**kwargs)
+		OpticsAnalytical.__init__(self,**kwargs)
+		self.Lambda = Lambda
+		self.Waist0 = Waist0
+		self.M2 = 1  # quality factor
+		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
+		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
+		
+		self.Laguerre_n = n
+		self.Laguerre_l = np.abs(l)
+		self.Laguerre_phi = phi
+
+	#================================================
+	#	 GouyPhase (gaussian Laguerre)
+	#================================================
+	def GouyPhase(self,z):
+		N = abs(self.Laguerre_l) +2*self.Laguerre_n
+		return np.arctan(z/self.RayleighRange) * (N+1)
+	
+	
+	#================================================
+	#	 Amplitude (gaussian Laguerre)
+	#================================================
+	def Amplitude(self,r,z):
+		import scipy
+		A = SourceGaussian.Amplitude(self,r,z)
+		x = 2 * r**2/self.Waist(z)**2
+		
+		LaguerreFactor = scipy.special.eval_genlaguerre(self.Laguerre_n, self.Laguerre_l,x)
+		return A * LaguerreFactor
+	
+	#================================================
+	#	 Phase (gaussian Laguerre)
+	#================================================
+	def Phase(self, z,r):
+		'''
+		Returns the phase Phi in the exponential term Exp(ij * Phi)
+
+		Uses the self frame reference
+		
+		z : propagation direction
+		
+		r: transverse direction
+		
+		
+		'''
+		k = 2 * np.pi / self.Lambda
+		Ph = -((k*z + k *r**2/2/self.RCurvature(z) + self.Laguerre_l * self.Laguerre_phi - self.GouyPhase(z)))
+		ZeroPos = (z==0)  # handle singularities of phase at 0
+		try:
+			Ph[ZeroPos] = 0
+		except:
+			pass
+		
+		return Ph
+		
+		
 
 
 #==============================================================================
