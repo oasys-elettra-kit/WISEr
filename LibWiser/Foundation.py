@@ -1124,7 +1124,6 @@ class BeamlineElements(Tree):
 			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
 			oeXSameOrientation = oeY.GetParent(SameOrientation=True, OnlyReference=True)
 
-
 		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
 		# -------------------------------------------
 		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
@@ -1192,25 +1191,27 @@ class BeamlineElements(Tree):
 				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
 				'''
 
-				#FIX 4 Aljosa
-				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
-					realDistance = oeXSameOrientation.CoreOptics.f2
+				try:
+					#FIX 4 Aljosa
+					if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
+						realDistance = oeXSameOrientation.CoreOptics.f2
 
-				else: # Find the first suitable one
-					oeXSameOrientationCurrent = oeXSameOrientation
-					realDistance = oeXSameOrientationCurrent.DistanceFromParent
-					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
-
-					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
-						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
+					else: # Find the first suitable one
+						oeXSameOrientationCurrent = oeXSameOrientation
+						realDistance = oeXSameOrientationCurrent.DistanceFromParent
 						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
-					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
+						while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
+							realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
+							oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
-					#realDistance: distance from the last element with the same orientation
-				newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
-				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+						realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
+						#realDistance: distance from the last element with the same orientation
+					newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
+					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
+				except:
+					raise ValueError("No focusing O.E. (e.g. elliptic mirror) found!")
 			else:
 				raise ValueError('Wrong or un-implemented PositioningDirectives!')
 
@@ -2159,6 +2160,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		# I set the Position the detector at distance = Distance
 		# ------------------------------------------------------------
 		d.PositioningDirectives.Distance = Distance
+		print(i)
 		t.RefreshPositions()
 		t.ComputeFields(Verbose=False)
 
