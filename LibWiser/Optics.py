@@ -5,10 +5,11 @@ Created on Mon Aug 08 16:10:57 2016
 @author: Mic
 :math:`y = m x + q`
 """
+import LibWiser.ToolLib as ToolLib
 import LibWiser.ToolLib as tl
 import LibWiser.Noise as Noise
 import LibWiser.Rayman as rm
-
+from LibWiser.CodeGeneratorVisitor import CodeGenerator
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -61,6 +62,10 @@ class FIGURE_ERROR_FILE_FORMAT(Enum):
 	ELETTRA_LTP_JAVA1 = 2**3 # label: "ELETTRA LTP-JAVA1"
 	ELETTRA_LTP_DOS = 2**4 # label: "ELETTRA LTP"
 
+class GROOVE_TYPE(Enum):
+	SQUARE = 'square' 	#  label: "Height (Y)"
+	SAWTOOTH  = 'saw' #  label: "Position, Height (X,Y)"
+
 def DiffractionMinimum(Lambda, D, z, Alpha = 0):
 	x0 = Lambda * z / D / np.sin(Alpha)
 	return x0
@@ -84,6 +89,13 @@ class TypeOfXY:
 	MirrorCentre = 'centre'
 	AxisCentre = 'axis'
 	MirrorStart = 'start'
+
+#===============================
+#	 WavefrontModifiers 
+#===============================
+WavefrontModifiers = {'Focus' : 0,
+					  'Tilt' : 0}
+
 
 #==============================================================================
 #	 Definition: Ray
@@ -180,6 +192,26 @@ class Optics(object):
 		self.ComputationSettings = Optics._ComputationSettings()
 		self.Orientation = Orientation
 		self.UseAsReference = UseAsReference
+	
+	# ===========================================
+	# PROP: ParentContainer
+	# ==========================================
+	@property
+	def ParentContainer(self):
+		'''
+		The Container (if exists) of this Optics object. 
+
+		Behavior
+		----
+
+		ParentCointainer is updated by the Set property of the parent object.
+		 
+		'''
+		return self._ParentContainer
+	@ParentContainer.setter
+	def ParentContainer(self,x):
+		self._ParentContainer = x
+		
 	#================================
 	# PROP: Orientation
 	#================================
@@ -701,6 +733,16 @@ class OpticsNumerical(Optics):
 		'''
 		pass
 
+ 	#================================
+	# RayOutNominal
+	#================================
+	@property
+	def RayOutNominalSelf(self) -> tl.Ray:
+		'''
+		Returns the Output Ray (as a vector), computed with respect to the surface 
+		'''
+		pass
+
 	#================================
 	#  PROP: AngleInputNominal
 	#================================
@@ -715,6 +757,16 @@ class OpticsNumerical(Optics):
 		raise ValueError('AngleInGrazingNominal can not be set.')
 
 
+	#================================
+	# Get_LocalTangentAngle [MirrorPlane]
+	#================================
+	def Get_LocalTangentAngle(self, x0, y0, ProperFrame = False):
+		'''
+		ABSTRACT
+		'''
+		raise Exception('ABSTRACT class not implemented')
+		pass
+	
 	#================================
 	# FUN: Paint
 	#================================
@@ -974,7 +1026,7 @@ def GaussianField(z,r, Lambda, Waist0):
 #==============================================================================
 #	 CLASS: SourceGaussian
 #==============================================================================
-class SourceGaussian(OpticsAnalytical):
+class SourceGaussian(OpticsAnalytical, CodeGenerator):
 	_Behaviour = OPTICS_BEHAVIOUR.Source
 	_IsSource = True
 	_TypeStr = 'gauss'
@@ -997,10 +1049,11 @@ class SourceGaussian(OpticsAnalytical):
 		'''
 # 		super().__init__(**kwargs)
 		OpticsAnalytical.__init__(self,**kwargs)
+		CodeGenerator.__init__(self,['Lambda', 'Waist0','M2', 'AnglePropagation','Orientation'])
 		
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
-		self.M2 = 1  # quality factor
+		self.M2 = M2  # quality factor
 		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
 		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
 
@@ -1100,6 +1153,7 @@ class SourceGaussian(OpticsAnalytical):
 	#================================================
 	def Amplitude(self,r,z):
 		return np.exp(-r**2/self.Waist(z)**2)
+	
 	#================================================
 	#	 Phase
 	#================================================
@@ -2109,23 +2163,24 @@ class Mirror(OpticsNumerical):
 
 
 		self.Options = Mirror._ClassOptions()
-		# About Figure Error
+		
+		# METROLOGY (figure error)
 		self._FigureErrors = []
 		self._FigureErrorSteps = []
 		self.LastFigureErrorUsed = np.array([])
 		self.LastFigureErrorUsedIndex = None # the last figure error used
 
-		# About Rougness
+		# METROLOGY (Rougness)
 		self._Roughness = Noise.RoughnessMaker
 		self.LastRoughnessUsed = np.array([])
 		self._EvalWithX = True
 
 		pass
-	#================================
-	# ABSTRACT: GetOutputRay(N)
-	#================================
-	def GetOutputRay():
-		pass
+#	#================================
+#	# ABSTRACT: GetOutputRay(N)
+#	#================================
+#	def GetOutputRay():
+#		pass
 	#================================
 	# ABSTRACT: GetXY_IdealMirror(N)
 	#================================
@@ -2141,6 +2196,10 @@ class Mirror(OpticsNumerical):
 	@property
 	def AngleGrazingNominal(self):
 		return self._AngleGrazingNominal
+	#added nov 2020
+	@AngleGrazingNominal.setter
+	def AngleGrazingNominal(self,x):
+		self._AngleGrazingNominal = x
 
 	#================================
 	# GetSampling(N) [Mirror]
@@ -2189,56 +2248,118 @@ class Mirror(OpticsNumerical):
 			XSign = np.sign(Ray.v[0])
 			return -XSign
 
+	#===============================================================
+	# _GetXY_HeightProfileProjection
+	#===============================================================		
+	def _GetXY_HeightProfileProjection(self,N, HeightProfile):
+		'''
+		Apply a surface profile (e.g. figure error, groove profile, roughness, etc) 
+		to the mirror surface described by x,y
+		
+		x,y, can be either the ideal optical profile, or already a "modified" profile,
+		to which and additional HeightProfile has already been added.
+		
+		
+		Notes
+		-------------
+		- If necessary, performs resampling so that len(HeightProfile) == N
+		- _ApplySurfaceProfile can be applied meny times
+		- the information on the local tangent is NOT OBTAINED from x,y, but from the
+		Get_LocalTangentAngle
+		
+		
+		
+		Parameters
+		-----
+		HeightProfile: array
+			
+		
+			Vecchia versione. Volevo sostituirla con una nuova che andasse bene per tutti
+			(specchi piani ed ellittici).
+			Per il momento ho solo fatto un gran casino.
+			La ripesco dal backup.
+		'''
+		# Resample, if necessary
+		#-----------------------------------------------------------------
+		if len(HeightProfile) != N:
+			HeightProfileToUse = rm.FastResample1d(HeightProfile, N)
+		else:
+			HeightProfileToUse = HeightProfile
+			
+		# Project the figure error on the Mirror Surface
+		# -----------------------------------------------------------------
+		
+		Mir_x, Mir_y = self.GetXY_MirrorIdeal(N) # lab ref frame
+		ThetaList = self.Get_LocalTangentAngle(Mir_x, Mir_y)
+		
+		HeightProfileToUse = HeightProfileToUse * self._GetFigureErrorSummationSign()
+		
+		h_x = HeightProfileToUse * np.sin(ThetaList)
+		h_y = HeightProfileToUse * np.cos(ThetaList)
+
+		return h_x, h_y
+
+	#===============================================================
+	# _ApplyHeightProfileProjection
+	#===============================================================		
+	def _ApplyHeightProfileProjection(self,x,y, HeightProfile):
+		'''
+		Applies HeightProfile to x,y.
+
+			L: Unused
+
+		Uses 
+		- self.GetXY_Ideal to get the ideal surface (it uses the same size as x)
+		- the "self. self.Get_LocalTangentAngle(x_ideal, y_ideal)" to get the correct
+		tangent.
+		'''
+		N = len(x)
+		
+		h_x, h_y = self._GetXY_HeightProfileProjection(N, HeightProfile)
+		
+		return x + h_x, y + h_y
+
 	#================================
 	# GetXY_IdealMirror(N) [class: mirror]
 	#================================
 	def GetXY_IdealMirror(self, N, Sign=+1, ReferenceFrame=None, L=None):
 		'''
-			Vecchia versione. Volevo sostituirla con una nuova che andasse bene per tutti
-			(specchi piani ed ellittici).
-			Per il momento ho solo fatto un gran casino.
-			La ripesco dal backup.
+			ABSTRACT CLASS
+			Implemented in subclasses
+		'''		
+# 		x = np.linspace(self.XYStart[0], self.XYEnd[0], N)
+# 		return [x,self.EvalMirrorY(x, Sign)]
+		raise Exception("Mirror.GetXY_Ideal mirror, abstract class not implemented")
+		return None
 
-			Notice
-			-----
+# 	#================================
+# 	# GetXY_IdealMirror(N) [mirror class]
+# 	#================================
+# 	def GetXY_IdealMirror__dismissed_and_wrong(self, N, Sign = +1, L = None, ReferenceFrame = 'lab'):
+# 		'''
+# 		descvrivere
 
-			ReferenceFrame : Unused.
-					Possible free parameter from Optics.GetXY_IdealMirror
+# 		'''
+# 		# Getting the x,y sampling (along the tangent to the mirror)
+# 		#-----------------------------------------------------------------
+# 		if L == None:  # nominal length
+# 			x,y = self.GetXY_Sampling( N , self.L)
+# 		else:	      #measured length
+# 			x,y = self.GetXY_Sampling( N , L)
 
-			L: Unused
-
-		'''
-		x = np.linspace(self.XYStart[0], self.XYEnd[0], N)
-		return [x,self.EvalMirrorY(x, Sign)]
-
-	#================================
-	# GetXY_IdealMirror(N) [mirror class]
-	#================================
-	def GetXY_IdealMirror__dismissed_and_wrong(self, N, Sign = +1, L = None, ReferenceFrame = 'lab'):
-		'''
-		descvrivere
-
-		'''
-		# Getting the x,y sampling (along the tangent to the mirror)
-		#-----------------------------------------------------------------
-		if L == None:  # nominal length
-			x,y = self.GetXY_Sampling( N , self.L)
-		else:	      #measured length
-			x,y = self.GetXY_Sampling( N , L)
-
-		# Evaluating the ellipse
-		#-----------------------------------------------------------------
-		if self._EvalWithX == True:
-			y = self._EvalMirrorYProp(x, Sign)
-		else:
-			x = self._EvalMirrorYProp(y, Sign)
+# 		# Evaluating the ellipse
+# 		#-----------------------------------------------------------------
+# 		if self._EvalWithX == True:
+# 			y = self._EvalMirrorYProp(x, Sign)
+# 		else:
+# 			x = self._EvalMirrorYProp(y, Sign)
 
 
-		# Rotating in the Lab Reference, if needed
-		#-----------------------------------------------------------------
-		if ReferenceFrame == 'lab':
-			x,y = self._Transformation_XYPropToXYLab(x,y)
-		return [x,self._EvalMirrorYProp(x, Sign)]
+# 		# Rotating in the Lab Reference, if needed
+# 		#-----------------------------------------------------------------
+# 		if ReferenceFrame == 'lab':
+# 			x,y = self._Transformation_XYPropToXYLab(x,y)
+# 		return [x,self._EvalMirrorYProp(x, Sign)]
 
 	#================================
 	# GetXY_MeasuredMirror (class: Mirror)
@@ -2283,6 +2404,8 @@ class Mirror(OpticsNumerical):
 		else:
 			hFigErr   = np.zeros(N)
 			LMeasured = self.L
+
+
 
 		# Get the ideal mirror (in the self- Reference frame)
 		# -----------------------------------------------------------------
@@ -2486,6 +2609,35 @@ class Mirror(OpticsNumerical):
 	def FigureErrorSteps(self): return self._FigureErrorSteps
 
 	#================================
+	# PROP: FigureErrorGetHeightAndPosition
+	#================================
+	def FigureError_GetProfile (self, Index = 0): 
+		
+		if len(self.FigureErrors)-1 >= Index:
+			h = self.FigureErrors[Index]
+			ds = self.FigureErrorSteps[Index]
+			N = len(h)
+			
+			if N>0:
+				s = np.linspace(0,(N-1)*ds, N)
+				return s, h 
+			else:
+				return [],[]
+		else:
+			return [],[]
+#		return self._FigureErrorSteps # ????
+
+	#================================
+	# PROP: FigureErrorLastUsed
+	#================================
+	@property
+	def FigureErrorLastUsed(self): 
+		return self._LastFigureErrorUsed
+#	@setter.FigureErrorLastUsed
+#	def FigureErrorLastUsed(self,x): 	
+#		self._LastFigureErrorUsed = x
+	
+	#================================
 	# FigureErrorLoad
 	#================================
 	def FigureErrorLoad(self,
@@ -2552,7 +2704,16 @@ class Mirror(OpticsNumerical):
 
 		# Data is read from file
 		if h is None and File!= '':
-			h = np.loadtxt(File) * AmplitudeScaling
+			h0 = np.loadtxt(File)
+			try:
+				
+				h = h0 * AmplitudeScaling
+			except:
+				
+				print (h0)
+				print (AmplitudeScaling)
+				print ('---')
+				raise Exception('Troubles while Rescaling the figure error. Common error: the file has also strings in it, which must be avoided using SkipRows' )
 		# Data is passed as argument
 		else:
 			h = h * AmplitudeScaling
@@ -2585,31 +2746,33 @@ class Mirror(OpticsNumerical):
 						 Step = 1e-3,
 						 Delimiter = '\t',
 						 SkipLines = 0,
-						 XScaling = 1e-3,
-						 YScaling = 1,
+						 XScaleFactor = 1e-3,
+						 YScaleFactor = 1,
 						 **kwargs):
 		'''
 		This function is a helper function that read a figure error file, then calls the
 		lower lever FigureErrorLoad function
 
 		'''
+		XScaling  = XScaleFactor
+		YScaling = YScaleFactor 
 		if FileType == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY:
 
-			Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			Height = ToolLib.FileIO.ReadYFile(PathFile,  SkipLines = SkipLines)
 			Height *= YScaling
 			Step = Step
 
 		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			x, Height = ToolLib.FileIO.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
 			Step = np.mean(np.diff(x))
 
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.SLOPE_ONLY:
+		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = tl.FileIO.ReadYFile(PathFile, SkipLines=SkipLines)
+			x, Height = ToolLib.FileIO.ReadXYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
 			x *= XScaling
 
 			Height *= YScaling
@@ -2634,15 +2797,25 @@ class Mirror(OpticsNumerical):
 
 			Height = h
 			Step = FileInfo.XStep
+	
+		#Check that all was good
+		#--------------------------------------------------------			
+		try:
+			if Height is None:
+				raise Exception("""Error in Optics.FigureErrorLoadFromFile. Height is None. Check 
+				   SkipLines, maybe you have some header in the file that must me ignored.""")
+		except:
+			raise Exception("""Error in Optics.FigureErrorLoadFromFile. Height is not assigned. Check 
+				   SkipLines, maybe you have some header in the file that must me ignored.""")
 
 		# update the parent object
 		#-----------------------------------------------------------------------
 		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
-		self.FigureErrorLoad(h=Height,
-							 Step=Step,
-							 AmplitudeScaling=YScaling,
-							 Append=False,
-							 AmplitudeSign=np.sign(YScaling))
+		self.FigureErrorLoad(h = Height,
+							   Step = Step,
+							   AmplitudeScaling = YScaling,
+							   Append = False,
+							   AmplitudeSign = np.sign(YScaling))
 		return Height, Step
 
 #	#================================
@@ -2671,7 +2844,7 @@ class Mirror(OpticsNumerical):
 #==============================================================================
 #	 CLASS: MirrorPlane
 #==============================================================================
-class MirrorPlane(Mirror):
+class MirrorPlane(Mirror, CodeGenerator):
 	'''
 
 			Parameters
@@ -2711,8 +2884,8 @@ class MirrorPlane(Mirror):
 	_TypeDescr = "Plane Mirror"
 	_Behaviour = OPTICS_BEHAVIOUR.Mirror
 	_IsAnalytic = False
-	_PropList = 	['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
-					  'XYStart', 'XYCentre', 'XYEnd']
+	_PropList = 	['AngleInputNominal', 'AngleGrazingNominal', 'AngleTanLab',
+					  'XYStart', 'XYCentre', 'XYEnd'] 
 	_CommonInputSets = [(('L','Length' ),
 						('AngleGrazing','Grazing Angle')),
 					  ]
@@ -2721,12 +2894,11 @@ class MirrorPlane(Mirror):
 	#  FUN: __init__[MirroPlane]
 	#================================
 	def __init__(self,
-			   L: 'user1'  = None,
-			   AngleGrazing :'user1' = None,
+			   L   = None,
+			   AngleGrazing  = None,
 			   XYLab_Centre = [0,0],
-			   AngleIn : 'user1' = 0,
+			   AngleIn  = 0,
 			   **kwargs):
-		super().__init__(**kwargs)
 		'''
 		Parameters
 		---------------------
@@ -2738,10 +2910,14 @@ class MirrorPlane(Mirror):
 			Grazing angle which must be preserved between the mirror and the InputAngleLab.
 			It is used to compute MirrorAngle
 		'''
+		super().__init__(**kwargs)
+		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
+		
 		# BUILDING
 		if tl.CheckArg([L, AngleGrazing]):
 			self._L = L
-			self._AngleGrazingNominal = AngleGrazing
+# 			self._AngleGrazingNominal = AngleGrazing
+			self.AngleGrazingNominal = AngleGrazing
 			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
 		else:
 			tl.ErrMsg.InvalidInputSet
@@ -2753,7 +2929,7 @@ class MirrorPlane(Mirror):
 	#================================
 	#  FUN: __str__
 	#================================
-	def __str__(self):
+	def __str__(self): #[MirrorPlane]
 #		PropList = ['AngleIn', 'AngleGrazing', 'AngleTan', 'AngleNorm',
 #					  'XYStart', 'XYCentre', 'XYEnd']
 		StrList = ['%s=%s' %( PropName, getattr(self,PropName)) for PropName in MirrorPlane._PropList ]
@@ -2860,7 +3036,7 @@ class MirrorPlane(Mirror):
 	#================================
 	def GetXY_IdealMirror(self, N=100, ReferenceFrame=None, L=None):
 		'''
-		Return the coordinates of the ideal mirror.
+		Return the coordinates of the ideal mirror in the lab ref frame.
 
 		Return
 		--------------------
@@ -3046,7 +3222,7 @@ class MirrorPlane(Mirror):
 #==============================================================================
 #	 CLASS: MirrorElliptic
 #==============================================================================
-class MirrorElliptic(Mirror):
+class MirrorElliptic(Mirror, CodeGenerator):
 	'''
 	Implements a (1d) elliptic mirror of equation
 
@@ -3077,7 +3253,8 @@ class MirrorElliptic(Mirror):
 	#================================
 	# INIT
 	#================================
-	def __init__(self, a =None ,b = None, f1 = None, f2 = None, Alpha = None, L = None,
+	def __init__(self, a =None ,b = None, f1 = None, f2 = None, 
+			  Alpha = None, L = None,
 			  XProp_Centre = None,
 			  MirXMid = None,
 			  XYOrigin = np.array([0,0]),
@@ -3103,11 +3280,14 @@ class MirrorElliptic(Mirror):
 			Focal length 1 (from source to mirror centre)
 		f2 : float
 			Focal length 2 (from mirror centre to sample focal plane)
-		Alpha : float (radians)
+		Alpha or AngleGrazing : float (radians)
 			Grazing incidence angle
 		L : float
 			Mirror Length
 
+		Notice: Alpha and AngleGrazing ARE the same parameter. Alpha is obsolete, AngleGrazing
+		is encouraged. If both are given, AngleGrazing wins. [However, in the code, Alpha is used]
+		
 		Common Parameters (usually automatically set)
 		-----------------------------
 		XYOrigin : 1x2 array [optional]
@@ -3121,6 +3301,8 @@ class MirrorElliptic(Mirror):
 		'''
 
 		super(MirrorElliptic, self).__init__(**kwargs)
+		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'Alpha'),'f1', 'f2','Orientation'])
+		
 		#Mirror.__init__(self)
 		self._FigureErrors = []
 		self._FigureErrorSteps = []
@@ -3150,6 +3332,8 @@ class MirrorElliptic(Mirror):
 			self._UpdateAlphaFromThetaProp()
 		# Set of input parameters #2
 		# (more practical, more common)
+		
+
 		elif tl.CheckArg([f1,f2,Alpha,L]):
 			# Input parameters
 			#-------------------------------
@@ -3539,7 +3723,8 @@ class MirrorElliptic(Mirror):
 		'''
 		x = np.array(XProp)
 		# remove points which do not belong to ellipse domain.
-		XProp = np.delete(XProp, [(XProp < -self.a) | (XProp > self.a)])
+		# Modifica di dicembre: it does nothing
+# 		XProp = np.delete(XProp, [(XProp < -self.a) | (XProp > self.a)])
 		return Sign*self.b * np.sqrt(1 - x**2 / self.a**2)
 	#================================
 	# _EvalMirrorXProp (YProp)
@@ -4056,7 +4241,7 @@ class MirrorElliptic(Mirror):
 	#  PROP: AngleGrazing
 	#================================
 	@property
-	def AngleGrazing(self):
+	def AngleGrazingNominal(self):
 		return self._Alpha
 	# Coefficients of Arm 1 (centre mirror to upstream focus - replica, maybe working)
 	@property
@@ -4408,12 +4593,300 @@ class MirrorElliptic(Mirror):
 
 		plt.axis('equal')
 		return FigureHandle
+	
+class GratingInfo():	
+	def __init__(self, Lambda, Order, LinesPerMillimiter):
+		self.Lambda = Lambda,
+		self.Order = Order,
+		self.LinesPerMillimiter = 3750,
+		self.GroovePitch = 1e-3 ,  
+		self.GrooveLength = None, # if None, then set = L
+		self.GrooveHeight = 10e-9, # if None, the figure error can not be computed
+		self.GrooveDutyCycle = 0.5,
+		self.GrooveType = 'square'
+#==============================================================================
+#	 CLASS: GratingMono
+#==============================================================================
+class GratingMono(MirrorPlane):
+	'''
+	Implement Grating Optical element. 
+	
+	You input lambda and order as parameters, which are used to return the 
+	RayOutNominal attribute. The downstream optical elements are deployed consequently.
+	For this reason, the Grating is decorated with "Mono" suffix (as it acts
+															   as a monochromator).
+	
+	
+	If "GetLambdaFromSource==True", then the object assumes to be part of a 
+	BeamlineElements objects and attempts to invoke the 
+	self.ParentContainer.ParentContainer.Source
+	property. If the procedure fails, Lambda is defaulted.
+	
+	Example
+	------
+	>>>
+	G1 = GratingMono(L=0.4, 
+				  AngleGrazing = np.deg2rad(2), 
+				  LinesPerMillimiter = 5000,
+				  Lambda = 20e-9, 
+				  Order = 1, 
+				  )
+	
+	'''
+	#================================
+	# PROP: __init_
+	#================================
+	def __init__(self,
+	   L   = None,
+	   AngleGrazing  = None,
+	   Lambda = None,
+	   Order  = 1,
+	   LinesPerMillimiter = None, 
+	   GroovePitch = None ,  
+	   GrooveLength = None, # if None, then set = L
+	   GrooveHeight = None, # if None, the figure error can not be computed
+	   GrooveDutyCycle = 1,
+	   GrooveType = 'rect', 
+	   XYLab_Centre = [0,0],
+	   AngleIn  = 0,
+	  UseLambdaFromSource = True,
+	   **kwargs):
+		
+		MirrorPlane.__init__(self,L, AngleGrazing, XYLab_Centre,AngleIn, **kwargs)
+		
+		if 1==1:
+			#MirrorPlane.__init__(self,**kwargs)
+			pass
+		'''
+		Parameters
+		---------------------
+		'''
+		if tl.CheckArg([L, GroovePitch]):
+			self.LinesPerMillimiter = 1/(GroovePitch*1e3)
+			self._GroovePitch = GroovePitch
+			
+		elif tl.CheckArg([L, LinesPerMillimiter ]):
+			self.LinesPerMillimiter = LinesPerMillimiter 
+			self.GroovePitch = 1e-3/(LinesPerMillimiter)
+			GroovePitch = self.GroovePitch
+			
+		if tl.CheckArg([UseLambdaFromSource]):
+			self._UseLambdaFromSource = UseLambdaFromSource
+		else:
+			self._UseLambdaFromSource = False
+			 
+		# BUILDING
+		
+		self.Lambda = Lambda
+		self.Order = Order
+		self.GrooveLength = GrooveLength
+		self.GrooveType = GrooveType
+		self.GrooveHeight = GrooveHeight
+		self.GrooveDutyCycle = GrooveDutyCycle
+		
+		# Add this new attribute to CoreOptics.ComputationSettings
+		self.ComputationSettings.UseGroove = True
+
+	def __str__(self):
+		import LibWiser.Units as Units
+		BufferList = ['type: grating',
+				'AngleGrazing =%0.1e deg ' % np.rad2deg(self.AngleGrazingNominal),
+				'Lambda = %0.2e m' % self.Lambda,
+				'Order = %d' % self.Order,
+				'RayOutNominal = %0.2f deg'  % np.rad2deg(self.RayOutNominal.Angle),
+				'LinesPerMillimiter = %0.2f' % self.LinesPerMillimiter,
+				'GroovePitch = %s ' % Units.SmartFormatter(self.GroovePitch)]
+
+		
+		
+		return '\n'.join(BufferList)
+	
+	#================================
+	# PROP: Lambda [GratingMono]
+	#================================
+	@property
+	def Lambda (self):
+		if self._UseLambdaFromSource == True:
+			try:
+				return self.ParentCointainer.ParentContainer.Source
+			except:
+				return self._Lambda
+		else:
+			return self._Lambda
+	@Lambda.setter
+	def Lambda(self, x):
+		self._Lambda = np.abs(x)
 
 
+	#================================
+	# PROP: Order [GratingMono]
+	#================================
+	@property
+	def Order (self):
+		return self._Order
+	@Order.setter
+	def Order(self, x):
+		self._Order = np.abs(x)
+
+	#================================
+	# PROP: GroovePitch [GratingMono]
+	#================================
+	@property
+	def GroovePitch (self):
+		return self._GroovePitch 
+	@GroovePitch .setter
+	def GroovePitch (self, x):
+		self._GroovePitch  = x
+		
+	#================================
+	# PROP: LinesPerMillimiter [GratingMono]
+	#================================
+	@property
+	def LinesPerMillimiter (self):
+		return self._LinesPerMillimiter
+	@LinesPerMillimiter.setter
+	def LinesPerMillimiter (self, x):
+		self._LinesPerMillimiter = np.abs(x)
+		
+			
+	#================================
+	# PROP: Pitch []
+	#================================
+	@property
+	def RayInNominal(self):
+		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+			
+			
+	#================================
+	# PROP: GetRayInNominal
+	#================================
+	@property
+	def RayInNominal(self):
+		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+		
+	#================================
+	# PROP: RayOutNominal
+	#================================
+	@property
+	def RayOutNominal(self):
+		# Incidence => measured wrt normal
+		# Grazing => measured wrt surface
+		# Incidence = pi/" - Grazing
+		# theta_m = arcsin(theta_i - m*lambda/d)
+		
+		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal
+		IncidenceThetaM = np.arcsin( np.sin(AngleIncidenceNominal) -  self.Order * self.Lambda / self.GroovePitch)
+		GrazingThetaM = np.pi/2 - IncidenceThetaM
+		
+		RayOutSelf = ToolLib.UnitVector(Angle = GrazingThetaM)
+		
+		RayOutLab = ToolLib.VersorRotateSelfToLab(RayOutSelf, self.VersorTan, 'tan')
+		
+		return  RayOutLab 
+
+
+	#================================
+	# FUN: GetGrooveProfile(N) [GratingMono]
+	#================================
+	def GetGrooveProfile(self, N=1000, ReturnAxis = False):
+		'''
+		Returns the  grating profile.
+		'''
+		
+		from LibWiser.ToolLib import Metrology
+		
+		GratingGroove,Step = Metrology.MakeGratingGroove(N = N,
+				  L = self.L ,
+				  LinesPerMillimiter = self.LinesPerMillimiter, 
+				  GroovePitch = self.GroovePitch  ,  
+				  GrooveLength = self.GrooveLength, # if None, then set = L
+				  GrooveHeight = self.GrooveHeight, # if None, the figure error can not be computed
+				  GrooveDutyCycle = self.GrooveDutyCycle,
+				  GrooveType = self.GrooveType , 
+				      ReturnStep = True)
+
+		if ReturnAxis == False:		
+			return GratingGroove
+		else:
+			Axis = np.linspace(0,N,N, endpoint = False) * Step
+			return Axis, GratingGroove
+
+	#================================
+	# FUN: GetXYSelf_GrooveProfile(N)
+	#================================
+	def GetXYSelf_GrooveProfile(self, N=1000):
+		'''
+		Returns the  grating profile in the 'self' reference frame.
+		
+		To apply this to the mirror surface you need to apply a transformation
+		'''
+		
+		from LibWiser.ToolLib import Metrology
+		
+		GratingGroove,Step = Metrology.MakeGratingGroove(N = N,
+				  L = self.L ,
+				  LinesPerMillimiter = self.LinesPerMillimiter, 
+				  GroovePitch = self.GroovePitch  ,  
+				  GrooveLength = self.GrooveLength, # if None, then set = L
+				  GrooveHeight = self.GrooveHeight, # if None, the figure error can not be computed
+				  GrooveDutyCycle = self.GrooveDutyCycle,
+				  GrooveType = self.GrooveType , 
+				      ReturnStep = True)
+
+		Axis = np.linspace(0,N,N, endpoint = False) * Step
+		return Axis, GratingGroove
+		
+	#================================
+	# GetXY_IdealMirror(N) [class: mirror]
+	#================================
+	def GetXY_IdealMirror(self, N, Sign=+1, ReferenceFrame=None, L=None):
+		'''
+			Implementation of abstract class
+			Implements the IdealProfile (aka IdealMirror) for the grating
+			Notice
+			-----
+
+			ReferenceFrame : Unused.
+					Possible free parameter from Optics.GetXY_IdealMirror
+
+			L: Unused. self.L is used instead
+
+		'''		
+		# Init buffer
+		ProfileBufferY = np.zeros(N)
+		# Compute mirror profile
+		#--------------------------------------------
+		MirrorX, MirrorY = MirrorPlane.GetXY_IdealMirror(self,N)
+		ProfileBufferY += MirrorY
+		
+		# Compute Groove Profile
+		#--------------------------------------------
+		try:
+			if self.ComputationSettings.UseGroove:
+				UseGroove = self.ComputationSettings.UseGroove
+		except :
+				UseGroove = False
+				
+		if UseGroove:
+				# Here, self.L is already determined byt the figure error,
+				# if GetXY_RealMirror is invoked.
+				# Once the figure error is used once, the oe L is changed 
+				# forever.
+			GrooveXSelf, GrooveYSelf = self.GetXYSelf_GrooveProfile(N)
+			ProfileBufferY += GrooveYSelf
+		# In principle GrooveX and x should be the same, but I have not checked
+		
+		return [MirrorX,ProfileBufferY]
+		
+	def _GrazingThetaM(self):
+		return np.arcsin(np.pi/2-self.AngleGrazingNominal - self.Order * self.Lambda / self.GroovePitch)
+ 
 #==============================================================================
 #	 CLASS: MirrorSpheric
 #==============================================================================
-class MirrorSpheric(Mirror):
+class MirrorSpheric(Mirror, CodeGenerator):
 	'''
 	Implements a (1d) elliptic mirror of equation
 
@@ -4432,6 +4905,7 @@ class MirrorSpheric(Mirror):
 						('L','Length' ),
 						('AngleGrazing','Grazing Angle')),
 					  ]
+
 
 
 	#================================
@@ -4460,7 +4934,7 @@ class MirrorSpheric(Mirror):
 			Common usage is set it to 0, then use other helper functions (such as SetFocusAt)
 			in order to set it.
 		'''
-
+		CodeGenerator.__init__(self,['R', 'L', 'Alpha'])
 		self.XYOrigin = XYOrigin
 		self.RotationAngle = RotationAngle
 
@@ -5328,8 +5802,10 @@ class Detector(MirrorPlane):
 		# UseAsReference = False => Make detector transparent by default
 		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)
 #		super().__init__(**kwargs)
+		
+		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
 		self.UseAsReference = False
-
+		
 #==============================================================================
 #	 CLASS ABSTRACT: OpticsEfficiency
 #==============================================================================
@@ -5342,6 +5818,7 @@ class OpticsEfficiency(Mirror):
 
 	def __init__(self):
 		super().__init__()
+
 
 	def Reflectivity(self, n, k):
 		"""
@@ -5370,7 +5847,7 @@ class OpticsEfficiency(Mirror):
 #==============================================================================
 #	 CLASS: TransmissionFunction
 #==============================================================================
-class Slits(OpticsNumerical):
+class Slits(OpticsNumerical, CodeGenerator):
 	'''
 	This class is introduced to cover the following needs:
 		1 - introduce slits\apertures etc in a generic position along the optical axis (e.g. between the source and a mirror)
@@ -5409,6 +5886,7 @@ class Slits(OpticsNumerical):
 	#  FUN: __init__
 	# ================================
 	def __init__(self, L=None, AngleGrazing=np.pi/2., XYLab_Centre=[0, 0], AngleIn=0, **kwargs):
+		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
 		super().__init__(**kwargs)  # No roughness, no small displacements, no figure error from super
 		'''
 		Init:
@@ -5434,6 +5912,7 @@ class Slits(OpticsNumerical):
             Grazing angle which must be preserved between the mirror and the InputAngleLab.
             It is used to compute MirrorAngle
         '''
+		
 		# BUILDING
 		if tl.CheckArg([L, AngleGrazing]):
 			self._L = L

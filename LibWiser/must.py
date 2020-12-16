@@ -8,6 +8,7 @@ from sys import platform
 import numpy as np
 from importlib import reload
 from numpy import  cos, sin, tan, arctan, arctan2, pi, array, arange, size, polyval, polyfit, angle, dot, exp, arcsin, arccos, real, imag, angle, copy
+from numpy import rad2deg as deg
 from numpy.lib.scimath import sqrt
 from numpy.linalg import norm
 import matplotlib.pyplot as plt
@@ -80,22 +81,23 @@ def ReadYFile(Path, StepX = None , SkipLines = 2):
 
 
 	'''
-	with open(Path) as file:
-		Lines = file.readlines()[SkipLines :]
-	N = len(Lines)
-	y = np.zeros(N)
-	if StepX is not None:
-		x = np.linspace(1,N*StepX, N)
-	for (iLine, Line) in enumerate(Lines):
-		Line = Line.strip()
-		if Line != '':
-			Tokens = Line.split('\t')
-			y[iLine] = float(Tokens[1])
-
-	if StepX is not None:
-		return x,y
-	else:
-		return y
+	raise Exception("Disctontinued function: use ToolLib.FileIO.ReadYFile instead")
+#	with open(Path) as file:
+#		Lines = file.readlines()[SkipLines :]
+#	N = len(Lines)
+#	y = np.zeros(N)
+#	if StepX is not None:
+#		x = np.linspace(1,N*StepX, N)
+#	for (iLine, Line) in enumerate(Lines):
+#		Line = Line.strip()
+#		if Line != '':
+#			Tokens = Line.split('\t')
+#			y[iLine] = float(Tokens[1])
+#
+#	if StepX is not None:
+#		return x,y
+#	else:
+#		return y
 #========================================================
 #	FUN: ReadXYFile
 #========================================================
@@ -105,19 +107,20 @@ def ReadXYFile(Path, Delimiter = '\t', SkipLines = 2):
 	-----
 	Reads the x,y data formatted as a column
 	'''
-	with open(Path) as file:
-		Lines = file.readlines()[SkipLines :]
-	N = len(Lines)
-	x = np.zeros(N)
-	y = np.zeros(N)
-	for (iLine, Line) in enumerate(Lines):
-		Line = Line.strip()
-		if Line != '':
-			Tokens = Line.split('\t')
-			x[iLine] = float(Tokens[0])
-			y[iLine] = float(Tokens[1])
-
-	return x,y
+	raise Exception("Disctontinued function: use ToolLib.FileIO.ReadYFile instead")
+#	with open(Path) as file:
+#		Lines = file.readlines()[SkipLines :]
+#	N = len(Lines)
+#	x = np.zeros(N)
+#	y = np.zeros(N)
+#	for (iLine, Line) in enumerate(Lines):
+#		Line = Line.strip()
+#		if Line != '':
+#			Tokens = Line.split('\t')
+#			x[iLine] = float(Tokens[0])
+#			y[iLine] = float(Tokens[1])
+#
+#	return x,y
 
 #========================================================
 #	FUN: frozen
