@@ -21,6 +21,39 @@ def Exists(var):
 		return False
 	   # Do something.
 
+def SetAttr(x, StrAttr : str, Value):
+	
+	TokList = StrAttr.split('.')
+	if len(TokList) ==1:
+		setattr(x, TokList[0], Value)
+	
+	elif len(TokList)>1:
+		
+		for Tok in TokList:
+			y = getattr(x,Tok)
+			GeldedTokList = '.'.join(TokList[1:])
+			print(GeldedTokList)
+			SetAttr(y,GeldedTokList, Value)
+#==============================================================================
+#  FUN: IsArrayLike
+#==============================================================================
+def IsArrayLike(x):
+	import numpy as np
+	if type(x) == list:
+		return True
+	elif type(x) == np.ndarray:
+		return True
+	else:
+		return False
+#==============================================================================
+#  FUN: IsValidPythonName
+#==============================================================================	
+def IsValidPythonName(x):
+	try:
+		exec('%s = 42' % x)
+		return True
+	except:
+		return False	
 #==============================================================================
 #  Class: DataContainer
 #==============================================================================
@@ -364,3 +397,6 @@ def ListClassObjects(myClass, strOwnerClass = ''):
     strAttr = [iAttr for iAttr in dir(myClass) if not callable(iAttr) and not iAttr.startswith("__")]
     objAttr = [getattr(myClass,iAttr) for iAttr in strAttr]
     return objAttr
+
+
+#SetAttr(a, 'b.c.d',  11)

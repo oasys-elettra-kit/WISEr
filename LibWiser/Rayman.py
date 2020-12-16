@@ -8,12 +8,12 @@ Cose da sistemare
 - capire come chiamare gli assi del fascio gaussiano RhoZ ?
 - trovare denominazione comune xMir yMir, Mir_x MirX Mir_xy MirXY e salaminchia
 """
-#%%
+
 from __future__ import division
 import numpy as np
 #import cmath as cm
 from numpy import sum, cos, sin, tan, pi, array, arange, polyval, dot, exp, real, sqrt
-from LibWiser.ToolLib import Debug
+from LibWiser.ToolLib import Debug, RMat
 from numba import jit, prange
 
 from  scipy import ndimage
@@ -231,23 +231,25 @@ def XY_to_L(x,y):
 #  xy_to_s
 #================================================================
 def xy_to_s(x,y):
-    '''
-    For two arrays x,y computes the array of displacements s defined as
-                s_i = sqrt( dx_i^2 + dy_i^2)
-    where
-                dx_i = x_i - x_(i-1)   and similarly for dy_i
-    Essentially, s is the proper coordinate axis of the curve described by x,y.
-    '''
+	'''
+	For two arrays x,y computes the array of displacements s defined as
+	s_i = sqrt( dx_i^2 + dy_i^2)
+	where
+	dx_i = x_i - x_(i-1)   and similarly for dy_i
+	Essentially, s is the proper coordinate axis of the curve described by x,y.
+	'''
 
-    if (x is None) or (y is None):
-        return None
+	if (x is None) or (y is None):
+		   return None
+	if (len(x) == 0 ) or (len(y) ==0):
+		return np.array([0])
 
-    N2 = int(np.floor(len(x)/2))
-    s0 = len(x)/2
-    Steps = np.sqrt(np.diff(x)**2 + np.diff(y)**2)
-    s  = np.cumsum(Steps)
-    s = np.append(0,s) - s[int(len(s)/2)]
-    return s
+	N2 = int(np.floor(len(x)/2))
+	s0 = len(x)/2
+	Steps = np.sqrt(np.diff(x)**2 + np.diff(y)**2)
+	s  = np.cumsum(Steps)
+	s = np.append(0,s) - s[int(len(s)/2)]
+	return s
 
 def PathLength(x,y):
     return sum(np.sqrt(np.diff(x)**2 + np.diff(y)**2))
@@ -753,29 +755,31 @@ def _MatchArrayLengths (x,y):
 def _wrapper_HuygensIntegral_1d_Kernel(parameters):
 
     # Unpack the parameters
-    Lambda, Ea, xa, ya, xb, yb, bStart, bEnd = parameters
+	Lambda, Ea, xa, ya, xb, yb, bStart, bEnd = parameters
 
     # Convert to float
-    Lambda = np.float64(Lambda)
-    Ea = np.complex128(Ea)
-    xa = np.float64(xa)
-    ya = np.float64(ya)
-    xb = np.float64(xb)
-    yb = np.float64(yb)
-
-    if Verbose:
-        print('Lambda', type(Lambda), Lambda.shape())
-        print('Ea', type(Ea), Ea.shape())
-        print('xa', type(xa), xa.shape())
-        print('ya', type(ya), ya.shape())
-        print('xb', type(xb), xb.shape())
-        print('yb', type(yb), yb.shape())
+	   
+	Lambda = np.float64(Lambda)
+	Ea = np.complex128(Ea)
+	xa = np.float64(xa)
+	ya = np.float64(ya)
+	xb = np.float64(xb)
+	yb = np.float64(yb)
+	Verbose = True
+    
+	if Verbose:
+		print('Lambda', type(Lambda), Lambda.shape())
+		print('Ea', type(Ea), Ea.shape())
+		print('xa', type(xa), xa.shape())
+		print('ya', type(ya), ya.shape())
+		print('xb', type(xb), xb.shape())
+		print('yb', type(yb), yb.shape())
 
     # Convert to int
-    bStart = np.int64(bStart)
-    bEnd = np.int64(bEnd)
+	bStart = np.int64(bStart)
+	bEnd = np.int64(bEnd)
 
-    return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart, bEnd)
+	return HuygensIntegral_1d_Kernel(Lambda, Ea, xa, ya, xb, yb, bStart, bEnd)
 
 #==============================================================================
 # 	WRAPPER ARGUMENTS
@@ -888,7 +892,7 @@ def ComputeSamplingB(Lambda, z, L0, L1,  Alpha0, Alpha1, OversamplingFactor = 1 
 #	int(10 * kbv.L * Det_Size  * cos(kbv.pTan_Angle - arctan(-1/kbv.p2[0])) /Lambda/kbv.f2)
 
 def SamplingCalculator(Lambda, z, L0, L1,  Theta0, Theta1):
-    return ComputeSampling(Lambda, z, L0, L1,  Theta0, Theta1)
+    return ComputeSamplingB(Lambda, z, L0, L1,  Theta0, Theta1)
 
 
 def SamplingGoodness_QuadraticPhase(MatrixN, dPix, Lambda, z, R=np.inf, Verbose = True):

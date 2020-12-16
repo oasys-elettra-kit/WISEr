@@ -17,6 +17,11 @@ from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
 
+def EnsureIsArray(x):
+	if np.isscalar(x):
+		return np.array([x])
+	else:
+		return np.array(x)
 
 #================================
 #  FUN: PathGetExtension
@@ -365,6 +370,24 @@ def SamplingAlongLine(Theta, XYCentre, Length, NSamples = None, Step = None):
 	x = np.linspace(x_start, x_end, N)
 	y = m*x+q
 	return x,y
+
+#================================================================
+#  GetAround
+#================================================================
+def GetAround(x, Index, Range):
+	'''
+	Given an array x, return the elements x[Index-Range] to x[Index + Range]+1.
+	
+	Handle the case Index+-Range falls outside the array.
+	
+	'''
+	Start = Index - Range
+	End = Index + Range +1
+	
+	Start = Start if Start >0 else 0
+	End = End if End <= len(x)-1 else len(x) -1
+	
+	return x[Start : End]
 #================================================================
 #  RMat
 #================================================================
@@ -399,18 +422,24 @@ def RotXY(x,y, Theta = 0, CentreOfRotation = np.array([0,0])):
 
 	y : rotated y
 
+	Notice
+	---------------
+	returned x,y are always arrays.
+	
 	Examples
 	----------------
 	>>> import numpt as np
 	>>> RotXY(0,1,45 * np.pi/180)
 	>>> Out[12]: (array([-0.70710678]), array([ 0.70710678]))
 	'''
+	
 	if Theta == 0:
 		return (np.array(x), np.array(y))
 	Theta = -Theta # non so perch?? il -1, odio le matrici di rotazione.
 	Vxy = np.column_stack((x,y))
 	U  = dot(Vxy - CentreOfRotation, RMat(Theta)) + CentreOfRotation
 	return (U[:,0], U[:,1])
+
 
 #================================================================
 #  RotPoly
@@ -458,7 +487,7 @@ def RotPoint(XY, Theta = 0, CentreOfRotation = np.array([0,0])):
 #================================================================
 #  RotVersor
 #================================================================
-def RotVersor(V, Angle, Deg = False):
+def RotVersor(v, Angle, Deg = False):
 	'''
 	Rotate the versor V = (Vx, Vy)
 
@@ -466,12 +495,16 @@ def RotVersor(V, Angle, Deg = False):
 	if Deg== True:
 		Angle = Angle * np.pi/180
 
-	if (Angle == 0) or np.linalg.norm(V)==0:
-		return V
+	if (Angle == 0) or np.linalg.norm(v)==0:
+		return v
 	else:
-		U = RotXY(V[0], V[1], Angle)
+		U = RotXY(v[0], v[1], Angle)
 		return np.array([U[0][0], U[1][0] ])
 
+
+
+
+	
 #================================
 #  Normalize
 #================================
@@ -500,8 +533,8 @@ def UnitVectorNormal(v, Sign = +1):
 	'''
 	nx,ny = RotXY(v[0], v[1], Sign * np.pi/2)
 
-	nx = 0 if abs(nx) < 1e-16 else nx[0]
-	ny = 0 if abs(ny) < 1e-16 else ny[0]
+	nx = 0 if abs(nx[0]) < 1e-16 else nx[0]
+	ny = 0 if abs(ny[0]) < 1e-16 else ny[0]
 	return np.array([nx,ny])
 #================================
 #  UnitVectorReflect
@@ -1548,7 +1581,7 @@ class Vector(object):
 			else:
 				self._ZeroLength()    # _v is assigned
 		else:
-			print ('Vecor Init Wrong Argument set')
+			raise ValueError(' ToolLib.Vector.__init__(): Wrong Argument set')
 
 
 
@@ -1569,6 +1602,15 @@ class Vector(object):
 				(self.v[0], self.v[1], (self.Angle * 180/np.pi),
 				self.XYOrigin[0], self.XYOrigin[1]))
 		return StrMsg
+
+# 	#======================
+# 	# FUN: __repr__
+# 	#======================
+# 	def __repr__(self):
+# 		StrMsg = 'suca'
+# 		return StrMsg
+# 		
+	
 	#======================
 	# FUN: _ZeroLength
 	#======================
@@ -1616,11 +1658,22 @@ class Vector(object):
 	@property
 	def Angle(self):
 		return self._vAngle
-	@vAngle.setter
+	@Angle.setter
 	def Angle(self, value):
 		self._v = RotVersor([1,0], value)
 		self._vAngle = value
 
+	#======================
+	# PROP: AngleDeg
+	#======================
+	@property
+	def AngleDeg(self):
+		return np.rad2deg(self._vAngle)
+	@AngleDeg.setter
+	def AngleDeg(self, value):
+		AngleRad = np.deg2rad(value)
+		self.Angle = AngleRad
+		
 	#======================
 	# PROP: PolyCoeff
 	#======================
@@ -1731,10 +1784,12 @@ class Vector(object):
 #	 CLASS: UnitVector
 #==============================================================================
 class UnitVector(Vector):
-	def __init__(self,  vx = None, vy = None,
-				v = None,
-				V = None,
-			   Angle = None, XYOrigin = [0,0]):
+	def __init__(self, v=None, 
+			  vx = None, 
+			  vy = None,
+  				V = None,
+			   Angle = None,
+			    XYOrigin = [0,0]):
 		Vector.__init__(self,  vx = vx, vy= vy, v = v, V = V ,
 				  Angle = Angle, XYOrigin = XYOrigin,
 				  IsUnitVector = True)
@@ -1743,6 +1798,11 @@ class UnitVector(Vector):
 #	 CLASS: Ray
 #==============================================================================
 class Ray(Vector):
+	'''
+	A ray is a vector, but with some more properties (which probably I have never 
+												   used yet)
+	
+	'''
 	#======================
 	# FUN: __init__
 	#======================
@@ -1973,7 +2033,88 @@ class Ray_seminuovo(object):
 		return XYList[:,0], XYList[:,1]
 
 #	def DrawCircle(x,y,R, x0, y0)
-#%%
+
+#================================================================
+#  RotateVersorSelfToLab
+#================================================================
+def VersorRotateSelfToLab(V : Vector, VReference, ReferenceType = 'tan'):
+	'''
+	Context:
+		you have a versor defining a direction, with respect a certain optical element
+		(e.g. the output ray reflected from a mirror). Such a versor is defined
+		in a reference frame where
+			
+			x => tangential to element
+			y => normal to element
+			
+	Goal:
+		your optical element is actually rotated in the laboratory reference frame.
+		The orientation is described either by the versor normal to the surface
+		or by the versonr normal to the surface.
+		
+		You want to translate your input versor in the laboratory reference frame.
+		
+		
+	parameters
+	---------
+	
+	V: ToolLib.Vector
+	
+		Vector to rotate
+	
+	VReference : ToolLib.Vector
+	
+		Vector specifying the orientation of the element
+		
+	ReferenceType: {'norm', 'tan'}
+		Tells whether VReference is normal or tangential to the surface
+		
+	'''
+	
+	if ReferenceType == 'tan':
+		Angle = VReference.Angle
+		
+	elif ReferenceType == 'norm':
+		Angle = VReference.Angle - np.pi/2
+		
+	u = RotVersor(V.v,Angle)
+	V = UnitVector(v = u)
+	return V
+	
+#================================================================
+#  RotateVersorLabToSelf
+#================================================================
+def VersorRotateLabToSelf(V : Vector, VReference, ReferenceType = 'norm'):
+	'''
+	Does the opposite of RotateVersorSelfToLab. Refer to the documentation
+	of that function.
+		
+	parameters
+	---------
+	
+	V: ToolLib.Vector
+	
+		Vector to rotate
+	
+	VReference : ToolLib.Vector
+	
+		Vector specifying the orientation of the element
+		
+	ReferenceType: {'norm', 'tan'}
+		Tells whether VReference is normal or tangential to the surface
+		
+	'''
+	
+	if ReferenceType == 'tan':
+		Angle = VReference.Angle
+		
+	elif ReferenceType == 'norm':
+		Angle = VReference.Angle - np.pi/2
+		
+	return UnitVector(RotVersor(V.v,-Angle))
+	
+
+
 #import matplotlib.pyplot as plt
 #plt.close('all')
 #plt.axis('equal')
@@ -2435,6 +2576,100 @@ class Metrology:
 		GratingParameter = 2. * np.pi * LinesPerMeter * x
 		# Generate a grating
 		GratingProfile = ((square(GratingParameter, duty = HighDuty) + 1.) / 2.) * GrooveHeight
+
+		if L1 is not None and L1 < L0:
+			xTemp = np.linspace(-L0 / 2., L0 / 2., num=NumberOfPoints)
+			GratingProfile[np.abs(xTemp) >= L1 / 2.] = 0.
+		if ReturnStep:
+			Step = L0/N
+			return GratingProfile, Step
+		else:
+			return GratingProfile
+		
+	#=============================================================#
+	# FUN RectangularGrating
+	#=============================================================#
+	def MakeGratingGroove(N ,
+					   L  ,
+	   LinesPerMillimiter = 1000, 
+	   GroovePitch = 1e-3 ,  
+	   GrooveLength = None, # if None, then set = L
+	   GrooveHeight = 10e-9, # if None, the figure error can not be computed
+	   GrooveDutyCycle = 0.5,
+	   GrooveType = 'square', 
+   	   ReturnStep = False):
+		'''
+		Generates a square wave, mimiking the groove height profile of  a
+		(reflection) grating.
+
+		Parameters
+		-----
+		L : float
+			total length of the grating.
+
+		GrooveLength : float
+			length of the grooved region. If None, it is assumed to be equal to L0
+
+		N : int
+			Sampling points
+
+		LinesPerMillimiter : int
+			Lines per millimiter
+
+		GrooveHeight : scalar
+			Groove heigth (default=10nm)
+
+		HighDuty : float (0 to 1)
+			Duty cycle of the high period
+
+		Return
+		-------
+		GratingProfile : array like
+			Height profile (m) of the grating.
+
+		Step : scalar
+			Lateral step, corresponding to L0/N (yep, it is not so interesting).
+
+
+		'''
+		from LibWiser.Optics import GROOVE_TYPE 
+		
+		HighDuty = GrooveDutyCycle
+		L0 = L
+		L1 = GrooveLength
+		
+		L1= L1 if L1 is not None else L0
+		
+		from scipy.signal import square, sawtooth
+		NumberOfPoints = N
+		
+		# L in metres, convert LinesPerMillimiter to LinesPerMeter
+		LinesPerMeter = LinesPerMillimiter * 1e3
+		
+		# Create x-axis, it must be strictly positive for consistent result
+		x = np.linspace(0., L0, num=NumberOfPoints)
+
+		# L = 2
+		# N =100
+		# t = np.linspace(0, L, N, endpoint=False)
+		
+		# plt.plot(t, signal.square(2 * np.pi * 5 * t))
+		
+		# plt.ylim(-2, 2)
+		
+
+		# Initialize grating parameter
+		GratingParameter = 2. * np.pi * LinesPerMeter * x
+		
+		# Generate the  grating
+		if GrooveType == GROOVE_TYPE.SQUARE:
+			GratingProfile = ((square(GratingParameter, duty = HighDuty) + 1.) / 2.) * GrooveHeight
+			
+		elif GrooveType == GROOVE_TYPE.SAWTOOTH:
+			GratingProfile = ((sawtooth(GratingParameter, width = HighDuty) + 1.) / 2.) * GrooveHeight
+		else:
+			s = ','.join([Item.value for Item in GROOVE_TYPE ])
+			raise Exception("Error in ToolLib.MakeGratingGroove: expected %s, got '%s' instead" % (s, GrooveType) )
 
 		if L1 is not None and L1 < L0:
 			xTemp = np.linspace(-L0 / 2., L0 / 2., num=NumberOfPoints)
