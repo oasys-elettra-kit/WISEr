@@ -3724,7 +3724,8 @@ class MirrorElliptic(Mirror, CodeGenerator):
 		x = np.array(XProp)
 		# remove points which do not belong to ellipse domain.
 		# Modifica di dicembre: it does nothing
-# 		XProp = np.delete(XProp, [(XProp < -self.a) | (XProp > self.a)])
+    # 		XProp = np.delete(XProp, [(XProp < -self.a) | (XProp > self.a)])
+
 		return Sign*self.b * np.sqrt(1 - x**2 / self.a**2)
 	#================================
 	# _EvalMirrorXProp (YProp)
@@ -3738,7 +3739,9 @@ class MirrorElliptic(Mirror, CodeGenerator):
 		'''
 		y = np.array(YProp)
 		# remove points which do not belong to ellipse domain.
-		YProp = np.delete(YProp, [(XProp < -self.b) | (XProp > self.b)])
+		# YProp = np.delete(YProp, (XProp < -self.b) | (XProp > self.b))
+		YProp = YProp[(XProp >= -self.b) | (XProp <= self.b)]
+
 		return Sign*self.a * np.sqrt(1 - y**2 / self.b**2)
 
 #		if size(x) == 1:
