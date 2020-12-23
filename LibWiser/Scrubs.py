@@ -6,7 +6,22 @@ Still to define if it will be kept
 
 @author: Mike - Manfredda
 """
+from enum import Enum as StandardEnum
 
+#==============================================================================
+#  Class Enum
+#==============================================================================
+class Enum(StandardEnum):
+	'''
+	Decorator (used as subclass) for making the comparisong between enums behave
+	as we want.
+	'''
+	def __eq__(self, other):
+		if self.value == other.value:
+			return True
+		else:
+			return False
+		
 #==============================================================================
 #  Exists
 #==============================================================================
@@ -54,6 +69,29 @@ def IsValidPythonName(x):
 		return True
 	except:
 		return False	
+#==============================================================================
+#  FUN: MergeDictionaries
+#==============================================================================	
+def IsValidPythonName(x):
+	try:
+		exec('%s = 42' % x)
+		return True
+	except:
+		return False
+
+#==============================================================================
+#  Class: FrozenClass
+#==============================================================================
+class FrozenClass(object):
+    __isfrozen = False
+    def __setattr__(self, key, value):
+        if self.__isfrozen and not hasattr(self, key):
+            raise TypeError( "%r is a frozen class" % self )
+        object.__setattr__(self, key, value)
+
+    def _freeze(self):
+        self.__isfrozen = True
+		
 #==============================================================================
 #  Class: DataContainer
 #==============================================================================

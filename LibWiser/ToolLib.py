@@ -2276,7 +2276,7 @@ class FileIO:
 
 		"""
 		PathValueTuples  = GroupValueTuples
-		from Scrubs import ListAttr, ListAttrRecursive
+		from LibWiser.Scrubs import ListAttr, ListAttrRecursive
 		from LibWiser.Scrubs import DataContainer # otherwise the type match does not work properly
 		# Ensures that the path exists
 		PathCreate(FileName, True)

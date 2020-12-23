@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from abc import abstractmethod
-from enum import Enum
+from LibWiser.Scrubs import Enum
 
 '''
 
@@ -2752,17 +2752,36 @@ class Mirror(OpticsNumerical):
 		'''
 		This function is a helper function that read a figure error file, then calls the
 		lower lever FigureErrorLoad function
-
+		
+		Parameters
+		-------------------
+		
+		FileType : Enum, from Enums.FIGURE_ERROR_FILE_FORMAT
+		
+			- HEIGHT_ONLY: the file has 1 column only. 
+			Needs <PathFile, YScaleFactor, Steps>
+			
+			-OSITION_AND_HEIGHT:
+			Needs <PathFile, XScaleFactor, YScaleFactor>
+			
+			- ELETTRA_LTP_JAVA1: 
+			needs <PathFile, YScaleFactor>
+			
+			-ELETTRA_LTP_DOS:
+			needs <PathFile>
+			
 		'''
+		
+		
 		XScaling  = XScaleFactor
 		YScaling = YScaleFactor 
-		if FileType == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY:
+		if FileType.value == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY.value:
 
 			Height = ToolLib.FileIO.ReadYFile(PathFile,  SkipLines = SkipLines)
 			Height *= YScaling
 			Step = Step
 
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
+		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT.value:
 
 			x, Height = ToolLib.FileIO.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
 			x *= XScaling
@@ -2770,15 +2789,8 @@ class Mirror(OpticsNumerical):
 			Height *= YScaling
 			Step = np.mean(np.diff(x))
 
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT:
 
-			x, Height = ToolLib.FileIO.ReadXYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
-			x *= XScaling
-
-			Height *= YScaling
-			Step = np.mean(np.diff(x))
-
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1:
+		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1.value:
 			x,h, ComputedStep = tl.Metrology.ReadLtpLtpJavaFileA(PathFile,
 												   Decimation = 2,
 													ReturnStep = True,
@@ -2787,7 +2799,7 @@ class Mirror(OpticsNumerical):
 			Height = h*YScaling
 			Step = ComputedStep
 
-		elif FileType == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS:
+		elif FileType.value  == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS.value :
 			x,y,FileInfo  = tl.Metrology.ReadLtp2File(PathFile) # read slopes
 
 			if PathFile.suffix.upper() == '.SLP':
@@ -2797,16 +2809,21 @@ class Mirror(OpticsNumerical):
 
 			Height = h
 			Step = FileInfo.XStep
-	
+		else:
+			raise Exception("""Error in Optics.FigureErrorLoadFromFile. Could not match the righ 
+				   FileType.\n
+				   File Type: %s""" % FileType)
 		#Check that all was good
 		#--------------------------------------------------------			
 		try:
 			if Height is None:
 				raise Exception("""Error in Optics.FigureErrorLoadFromFile. Height is None. Check 
-				   SkipLines, maybe you have some header in the file that must me ignored.""")
+				   SkipLines, maybe you have some header in the file that must me ignored.\n
+				   File name: %s""" % PathFile)
 		except:
 			raise Exception("""Error in Optics.FigureErrorLoadFromFile. Height is not assigned. Check 
-				   SkipLines, maybe you have some header in the file that must me ignored.""")
+				   SkipLines, maybe you have some header in the file that must me ignored.\n
+				   File name: %s""" % PathFile)
 
 		# update the parent object
 		#-----------------------------------------------------------------------

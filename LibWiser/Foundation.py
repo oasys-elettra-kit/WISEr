@@ -16,7 +16,7 @@ import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
-from enum import Enum
+from LibWiser.Scrubs import Enum
 import time
 import warnings
 
@@ -285,6 +285,13 @@ class TreeItem(object):
 		Str = '[%s] ---- *[%s]*----[%s]' %( NameParent, self.Name,NameChildren)
 		return Str
 
+	@property
+	def Name(self):
+		return self._Name
+	@Name.setter
+	def Name(self,x):
+		self._Name = x
+		
 	# ===========================================
 	# PROP: ParentContainer
 	# ==========================================
@@ -368,16 +375,28 @@ class Tree( CodeGenerator):
 		Key : can be EITHER strinf (name) OR integer (position index)
 		'''
 
+		def ItemNotFound(Key = None):
+			raise Exception('Tree.__getitem__, Item not found. Specified item: ')
 		# The Key is an object
-		if type(Key) == OpticalElement:
-			return self._Items[Key.Name]
-
+		try:
+			try:
+				return self._Items[Key.Name]
+			except:
+				ItemNotFound()
+		except:
+			pass
 		# The Key is an integer
-		elif type(Key) == int:
-			return self._Items.items()[Key][1] # returns the object of the dictionary
+		if type(Key) == int:
+			try:
+				return self._Items.items()[Key][1] # returns the object of the dictionary
+			except:
+				ItemNotFound()
 		# The Key is a STRING
 		elif type(Key) == str :
-			return self._Items[Key]	# returns the object of the dictionary
+			try:
+				return self._Items[Key]	# returns the object of the dictionary
+			except:
+				ItemNotFound(Key)
 		else:
 			print('ERROR: in Tree.getItem! Type mismatch')
 			return None
@@ -570,11 +589,12 @@ class Tree( CodeGenerator):
     #================================================
     #     GetFromTo
     #================================================
-	def GetFromTo(self, FromItem,  ToItem = None):
+	def GetFromTo(self, FromItem = None,  ToItem = None):
 		'''
 		Returns the item comprised between FromItem and ToItem within self.ItemList
 		(included)
 		'''
+		
 
 		# Use all the items in the beamline
 		if FromItem == None and ToItem == None:
@@ -698,7 +718,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			# Additional Stuff (such as the distance from previous element, etc...)
 
-			Str += '\t\tDeltaZ=%0.2f m, Z=%0.2f m' % (self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource)
+			Str += '\t\t(%i), DeltaZ=%0.2f m, Z=%0.2f m' % (self.CoreOptics.Orientation.value, self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource)
 
 
 			return Str
@@ -1101,7 +1121,13 @@ class OpticalElement(TreeItem, CodeGenerator):
 					 FigureErrorIndex = 0, 
 					 TitleDecorator = '' ):
 		
-		x,h = self.CoreOptics.FigureError_GetProfile()		
+		if FigureErrorIndex>=0:
+			x,h = self.CoreOptics.FigureError_GetProfile(FigureErrorIndex)		
+		else:
+			# that's a workaround for getting x
+			Index = self.CoreOptics.LastFigureErrorUsedIndex
+			x,h = self.CoreOptics.FigureError_GetProfile(Index)
+			
 		if len(x) > 0:
 		
 			# This part can be included in a function
@@ -1136,7 +1162,7 @@ class BeamlineElements(Tree):
 			self.UseRoughness = False
 			self.iRoughness = 0
 			self.iFigureError = 0
-			self.OrientationToCompute = [Optics.OPTICS_ORIENTATION.ANY]
+			self.OrientationToCompute = []
 			self._TotalComputationTimeMinutes = 0
 
 
@@ -1154,6 +1180,8 @@ class BeamlineElements(Tree):
 		Tree.__init__(self, ItemList)
 		self.ComputationSettings = BeamlineElements._ClassComputationSettings()
 
+
+	
 	#================================================
 	#  PROP: Source
 	#================================================
@@ -1238,9 +1266,19 @@ class BeamlineElements(Tree):
 		the positioning operation list)
 		'''
 
+
+		#Here Oncewe thought to put
+		DefaultOrientation = self._GetFirstOrientedElement().CoreOptics.Orientation
+		if len(self.ComputationSettings.OrientationToCompute) ==0:
+			self.ComputationSettings.OrientationToCompute = [DefaultOrientation]
+			
+		print(""" Orientation defaulted to %s, according to the first non-isotropic
+			element of the beamline.""" % DefaultOrientation )	
+		
 		# places an item respect with its parent (if there is any)
 		# improve 101
 
+		
 		oeRecoveryList = []
 		oeList = self.ItemList
 		k = 0
@@ -1394,6 +1432,33 @@ class BeamlineElements(Tree):
 			pass
 		Debug.print('<\end Parse>', 4)
 
+
+
+
+
+	#================================================
+	#  FUN: SetIgnoreList
+	#================================================
+	def SetIgnoreList(self,ElementList, Ignore : bool = True):
+		'''
+		Specify which elements must be ignored or not
+		
+		
+		Dev notes
+		---------------------------
+		This function accepts only data in the format: (element list, single value for all).
+		More refined compbinations such as (element list, value list), or 
+		((element1, value1)...(elementN, valueN )) should be possible via SetPropertyForAll,
+		which however does not work yet.
+		'''
+		
+		for ItemName in ElementList:
+			self[ItemName].CoreOptics.ComputationSettings.Ignore = Ignore
+			
+			
+	#================================================
+	#  FUN: SetAllNSamples
+	#================================================
 	def SetAllNSamples(self,N):
 		'''set the same number of manual sampling for all the optical elements''
 		''' 
@@ -1467,6 +1532,11 @@ class BeamlineElements(Tree):
 		print('Computation started at:')
 		print(datetime.datetime.now())
 		Tic = time.time()
+		
+		if len(self.ComputationSettings.OrientationToCompute) ==0: 
+			raise Exception('Error: the list Foundation.BeamlineElements.OrientationToCompute is empty.')
+			return None
+		
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
 		Toc = time.time()
@@ -1948,6 +2018,14 @@ class BeamlineElements(Tree):
 		Return a list of OE contained between oeStart and oeEnd of given orientation.
 		If oeStart = None, it starts from the first element.
 		If oeEnd = None, it finishes up to the last element.
+		
+		Returns
+		---------------------------
+		OrientedOEList
+		
+		OEStart
+		
+		OEEnd
 		"""
 
 		oeStart = self.FirstItem if oeStart == None else oeStart
@@ -1976,6 +2054,23 @@ class BeamlineElements(Tree):
 
 		return oeListOriented, oeStart, oeEnd
 
+	def _GetFirstOrientedElement(self, Orientation = None):
+		ElementList, oeStart, oeEnd = self._PickOeList()
+		
+		for _ in ElementList:
+			MyOrientation = _.CoreOptics.Orientation 
+			if Orientation is None: 
+				if  (MyOrientation == Optics.OPTICS_ORIENTATION.VERTICAL or
+									   MyOrientation == Optics.OPTICS_ORIENTATION.HORIZONTAL):
+					return _
+			else:
+				if MyOrientation == Orientation:
+					return _
+		return _
+			
+			 
+	def GetElementList(self, oeStart=None, oeEnd=None, Orientation=Optics.OPTICS_ORIENTATION.ANY):
+		return self._PickOeList(oeStart, oeEnd, Orientation)
 	# ================================================
 	#  FUN: GetOpticalPath
 	# ================================================
