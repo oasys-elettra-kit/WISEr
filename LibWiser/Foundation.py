@@ -2486,7 +2486,7 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		More.XYCentre[i] = d.CoreOptics.XYCentre
 
 		# Debug.print(oeFocussing.CoreOptics.GetPositionString(1))
-		print(d.CoreOptics.XYCentre)
+		# print(d.CoreOptics.XYCentre)
 		# Debug.print(d.CoreOptics.GetPositionString(1))
 
 		# Preparing and storing the results
