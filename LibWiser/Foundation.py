@@ -609,7 +609,7 @@ class OpticalElement(TreeItem):
 			#		NameParent, self.Name, NameChildren, self.XYCentre[0], self.XYCentre[1])
 			#
 
-			print(self.GeneralDistanceFromParent(Reference=False))
+			# print(self.GeneralDistanceFromParent(Reference=False))
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			# Additional Stuff (such as the distance from previous element, etc...)
 
