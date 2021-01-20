@@ -14,7 +14,7 @@ import numpy as np
 from numpy import pi, sqrt
 import LibWiser.Foundation
 import LibWiser.Optics
-
+from numpy import deg2rad as rad
 class Info:
 	FermiFactor = {'fel1' : 1.25, 'fel2':1.5}
 #	FermiWaist = FermiSigma * np.sqrt(2)
@@ -66,6 +66,49 @@ class DistancesF2:
 	DpiKbh = 98.55
 	DpiKbhF2 = 1.2
 
+class F2Items:
+	
+	fel1_offset = 7.6474
+	
+	
+	class dpi_kbh:
+		Name = 'dpi_kbh'
+		f1 = 91.6566 
+		f2 = 1.200 
+		GrazingAngle = rad(2)
+		z=f1
+		
+	class dpi_kbv:
+		Name = 'dpi_kbh'
+		f1 = 91.1066 
+		f2 = 1.75 
+		GrazingAngle = rad(2)
+		z=f1
+	class ldm_kbv:
+		Name = 'ldm_kbv'
+		f1 = 87.9102 
+		f2 = 1.82 
+		GrazingAngle = rad(2)
+		z=f1
+	class ldm_kbh:
+		Name = 'ldm_kbh'
+		f1 = 88.4596 
+		f2 = 1.27 
+		GrazingAngle = rad(2)		
+		z=f1
+	class pm2a:
+		z = 41.4427 
+		GrazingAngle = rad(2.5)
+	class presto:
+		z = 49.8466 
+		GrazingAngle = rad(2.5)
+		
+	class radiators:
+		spacing_f1 = 3.75
+		n_f1 = 6
+		length_f1 = 2-5
+	
+#		 
 #
 #def Waist0I(Lambda,Source =''):
 #	return Lambda/np.pi/ThetaI(Lambda, Source)
@@ -110,7 +153,7 @@ class Dpi:
 		f1 = 98.0 # orizzontale
 		f2 = 1.750 # orizzontale
 		M = f1/f2
-		GrazingAngle = np.deg2rad(2)
+		GrazingAngle = rad(2)
 		Letter = 'v'
 #===========================================================================
 # 	Definition of Fermi Fel1 and Fel2 as optical elements

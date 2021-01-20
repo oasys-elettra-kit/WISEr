@@ -9,19 +9,20 @@ from __future__ import division
 from LibWiser.must import *
 import LibWiser
 from LibWiser import Optics, Rayman as rm, ToolLib as tl
+from LibWiser import ToolLib
 from LibWiser import Rayman
 from LibWiser.ToolLib import  Debug
 import inspect
 from collections import OrderedDict
 import numpy as np
 import copy
-from enum import Enum
+from LibWiser.Scrubs import Enum
 import time
 import warnings
 
 from LibWiser.Optics import TypeOfAngle
-
-
+from LibWiser.CodeGeneratorVisitor import CodeGenerator
+import LibWiser.CodeGeneratorVisitor as CGVisitor
 #=============================
 #     DICT: INSERT_MODE
 #=============================
@@ -82,7 +83,7 @@ class ComputationResults(LibWiser.Scrubs.DataContainer):
 		'''
 
 
-	#===========================================================================
+#===========================================================================
 # 	STRUCT: PropagationDirectives
 #===========================================================================
 class PropagationInfo(object):
@@ -117,13 +118,27 @@ class ComputationSettingsForOpticalElement(object):
 		@NSamples.setter
 		def NSamples (self, value):
 			self._NSamples = int(value)
+			
+	@property
+	def NSamples(self):
+		return self._NSamples
+	
+	@NSamples.setter
+	def NSamples(self,N):
+		try:
+			NSamples = int(N)
+			self._NSamples = NSamples
+		except:
+			raise Exception('Error: <NSamples> was not a valid integer.')
+			pass
+		
 
 
 
 #===========================================================================
 # 	STRUCT: PositioningDirectives
 #===========================================================================
-class PositioningDirectives:
+class PositioningDirectives(CodeGenerator):
 	'''
 	Attribute of Fundation.OpticalElement (OE)
 	Says how the OE must be physically positioned in the beamline.
@@ -157,9 +172,16 @@ class PositioningDirectives:
 		FirstArmOfEllipticMirror = 'arm1'
 		SecondArmOfEllipticMirror= 'arm2'
 
-	def __init__(self, ReferTo = 'source', PlaceWhat = 'centre', PlaceWhere = 'centre',
-					 Distance = 0., GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
-					 *kwargs):
+	def __init__(self, 
+			  ReferTo = 'source', 
+			  PlaceWhat = 'centre', 
+			  PlaceWhere = 'centre',
+			  Distance = 0., 
+			  GrazingAngle = None, 
+			  XYCentre = None, 
+			  Angle = None, 
+			  WhichAngle = 'axis',
+			  *kwargs):
 		'''
 		[TODO] : means that the stuff still does not work.
 
@@ -186,6 +208,8 @@ class PositioningDirectives:
 
 		'''
 		#
+		super().__init__(['ReferTo',('What','PlaceWhat'),('Where','PlaceWhere'), 'GrazingAngle','Distance'])
+		
 		self.ReferTo = ReferTo   	 	 	 	 	#The behaviour is well defined (mandatory)
 		self.What = PlaceWhat 	 	 	 	 	 	#The behaviour is well defined (mandatory)
 		self.Where = PlaceWhere 	 	 	 	 	#The behaviour is well defined (mandatory)
@@ -195,10 +219,39 @@ class PositioningDirectives:
 		self.GrazingAngle = GrazingAngle
 		self.Angle = Angle if Angle != None else (0 if ReferTo =='absolute' else None)
 		self.WhichAngle = WhichAngle
-
+		
 	def __str__(self):
 		Msg = [ PropName + ':= ' +  str(getattr(self, PropName)) for PropName in  PositioningDirectives._PropList]
 		return '\n'.join(Msg)
+	
+# 	def GetInitCode(self):
+# 		'''
+# 		Return a string containing the python code which generate the object.
+# 		
+# 		1) Only information originally used in the init function are used: computation data, cross-links,
+# 		delayed associations are ignored.
+# 		
+# 		2) Some classes accepts different combinations of input parameters. The GetInitCode functions typically
+# 		choose one of these sets and hardcode the,
+# 		'''
+# 		'''
+# 						PositioningDirectives = Foundation.PositioningDirectives(
+# 						ReferTo = 'source',
+# 						PlaceWhat = 'centre',
+# 						PlaceWhere = 'centre',
+# 						Distance = 41.4427)'''
+# 						
+# 		ClassName = type(self).__name__ #Foundation.PositioningDirectives
+# 		ClassShortName = "PositioningDirectives"
+# 		s= "PositioningDirectives =%s(" % ClassName
+# 		s+= "\n\tReferTo = '%s' " % self.ReferTo
+# 		s+= "\n\tPlaceWhat = '%s' " % self.PlaceWhat
+# 		s+= "\n\tPlaceWhere =  '%s' " % self.PlaceWhere
+# 		s+= "\n\tDistance = %0.6f" % self.Distance
+# 		s+= ")"
+# 		
+# 		return s
+	
 #	def __repr__(self):
 #		print (self.__set__())
 posdir_ = PositioningDirectives
@@ -239,6 +292,13 @@ class TreeItem(object):
 		Str = '[%s] ---- *[%s]*----[%s]' %( NameParent, self.Name,NameChildren)
 		return Str
 
+	@property
+	def Name(self):
+		return self._Name
+	@Name.setter
+	def Name(self,x):
+		self._Name = x
+		
 	# ===========================================
 	# PROP: ParentContainer
 	# ==========================================
@@ -252,14 +312,14 @@ class TreeItem(object):
 		Behavior
 		----
 
-		ParentCointainer must be updated by external functions (e.g. by Append, Insert function of
-		Tree objects)
+		ParentCointainer is updated by TreeItem.Insert 
 		'''
 		return self._ParentContainer
 
 	@ParentContainer.setter
 	def ParentContainer(self, value):
 		self._ParentContainer = value
+		
 	# ================================================
 	#	PROP: UpstreamItemList
 	# ================================================
@@ -290,18 +350,28 @@ class TreeItem(object):
 #===========================================================================
 # 	CLASS: Tree
 #===========================================================================
-class Tree(object):
+class Tree( CodeGenerator):
 
     #================================================
     #     __init__
     #================================================
-	def __init__(self):
+	def __init__(self, ItemList = None):
 #		self._Items = dict()
+		
 		self._Items = OrderedDict()
 		self._ActiveItem = None
 		self._Name = ''
 		self._FirstItem = None
 
+
+		if ItemList is not None:
+			for Item in ItemList:
+				if type(Item) is str:
+					ItemToAdd = globals()[Item] # does not work
+				else:
+					ItemToAdd = Item
+				self.Append(Item)
+				
     #================================================
     #     __getitem__
     #================================================
@@ -312,16 +382,28 @@ class Tree(object):
 		Key : can be EITHER strinf (name) OR integer (position index)
 		'''
 
+		def ItemNotFound(Key = None):
+			raise Exception('Tree.__getitem__, Item not found. Specified item:\n%s' % Key)
 		# The Key is an object
-		if type(Key) == OpticalElement:
-			return self._Items[Key.Name]
-
+		try:
+			try:
+				return self._Items[Key.Name]
+			except:
+				ItemNotFound(Key.Name)
+		except:
+			pass
 		# The Key is an integer
-		elif type(Key) == int:
-			return self._Items.items()[Key][1] # returns the object of the dictionary
+		if type(Key) == int:
+			try:
+				return self._Items.items()[Key][1] # returns the object of the dictionary
+			except:
+				ItemNotFound(Key)
 		# The Key is a STRING
 		elif type(Key) == str :
-			return self._Items[Key]	# returns the object of the dictionary
+			try:
+				return self._Items[Key]	# returns the object of the dictionary
+			except:
+				ItemNotFound(Key)
 		else:
 			print('ERROR: in Tree.getItem! Type mismatch')
 			return None
@@ -340,6 +422,7 @@ class Tree(object):
     #================================================
 	def __str__(self):
 		"""
+		Uses the _:_disp__ function of the Item class
 		# Old code: I should improve __iter__ and __getitem__ for this class :-)
 		StrList = [itm.__disp__() for itm in self]
 		return '\n'.join(StrList)
@@ -380,6 +463,8 @@ class Tree(object):
 	def Name(self,x):
 		self._Name = str(x)
 
+	
+
 	#================================================
 	#	ItemList
 	#================================================
@@ -398,7 +483,10 @@ class Tree(object):
 		else:
 			return []
 
-
+	@property
+	def ItemNameList(self):
+		return [_.Name for _ in self.ItemList]
+		
 	#================================================
 	#	NItems
 	#================================================
@@ -436,6 +524,9 @@ class Tree(object):
 #		elif NewName != None:
 #				NewItem.Name
 
+		# Update the ParentContainer attribute		
+		NewItem.ParentContainer = self
+		
 		# This one is the first item of the tree
 		if len(self._Items) == 0:
 			NewItem.Parent = None
@@ -479,51 +570,70 @@ class Tree(object):
 				NewItem.Parent = ItemA
 				ItemA.Children.append(NewItem)
 
+
+		
 		# ASSIGNMENT
 #		TmpDict = {NewName : NewItem}
 		self._Items[NewName] = NewItem
 
 		self._ActiveItem= NewItem
 
+		
+		
     #================================================
     #     Insert
     #================================================
-	def Append(self, NewItem,  posdirective = None, NewName = None):
-		NewItem.Name = (NewName if NewName != None else NewItem.Name)
-
-		if self._ActiveItem == None:
-			ExistingItem = None
+	def Append(self, NewItem,  posdirective = None, NewName = None,
+			AppendAllIfList = True):
+		'''
+		Append NewItem to the tree structure.
+		
+		If NewItem is a list, then all the items in the list are appended.
+		'''
+		
+		#Case: NewItem is a list of items
+		if ((type(NewItem) is list) or (type(NewItem) is tuple)) and AppendAllIfList:
+			for _ in NewItem:
+				self.Append(_)
+		#Case: NewItem is a single item (usual)
 		else:
-			ExistingItem = self._ActiveItem.Name
-		self.Insert(NewItem,
-					ExistingName = ExistingItem,
-					NewName = NewName,
-					Mode = INSERT_MODE.After)
+			NewItem.Name = (NewName if NewName != None else NewItem.Name)
+	
+			if self._ActiveItem == None:
+				ExistingItem = None
+			else:
+				ExistingItem = self._ActiveItem.Name
+			self.Insert(NewItem,
+						ExistingName = ExistingItem,
+						NewName = NewName,
+						Mode = INSERT_MODE.After)
     #================================================
     #     GetFromTo
     #================================================
-	def GetFromTo(self, FromItem,  ToItem = None):
+	def GetFromTo(self, FromItem = None,  ToItem = None):
 		'''
 		Returns the item comprised between FromItem and ToItem within self.ItemList
 		(included)
 		'''
+		
 
 		# Use all the items in the beamline
 		if FromItem == None and ToItem == None:
 			return self.ItemList
+		else:
 		# Use just a selection between FromItem and ToItem
-		ItmList = self.ItemList
-		iStart = ItmList.index(FromItem)
-		iEnd = ItmList.index(ToItem)
-		iStart = iStart if iStart != None else 0
-		iEnd = iEnd +1 if iEnd != None else  self.NItems
-
-		return ItmList[iStart:iEnd]
+			ItmList = self.ItemList
+			iStart = ItmList.index(FromItem)
+			iEnd = ItmList.index(ToItem)
+			iStart = iStart if iStart != None else 0
+			iEnd = iEnd +1 if iEnd != None else  self.NItems
+	
+			return ItmList[iStart:iEnd]
 
 #===========================================================================
 # 	CLASS: OpticalElement
 #===========================================================================
-class OpticalElement(TreeItem):
+class OpticalElement(TreeItem, CodeGenerator):
 	'''
 	- If Name is None, then the name is automatically assigned.
 	'''
@@ -538,6 +648,11 @@ class OpticalElement(TreeItem):
 					PositioningDirectives = None,
 					ComputationSettings = None,
 					*kwargs):
+		# The baroque notation I used for 'CoreOptics' is because the name of the
+		# attribute (stored in the class) and the name of the parameter (of the init function) 
+		# are different. The format is (attribute name, parameter name)
+		CodeGenerator.__init__(self,['Name', 'IsSource', ('CoreOptics', 'CoreOpticsElement'),'PositioningDirectives'])
+		
 		#self.ChainControl = ChainControlObject()
 		OpticalElement._LastInstance = 130
 		TreeItem.__init__(self)
@@ -566,6 +681,8 @@ class OpticalElement(TreeItem):
 			self.CoreOptics = Element # contains a link to an Optics object
 			self.__Type = type(self.CoreOptics)
 			self.__TypeStr = self.CoreOptics._TypeStr
+			# update the parent container
+			self.CoreOptics.ParentContainer = self
 
 		self.Name = (Name if Name!= None else self.__GetNewName())
 		self.RayIn = None
@@ -587,11 +704,21 @@ class OpticalElement(TreeItem):
     #     __str__[OpticalElement]
     #================================================
 	def __str__(self):
-		Str = '\n -.-.-.-.-.-.-.-.-.-.-. <begin Optical Element>\n'
-		Str += ('OE: %s ' % self.Name)
-		Str += self.CoreOptics.__str__()
-		Str +=('-.-.-.-.-.-.-.-.-.-.-. <end Optical Element>\n')
-		return Str
+		
+		try:
+			ParentContainerName = self.ParentContainer.Name
+		except:
+			ParentContainerName = 'Not Assigned'
+			
+		StrBuffer = ['\t<begin OpticalElement>',
+			   'Name: %s ' % self.Name,
+			   'ParentContainer: %s' % ParentContainerName,
+			   '\t\t <begin CoreOptics> ',
+			 self.CoreOptics.__str__(),
+			 '\t\t< End CoreOptics>',
+			 '\t<end OpticalElement>\n']
+			 
+		return '\n'.join(StrBuffer)
 
     #================================================
     #     __disp__[OpticalElement]
@@ -602,6 +729,8 @@ class OpticalElement(TreeItem):
 			[0]---[1*]---[2]
 			[1]---[2*]---[3]
 			'''
+			import textwrap
+			 
 			NameChildren = ','.join([Child.Name for Child in self.Children])
 			NameParent = ('' if self.Parent == None else self.Parent.Name)
 			#	    # Old String: I displayed the XYCentre [MM]
@@ -611,12 +740,29 @@ class OpticalElement(TreeItem):
 
 			# print(self.GeneralDistanceFromParent(Reference=False))
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
+			Str = Str.ljust(45)
+			Str = Str[0:44]
 			# Additional Stuff (such as the distance from previous element, etc...)
-
-			Str += '\t\tDeltaZ=%0.2f m, Z=%0.2f m' % (self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource)
-
+			
+			
+			Str += '\t\t(%s), dZ=%0.2f m, Z=%0.2f m, %s' % (self.CoreOptics.Orientation.name[0], self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource, self.CoreOptics.GetSummary())
+			
 
 			return Str
+		
+	#===========================================
+	# PROP: CoreOpticsElement
+	#==========================================
+	@property
+	def CoreOpticsElement(self):
+		return self._CoreOpticsElement
+	
+	@CoreOpticsElement.setter
+	def CoreOpticsElement(self, value : Optics.Optics):
+		value.ParentContainer = self
+		self._CoreOpticsElement= value
+		
+		
 	#==========================================
 	# FUN: GetNSamples[OpticalElement]
 	#==========================================
@@ -948,17 +1094,108 @@ class OpticalElement(TreeItem):
 
 		return distance
 
-
+	# ================================================
+	#	PROP: PlotIntensity [OpticalElement]
+	# ================================================
+	def PlotIntensity(self,FigureIndex =None, Label = None, Normalization = 'int'):
+		'''
+		
+		Parameters
+		-----------------------
+		
+		Normalization : str
+			Can be 
+			-'int' normalize wrt the integral
+			-'max' normalize wrt the maximum value
+			-None|else does not normalize
+		''' 
+		try:
+			y = self.ComputationData.Intensity
+			x = self.ComputationData.S
+		except:
+			raise Exception("I attempted to plot the Intensity of %s, but I found no data." % self.Name)
+			
+		if x is None or y is None:
+			
+			return None
+		
+		
+		if Normalization =='int':
+			NN = sum(y)
+			TitleDecorator = '(Plot normalized wrt int)'
+		elif Normalization =='max':
+			NN = np.max(y)
+			TitleDecorator = '(Plot normalized wrt max)'
+		else:
+			NN = 1
+			TitleDecorator = '(Raw)'
+			
+		y = y/NN 
+		xToPlot, xPrefix = LibWiser.Units.GetAxisSI(x)
+		
+		plt.figure(FigureIndex)
+		Label = Label if not( Label is None) else ('%s, $\lambda: %0.1f nm$' % ( self.Name, self.ComputationData.Lambda*1e9)  )
+		
+		plt.plot(xToPlot, y, label = Label)
+		# Layout
+		#--------------------------------------------------------------
+		plt.xlabel('S [%sm]' % xPrefix)
+		plt.ylabel('I (a.u)')
+		plt.title('Optical Element: %s %s' % (self.Name, TitleDecorator))
+		plt.legend()
+		plt.show()
+	# ================================================
+	#	PROP: PlotFigureError [OpticalElement]
+	# ================================================
+	def PlotFigureError(self,
+					 FigureIndex =None, 
+					 Label = None,
+					 FigureErrorIndex = 0, 
+					 TitleDecorator = '',
+					 PlotIntensity = True ):
+		
+		if FigureErrorIndex>=0:
+			x,h = self.CoreOptics.FigureError_GetProfile(FigureErrorIndex)		
+		else:
+			# that's a workaround for getting x
+			Index = self.CoreOptics.LastFigureErrorUsedIndex
+			x,h = self.CoreOptics.FigureError_GetProfile(Index)
+			
+		if len(x) > 0:
+		
+			# This part can be included in a function
+			xToPlot, xPrefix = LibWiser.Units.GetAxisSI(x)
+			yToPlot, yPrefix = LibWiser.Units.GetAxisSI(h)
+			
+			# Plot figure error
+			#--------------------------------------------------------------		
+			plt.figure(FigureIndex)
+			plt.plot(xToPlot, yToPlot, label = Label)
+			
+			# Plot Intensity, if availavle
+			#--------------------------------------------------------------					
+			if PlotIntensity:
+				try:
+					I = self.ComputationData.Intensity
+					yyToPlot = I/max(I) * max(yToPlot)
+					S  = LibWiser.ToolLib.MakeZeroOffset(self.ComputationData.S) 
+					xxToPlot, xxPrefix = LibWiser.Units.GetAxisSI(S)
+					plt.plot(xxToPlot,yyToPlot,'k', label = 'Intensity')
+				except:
+					pass
+			# Layout
+			#--------------------------------------------------------------
+			plt.xlabel('S [%sm]' % xPrefix)
+			plt.ylabel('Height Profile [%sm]' % yPrefix)
+			plt.title('Figure error at %s %s (light comes from above)' % (self.Name, TitleDecorator))
+			plt.legend()
+		else:
+			pass
+			#raise Warning('Plor Figure Error: no data found')
 #===========================================================================
 # 	CLASS: BeamlineElements
 #===========================================================================
 class BeamlineElements(Tree):
-	#================================================
-	#     __init__
-	#================================================
-	#
-#	def __init__(self):
-#		Tree.__init__(self)
 
 	class _ClassComputationSettings:
 		def __init__(self):
@@ -969,7 +1206,7 @@ class BeamlineElements(Tree):
 			self.UseRoughness = False
 			self.iRoughness = 0
 			self.iFigureError = 0
-			self.OrientationToCompute = [Optics.OPTICS_ORIENTATION.ANY]
+			self.OrientationToCompute = []
 			self._TotalComputationTimeMinutes = 0
 
 
@@ -983,10 +1220,12 @@ class BeamlineElements(Tree):
 	#================================================
 	#  FUN: __init__
 	#================================================
-	def __init__(self):
-		Tree.__init__(self)
+	def __init__(self, ItemList = None):
+		Tree.__init__(self, ItemList)
 		self.ComputationSettings = BeamlineElements._ClassComputationSettings()
 
+
+	
 	#================================================
 	#  PROP: Source
 	#================================================
@@ -1005,6 +1244,10 @@ class BeamlineElements(Tree):
 				return None
 		return None
 
+	@property
+	def ComputationMinutes(self):
+		return self._TotalComputationTimeMinutes
+	
 #	#================================================
 #	#  FUN: RefreshPositions
 #	#================================================
@@ -1067,9 +1310,19 @@ class BeamlineElements(Tree):
 		the positioning operation list)
 		'''
 
+
+		#Here Oncewe thought to put
+		DefaultOrientation = self._GetFirstOrientedElement().CoreOptics.Orientation
+		if len(self.ComputationSettings.OrientationToCompute) ==0:
+			self.ComputationSettings.OrientationToCompute = [DefaultOrientation]
+			
+		print(""" Orientation defaulted to %s, according to the first non-isotropic
+			element of the beamline.""" % DefaultOrientation )	
+		
 		# places an item respect with its parent (if there is any)
 		# improve 101
 
+		
 		oeRecoveryList = []
 		oeList = self.ItemList
 		k = 0
@@ -1123,6 +1376,7 @@ class BeamlineElements(Tree):
 		if oeY.IsSource == False:
 			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
 			oeXSameOrientation = oeY.GetParent(SameOrientation=True, OnlyReference=True)
+
 
 		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
 		# -------------------------------------------
@@ -1191,27 +1445,28 @@ class BeamlineElements(Tree):
 				if oeXSameOrientation has a focus, then uses it as reference. If not, it looks for the first suitable one.
 				'''
 
-				try:
-					#FIX 4 Aljosa
-					if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
-						realDistance = oeXSameOrientation.CoreOptics.f2
+				#FIX 4 Aljosa
+				#@TODO
+				#If there is an error here, probably the beamline has a non logical
+				#sequence of V and H elements. We should investigate
+				if hasattr(oeXSameOrientation.CoreOptics, 'f2'):
+					realDistance = oeXSameOrientation.CoreOptics.f2
 
-					else: # Find the first suitable one
-						oeXSameOrientationCurrent = oeXSameOrientation
-						realDistance = oeXSameOrientationCurrent.DistanceFromParent
+				else: # Find the first suitable one
+					oeXSameOrientationCurrent = oeXSameOrientation
+					realDistance = oeXSameOrientationCurrent.DistanceFromParent
+					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
+
+					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
+						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
 						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
-						while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
-							realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
-							oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
+					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
-						realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
+					#realDistance: distance from the last element with the same orientation
+				newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
+				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
-						#realDistance: distance from the last element with the same orientation
-					newXYCentre = LastXY + (Pd.Distance + realDistance) * tl.Normalize(RayIn.v)
-					oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
-				except:
-					raise ValueError("No focusing O.E. (e.g. elliptic mirror) found!")
 			else:
 				raise ValueError('Wrong or un-implemented PositioningDirectives!')
 
@@ -1221,35 +1476,88 @@ class BeamlineElements(Tree):
 			pass
 		Debug.print('<\end Parse>', 4)
 
+
+
+
+
+	#================================================
+	#  FUN: SetIgnoreList
+	#================================================
+	def SetIgnoreList(self,ElementList, Ignore : bool = True):
+		'''
+		Specify which elements must be ignored or not
+		
+		
+		Dev notes
+		---------------------------
+		This function accepts only data in the format: (element list, single value for all).
+		More refined compbinations such as (element list, value list), or 
+		((element1, value1)...(elementN, valueN )) should be possible via SetPropertyForAll,
+		which however does not work yet.
+		'''
+		
+		for ItemName in ElementList:
+			self[ItemName].CoreOptics.ComputationSettings.Ignore = Ignore
+			
+			
+	#================================================
+	#  FUN: SetAllNSamples
+	#================================================
+	def SetAllNSamples(self,N):
+		'''set the same number of manual sampling for all the optical elements''
+		''' 
+		for Item in self.ItemList:
+			try:
+				Item.ComputationSettings.NSamples = N
+			except:
+				pass
+
+	def SetAllUseCustomSampling(self,x : bool):
+		'''set the same number of manual sampling for all the optical elements''
+		''' 
+		for Item in self.ItemList:
+			try:
+				Item.ComputationSettings.UseCustomSampling= x
+			except:
+				pass
+	
+	def SetPropertyForAll(self, PropertyName, PropertyValue):
+		for Item in self.ItemList:
+			try:
+				setattr(PropertyName, PropertyValue)
+			except:
+				pass
 	#================================================
 	#  FUN: GetSamplingList
 	#================================================
-	def GetSamplingList(self, Verbose = True, ForceAutoSampling = False):
+	def GetSamplingList(self, Verbose = True, ForceAutoSampling = True):
 		"""
 		Helper function (for debug, not used by the computation engine)
 		Returns a list containing the sampling used for each optical element
 
 		"""
+		import copy
 		# temporarily set the UseCustomSampling to True, if required
-		Memento = []
+		DummySelf = copy.deepcopy(self)
+#		Memento = [] # variable used to store the effective value of "UseCustomSampling"
 		if ForceAutoSampling:
-			for Item in self.ItemList:
-				Memento.append(Item.ComputationSettings.UseCustomSampling)
+			for Item in DummySelf.ItemList:
+#				Memento.append(Item.ComputationSettings.UseCustomSampling)
 				Item.ComputationSettings.UseCustomSampling = False
-
-		self.ComputeFields(oeStart = None, oeEnd = None, Dummy = True, Verbose = False)
+		
+		DummySelf.ComputeFields(oeStart = None, oeEnd = None, Dummy = True, Verbose = False)
 		NList = []
 		NameList = []
-		for i, Oe in enumerate(self.ItemList):
+		for i, Oe in enumerate(DummySelf.ItemList):
 			NList.append( Oe.ComputationResults.NSamples)
 			NameList.append(Oe.ComputationResults.Name)
 			if Verbose:
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
 
 		# restore the UseCustomSampling
-		if ForceAutoSampling:
-			for i,Item in enumerate(self.ItemList):
-				Item.ComputationSettings.UseCustomSampling = Memento[i]
+#		if ForceAutoSampling:
+#			for i,Item in enumerate(self.ItemList):
+#				Item.ComputationSettings.UseCustomSampling = Memento[i]
 		return NList, NameList
 
 	# ================================================
@@ -1263,12 +1571,23 @@ class BeamlineElements(Tree):
 		Parameters
 		-----
 		"""
+		import datetime
+		
+		print('Computation started at:')
+		print(datetime.datetime.now())
 		Tic = time.time()
+		
+		if len(self.ComputationSettings.OrientationToCompute) ==0: 
+			raise Exception('Error: the list Foundation.BeamlineElements.OrientationToCompute is empty.')
+			return None
+		
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
 		Toc = time.time()
 
 		self._TotalComputationTimeMinutes = (Toc-Tic)/60
+		print('Computation terminated at:')
+		print(datetime.datetime.now())
 	# ================================================
 	#  FUN: ComputeFieldsMediator
 	# ================================================
@@ -1337,7 +1656,8 @@ class BeamlineElements(Tree):
 		NoeList = len(oeList)
 		for ioeThis, oeThis in enumerate(oeList):
 #			Debug.Print(50 * '=')
-			Debug.Print('Compute Fields %d/%d' %( ioeThis	, NoeList), NIndent = 0, Header = True)
+			tic = time.time()
+			Debug.Print('Compute Fields %d/%d' %( ioeThis+1	, NoeList), NIndent = 0, Header = True)
 #			Debug.Print(50 * '=')
 
 			Debug.Print('\tProcessing:\t'  + oeThis.Name)
@@ -1440,8 +1760,9 @@ class BeamlineElements(Tree):
 					# ----------------------------------------------
 					if Dummy == True:
 						oeThis.Results.Field = 0
-						xThis = None
-						yThis = None
+						xThis = []
+						yThis = []
+						oeThis.Results.Field = []
 						Debug.pr('NSamples', Ind + 1)
 					else:
 #						Debug.print('Computing field (Numeric)', Ind)
@@ -1482,8 +1803,12 @@ class BeamlineElements(Tree):
 #					Debug.print('yLast = -- not defined', Ind + 1)
 					Debug.print('len xThis = %d' % len(xThis), Ind )
 					Debug.print('len yThis = %d' % len(yThis), Ind )
+				
+				toc = time.time()
+				ComputationTime = (toc-tic)/60
+				Debug.Print('\tComputation time:\t %0.2f min'  %  ComputationTime)
 				# ----------------------------------------------
-				# DATA => Storage
+				# DATA => Storage 
 				# ----------------------------------------------
 				oeThis.Results.NSamples = NSamples
 				oeThis.Results.X = xThis
@@ -1492,13 +1817,14 @@ class BeamlineElements(Tree):
 				oeThis.Results.Action = Action
 				oeThis.Results.Lambda = Lambda
 				oeThis.Results.Name = oeThis.Name
+				oeThis.Results.ComputationTime = ComputationTime
 				# ----------------------------------------------
 				# Computing field => PropInfo
 				# ----------------------------------------------
 				PropInfo.oeLast = oeThis
 				PropInfo.TotalPath = 0
 				PropInfo.N = 0
-
+			Debug.Print('END OF COMPUTATION' , NIndent = 0, Header = True)
 		return oeList
 
 	#================================================
@@ -1736,6 +2062,14 @@ class BeamlineElements(Tree):
 		Return a list of OE contained between oeStart and oeEnd of given orientation.
 		If oeStart = None, it starts from the first element.
 		If oeEnd = None, it finishes up to the last element.
+		
+		Returns
+		---------------------------
+		OrientedOEList
+		
+		OEStart
+		
+		OEEnd
 		"""
 
 		oeStart = self.FirstItem if oeStart == None else oeStart
@@ -1764,6 +2098,80 @@ class BeamlineElements(Tree):
 
 		return oeListOriented, oeStart, oeEnd
 
+	def _GetFirstOrientedElement(self, Orientation = None):
+		ElementList, oeStart, oeEnd = self._PickOeList()
+		
+		for _ in ElementList:
+			MyOrientation = _.CoreOptics.Orientation 
+			if Orientation is None: 
+				if  (MyOrientation == Optics.OPTICS_ORIENTATION.VERTICAL or
+									   MyOrientation == Optics.OPTICS_ORIENTATION.HORIZONTAL):
+					return _
+			else:
+				if MyOrientation == Orientation:
+					return _
+		return _
+			
+
+	# ================================================
+	#  FUN: GetSubBeamline
+	# ================================================		 	
+	def GetSubBeamline(self,
+					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
+		'''
+		Returns a BeamlineElements object which contains only the elements
+		specified by the Orientation parameter.
+		
+		Notice: the returned object is DIFFERENT from the current beamline object.
+		If you want to access the same elements of the current Beamline object,
+		use GetElementList instead
+		
+		'''
+		ElementList = self.GetElementList(oeStart = None, 
+									oeEnd = None,
+									Orientation = Orientation)
+		
+		NewBeamline = BeamlineElements()
+		NewBeamline.Append(ElementList)
+		NewBeamline.RefreshPositions()
+		return NewBeamline
+
+	# ================================================
+	#  FUN: GetSubBeamline
+	# ================================================		 	
+	def GetSubBeamlineCopy(self,
+					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
+		'''
+		Returns a BeamlineElements object which contains only the elements
+		specified by the Orientation parameter.
+		
+		Notice: the returned object is DIFFERENT from the current beamline object.
+		If you want to access the same elements of the current Beamline object,
+		use GetElementList instead
+		
+		'''
+		import copy
+		ElementList = self.GetElementList(oeStart = None, 
+									oeEnd = None,
+									Orientation = Orientation)
+		NewElementList = []
+		for Element in ElementList:
+			NewElementList.append(copy.deepcopy(Element))
+			
+		NewBeamline = BeamlineElements()
+		NewBeamline.Append(NewElementList)
+		NewBeamline.RefreshPositions()
+		return NewBeamline
+	
+	# ================================================
+	#  FUN: GetElementList
+	# ================================================		 
+	def GetElementList(self, oeStart=None,
+					oeEnd=None, 
+					Orientation=Optics.OPTICS_ORIENTATION.ANY):	
+		oeListOriented, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
+		return oeListOriented
+	
 	# ================================================
 	#  FUN: GetOpticalPath
 	# ================================================
@@ -1776,14 +2184,17 @@ class BeamlineElements(Tree):
 	#================================================
 	#  FUN: Paint
 	#================================================
-	def Paint(self,hFig = 1, Length = 1 , ArrowWidth = 0.2):
+	def Paint(self,hFig = 1, Length = 1 , ArrowWidth = 0.2,N=100):
 		# improve 101
 		Elements = self.ItemList
 		for Element in Elements:
-			Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth)
+			Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth, N = N)
             
-		plt.grid('on')
+		plt.grid(True)
 
+	def PrintComputationTime(self):
+		print('Computation tim: %0.2f minutes' % self.ComputationMinutes)
+		
 	#================================================
 	#  FUN: PaintMiniatures
 	#================================================
@@ -1796,6 +2207,11 @@ class BeamlineElements(Tree):
 			plt.figure(hFig)
 			plt.title('%d) - %s' %(i,Element.Name))
 			print(Element.Name + ' onto figure ' + str(hFig))
+
+ 	
+	def GenerateCode(self):
+		 return CGVisitor.GenerateCodeForBeamlineElements(self)			
+
 
 #===========================================================================
 # 	CLASS: MakePositioningDirectives
@@ -2155,7 +2571,9 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	class More():
 		Dist = np.zeros(N)
 		XYCentre = np.zeros([N, 2])
-
+		BestHew = None
+		BestDefocus = None
+		
 	for (i, Distance) in enumerate(DistanceList):
 		# I set the Position the detector at distance = Distance
 		# ------------------------------------------------------------
@@ -2189,7 +2607,38 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		SigmaList[i] = Sigma
 
 	# Analyze the obtained caustics (minumum value, etc)
+	#=============================================================
+	# Find minimum of HEW over Hew Plot
+	#=============================================================
+	from scipy.interpolate import UnivariateSpline
+	IndexBest = np.argmin(HewList)
+	x = ToolLib.GetAround(DefocusList, IndexBest, 2)
+	y = ToolLib.GetAround(HewList, IndexBest, 2)
+	
+	
+	NN = len(x)
+	if NN >3:
+		try:
+			Interpolant = UnivariateSpline(x, y, s = len(x))
+			xQuery = np.linspace(x[0], x[-1], 100)
+			yQuery =  Interpolant(xQuery)
+			_ = np.argmin(yQuery)
+			More.BestHew = yQuery[_]
+			More.BestDefocus = xQuery[_]	
+		except:
+			raise Exception("""Error in Foundation.FocusSweep, command 'UnivariateSpline(x,y,s)\n. Length = %d. Try
+					  to increase the search range defined by DefocusList.""" % NN)
+	else:
+		try:
+			More.BestHew = HewList[IndexBest]
+			More.BestDefocus = DefocusList[IndexBest]
+		except:
+			raise Exception('sticazzi')
+	#@todo
+	
 
+	#=============================================================
+	
 	return (ResultList, HewList, SigmaList, More)
 # ================================================
 #  FUN: FocusFind
@@ -2481,6 +2930,8 @@ def ZSweep(oeStart, DistanceList, DetectorSize = 50e-6, AngleInNominal = np.deg2
 		HewList[i] = Hew
 
 	return (ResultList, HewList, SigmaList, More)
+
+
 
 
 

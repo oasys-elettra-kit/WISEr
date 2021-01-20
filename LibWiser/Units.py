@@ -4,12 +4,18 @@ Created on Mon Nov 11 16:12:18 2019
 
 @author: Mike
 This is a clumsy class, but provides essentially 2 helpful functions.
+GetEngNumber => number in exponential format, e.g.  1.1e-6
+GetEngNumberSI => number with SI prefixes, e.g. 1.1e-6 => "1.1u"
+GetEngPrefix => get the prefix only,  alias for GetSiUnitScale, e.g. 1.1e-6 => "u"
+
+
+GetEng
 
 GetEngNumber(0.00015) => '150.0e-06'
 GetEngNumber(0.15) => '150.0e-03'
 GetEngNumber(0.15,0) => '150e-03'
-
 GetEngLetter(0.00015) =>'u'
+GetEng
 """
 
 #import enum
@@ -27,9 +33,10 @@ GetEngLetter(0.00015) =>'u'
 import engineering_notation
 from engineering_notation import EngNumber, EngUnit
 import numpy as np
+import LibWiser.Scrubs as Scrubs
 
 class Units:
-	SiPrefixes = { 'a':1e-18, 'f':1e-15, 'p':1e-12, 'n' : 1e-9 , 'u' : 1e-6, 'm' : 1e-3, '' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
+	SiPrefixes = { 'a':1e-18, 'f':1e-15, 'p':1e-12, 'n' : 1e-9 , 'u' : 1e-6,  'm' : 1e-3, '_' : 1e0, 'k' : 1e3, 'M' :1e6, 'G' : 1e9 }
 	@staticmethod
 	def UnitString2UnitScale(UnitString : str):
 		''' Scans a unit string (e.g. mm, um, km) and returns the corresponding
@@ -44,21 +51,31 @@ class Units:
 
 			By M Man
 		'''
-
-		return  Units.SiPrefixes[UnitString.strip()[0]]
-
-def SmartFormatter(x):
+		if UnitString is not None:
+			return  Units.SiPrefixes[UnitString.strip()[0]]
+		else:
+			return '' 
+def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
 	'''
 	Attempts a smart formatting of x.
 	It returns
 	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
-	- A smart formatting if x is decorated with UnitInfo object [not implemented yet]
+	- A smart formatting if x is decorated with VariableInfo object [not deeple implemented yet]
 	- str(x) in any other case
 	:-)
 	'''
 
+	try:
+		UsePrefix = VariableInfo['prefix']
+	except:
+		UsePrefix = True
+		
 	if type(x) is float or type(x) is int:
-		return EngNumber(x)
+		
+		if UsePrefix:
+			return GetEngNumberSI(x) + VariableInfo['unit']
+		else:
+			return GetEngNumber(x, VariableInfo['digits'])
 	else:
 		return str(x)
 
@@ -91,8 +108,13 @@ def GetSiUnitScale(x):
 			# it is a valid prefix like k,u,G,M etc...
 			return tok
 		else:
-			return ''
+			return '_'
 
+
+def GetEngFactor(x):
+	UnitLetter = GetSiUnitScale(x)
+	return  Units.UnitString2UnitScale(UnitLetter)
+	
 def GetEngNumber(x, SignificantDigits = 1):
 	UnitLetter = GetSiUnitScale(x)
 	if UnitLetter == '':
@@ -106,10 +128,83 @@ def GetEngNumber(x, SignificantDigits = 1):
 #		FormatterStr = '%0f%s'
 		Str = FormatterStr %(y, ExpString)
 		return Str
+	
 GetEngLetter = GetSiUnitScale
+GetEngPrefix = GetSiUnitScale
+GetEngNumberSI = lambda x : str(EngNumber(x))
 
 
 
+def GetSIInfoD(x):
+	'''
+	Return all the info that are necessary for SI-ENG formatting.
+	
+	
+	'''
+	if x is None:
+		raise Warning("[GetSIInfoD] input variable x is None. Array or float expected.")
+		return None
+	if 	Scrubs.IsArrayLike(x):
+		x = np.std(x)
+	a = GetEngFactor(x) # => 1e-9
+	aa = 1/a # => 1e9
+	b = x * aa #=> 100
+	c = GetEngLetter(x) #=> n
+	d = GetEngNumber(x) #=> 100e-9
+	e = GetEngNumberSI(x) #=> 100n
+
+	
+	Ans = {'EngExp' : a,
+		 'EngIExp' : aa, 
+		 'EngCoeff' : b, 
+		 'SIPrefix' : c , 
+		 'EngFormatting' :d,
+		 'SIFormatting' :e}
+	return Ans
+
+def GetSIInfo(x):
+	'''
+	Return all the info that are necessary for SI-ENG formatting.
+	
+	
+	'''
+	a = GetEngFactor(x) # => 1e-9
+	aa = np.round(1/a) # => 1e9
+	b = x * aa #=> 100
+	c = GetEngLetter(x) #=> n
+	d = GetEngNumber(x) #=> 100e-9
+	e = GetEngNumberSI(x) #=> 100n
+
+	return (a,aa,b,c,d,e)
+
+def GetAxisSI(x):
+	'''
+	Assumed that x is either the x or y axis of an x,y plot, the function unterstand
+	which SI prefix better fits the range of x, multiploes x accordingly, then return
+	the scaled x and the SI prefix.
+	
+	e.g.
+	x ranges from -2e-3 to 2e-3
+	
+	returns: x*2e3, 'm'
+	
+	Return
+	--------
+	x*alpha : array like
+	
+		rescaled x
+	
+	SI Prefix : string
+		the SI prefix
+	'''
+	A = GetSIInfoD(x)
+	try:
+		return (x*A['EngIExp'], A['SIPrefix'])
+	except:
+		raise Exception("Error in GetAxisSI")
+		print(x)
+		
+x = 0.1e-6	
 #class (Unit ='',  # e.g. 'm'
 #	   Name = '',   # e.g. 'FocalShift' if empty set equal to label.
 #	   Label = '',  # e.g. '\Delta f' if empty set equal to Name
@@ -191,3 +286,12 @@ GetEngLetter = GetSiUnitScale
 #	    elif exponent == 0:
 #	        return [number, ''];
 
+#%% test block
+
+if 1==0:
+	import LibWiser
+	a = 1.1e-6
+	LibWiser.Units.GetEngNumberSI(a) + 'm'
+	LibWiser.Units.SmartFormatter(a) + 'm'
+	LibWiser.Units.SmartFormatter(a,{'unit' :'m'})
+	LibWiser.Units.GetEngPrefix(a)	
