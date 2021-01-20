@@ -35,6 +35,8 @@ from matplotlib import cm
 
 #çTODO To improve (it is stupid to re-define the function each time
 # accordingly to the os. Use conditional definition of the function instead)
+
+
 def Beep(a,b):
 	if platform =='linux' or platform == 'linux2':
 		pass
@@ -143,3 +145,11 @@ class Frozen(object):
     class __metaclass__(type):
         __setattr__=frozen(type.__setattr__)
 
+
+def grid_both():
+	plt.grid(b=True, which='major')
+	plt.grid(b=True, which='minor', color='k', linestyle='-', alpha=0.1)
+	plt.minorticks_on()
+	plt.show()
+
+setattr(plt,'grid_both', grid_both)	

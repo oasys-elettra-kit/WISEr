@@ -172,9 +172,16 @@ class PositioningDirectives(CodeGenerator):
 		FirstArmOfEllipticMirror = 'arm1'
 		SecondArmOfEllipticMirror= 'arm2'
 
-	def __init__(self, ReferTo = 'source', PlaceWhat = 'centre', PlaceWhere = 'centre',
-					 Distance = 0., GrazingAngle = None, XYCentre = None, Angle = None, WhichAngle = 'axis',
-					 *kwargs):
+	def __init__(self, 
+			  ReferTo = 'source', 
+			  PlaceWhat = 'centre', 
+			  PlaceWhere = 'centre',
+			  Distance = 0., 
+			  GrazingAngle = None, 
+			  XYCentre = None, 
+			  Angle = None, 
+			  WhichAngle = 'axis',
+			  *kwargs):
 		'''
 		[TODO] : means that the stuff still does not work.
 
@@ -376,13 +383,13 @@ class Tree( CodeGenerator):
 		'''
 
 		def ItemNotFound(Key = None):
-			raise Exception('Tree.__getitem__, Item not found. Specified item: ')
+			raise Exception('Tree.__getitem__, Item not found. Specified item:\n%s' % Key)
 		# The Key is an object
 		try:
 			try:
 				return self._Items[Key.Name]
 			except:
-				ItemNotFound()
+				ItemNotFound(Key.Name)
 		except:
 			pass
 		# The Key is an integer
@@ -390,7 +397,7 @@ class Tree( CodeGenerator):
 			try:
 				return self._Items.items()[Key][1] # returns the object of the dictionary
 			except:
-				ItemNotFound()
+				ItemNotFound(Key)
 		# The Key is a STRING
 		elif type(Key) == str :
 			try:
@@ -415,6 +422,7 @@ class Tree( CodeGenerator):
     #================================================
 	def __str__(self):
 		"""
+		Uses the _:_disp__ function of the Item class
 		# Old code: I should improve __iter__ and __getitem__ for this class :-)
 		StrList = [itm.__disp__() for itm in self]
 		return '\n'.join(StrList)
@@ -575,17 +583,30 @@ class Tree( CodeGenerator):
     #================================================
     #     Insert
     #================================================
-	def Append(self, NewItem,  posdirective = None, NewName = None):
-		NewItem.Name = (NewName if NewName != None else NewItem.Name)
-
-		if self._ActiveItem == None:
-			ExistingItem = None
+	def Append(self, NewItem,  posdirective = None, NewName = None,
+			AppendAllIfList = True):
+		'''
+		Append NewItem to the tree structure.
+		
+		If NewItem is a list, then all the items in the list are appended.
+		'''
+		
+		#Case: NewItem is a list of items
+		if ((type(NewItem) is list) or (type(NewItem) is tuple)) and AppendAllIfList:
+			for _ in NewItem:
+				self.Append(_)
+		#Case: NewItem is a single item (usual)
 		else:
-			ExistingItem = self._ActiveItem.Name
-		self.Insert(NewItem,
-					ExistingName = ExistingItem,
-					NewName = NewName,
-					Mode = INSERT_MODE.After)
+			NewItem.Name = (NewName if NewName != None else NewItem.Name)
+	
+			if self._ActiveItem == None:
+				ExistingItem = None
+			else:
+				ExistingItem = self._ActiveItem.Name
+			self.Insert(NewItem,
+						ExistingName = ExistingItem,
+						NewName = NewName,
+						Mode = INSERT_MODE.After)
     #================================================
     #     GetFromTo
     #================================================
@@ -599,14 +620,15 @@ class Tree( CodeGenerator):
 		# Use all the items in the beamline
 		if FromItem == None and ToItem == None:
 			return self.ItemList
+		else:
 		# Use just a selection between FromItem and ToItem
-		ItmList = self.ItemList
-		iStart = ItmList.index(FromItem)
-		iEnd = ItmList.index(ToItem)
-		iStart = iStart if iStart != None else 0
-		iEnd = iEnd +1 if iEnd != None else  self.NItems
-
-		return ItmList[iStart:iEnd]
+			ItmList = self.ItemList
+			iStart = ItmList.index(FromItem)
+			iEnd = ItmList.index(ToItem)
+			iStart = iStart if iStart != None else 0
+			iEnd = iEnd +1 if iEnd != None else  self.NItems
+	
+			return ItmList[iStart:iEnd]
 
 #===========================================================================
 # 	CLASS: OpticalElement
@@ -707,6 +729,8 @@ class OpticalElement(TreeItem, CodeGenerator):
 			[0]---[1*]---[2]
 			[1]---[2*]---[3]
 			'''
+			import textwrap
+			 
 			NameChildren = ','.join([Child.Name for Child in self.Children])
 			NameParent = ('' if self.Parent == None else self.Parent.Name)
 			#	    # Old String: I displayed the XYCentre [MM]
@@ -716,10 +740,13 @@ class OpticalElement(TreeItem, CodeGenerator):
 
 			print(self.GeneralDistanceFromParent(Reference=False))
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
+			Str = Str.ljust(45)
+			Str = Str[0:44]
 			# Additional Stuff (such as the distance from previous element, etc...)
-
-			Str += '\t\t(%i), DeltaZ=%0.2f m, Z=%0.2f m' % (self.CoreOptics.Orientation.value, self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource)
-
+			
+			
+			Str += '\t\t(%s), dZ=%0.2f m, Z=%0.2f m, %s' % (self.CoreOptics.Orientation.name[0], self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource, self.CoreOptics.GetSummary())
+			
 
 			return Str
 		
@@ -1088,6 +1115,11 @@ class OpticalElement(TreeItem, CodeGenerator):
 		except:
 			raise Exception("I attempted to plot the Intensity of %s, but I found no data." % self.Name)
 			
+		if x is None or y is None:
+			
+			return None
+		
+		
 		if Normalization =='int':
 			NN = sum(y)
 			TitleDecorator = '(Plot normalized wrt int)'
@@ -1112,14 +1144,15 @@ class OpticalElement(TreeItem, CodeGenerator):
 		plt.title('Optical Element: %s %s' % (self.Name, TitleDecorator))
 		plt.legend()
 		plt.show()
-		
 	# ================================================
 	#	PROP: PlotFigureError [OpticalElement]
 	# ================================================
-	def PlotFigureError(self,FigureIndex =None, 
+	def PlotFigureError(self,
+					 FigureIndex =None, 
 					 Label = None,
 					 FigureErrorIndex = 0, 
-					 TitleDecorator = '' ):
+					 TitleDecorator = '',
+					 PlotIntensity = True ):
 		
 		if FigureErrorIndex>=0:
 			x,h = self.CoreOptics.FigureError_GetProfile(FigureErrorIndex)		
@@ -1134,11 +1167,22 @@ class OpticalElement(TreeItem, CodeGenerator):
 			xToPlot, xPrefix = LibWiser.Units.GetAxisSI(x)
 			yToPlot, yPrefix = LibWiser.Units.GetAxisSI(h)
 			
-			# Plot
+			# Plot figure error
 			#--------------------------------------------------------------		
 			plt.figure(FigureIndex)
 			plt.plot(xToPlot, yToPlot, label = Label)
 			
+			# Plot Intensity, if availavle
+			#--------------------------------------------------------------					
+			if PlotIntensity:
+				try:
+					I = self.ComputationData.Intensity
+					yyToPlot = I/max(I) * max(yToPlot)
+					S  = LibWiser.ToolLib.MakeZeroOffset(self.ComputationData.S) 
+					xxToPlot, xxPrefix = LibWiser.Units.GetAxisSI(S)
+					plt.plot(xxToPlot,yyToPlot,'k', label = 'Intensity')
+				except:
+					pass
 			# Layout
 			#--------------------------------------------------------------
 			plt.xlabel('S [%sm]' % xPrefix)
@@ -2068,9 +2112,66 @@ class BeamlineElements(Tree):
 					return _
 		return _
 			
-			 
-	def GetElementList(self, oeStart=None, oeEnd=None, Orientation=Optics.OPTICS_ORIENTATION.ANY):
-		return self._PickOeList(oeStart, oeEnd, Orientation)
+
+	# ================================================
+	#  FUN: GetSubBeamline
+	# ================================================		 	
+	def GetSubBeamline(self,
+					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
+		'''
+		Returns a BeamlineElements object which contains only the elements
+		specified by the Orientation parameter.
+		
+		Notice: the returned object is DIFFERENT from the current beamline object.
+		If you want to access the same elements of the current Beamline object,
+		use GetElementList instead
+		
+		'''
+		ElementList = self.GetElementList(oeStart = None, 
+									oeEnd = None,
+									Orientation = Orientation)
+		
+		NewBeamline = BeamlineElements()
+		NewBeamline.Append(ElementList)
+		NewBeamline.RefreshPositions()
+		return NewBeamline
+
+	# ================================================
+	#  FUN: GetSubBeamline
+	# ================================================		 	
+	def GetSubBeamlineCopy(self,
+					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
+		'''
+		Returns a BeamlineElements object which contains only the elements
+		specified by the Orientation parameter.
+		
+		Notice: the returned object is DIFFERENT from the current beamline object.
+		If you want to access the same elements of the current Beamline object,
+		use GetElementList instead
+		
+		'''
+		import copy
+		ElementList = self.GetElementList(oeStart = None, 
+									oeEnd = None,
+									Orientation = Orientation)
+		NewElementList = []
+		for Element in ElementList:
+			NewElementList.append(copy.deepcopy(Element))
+			
+		NewBeamline = BeamlineElements()
+		NewBeamline.Append(NewElementList)
+		NewBeamline.RefreshPositions()
+		return NewBeamline
+	
+	# ================================================
+	#  FUN: GetElementList
+	# ================================================		 
+	def GetElementList(self, oeStart=None,
+					oeEnd=None, 
+					Orientation=Optics.OPTICS_ORIENTATION.ANY):	
+		oeListOriented, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
+		return oeListOriented
+	
 	# ================================================
 	#  FUN: GetOpticalPath
 	# ================================================
@@ -2514,13 +2615,28 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 	x = ToolLib.GetAround(DefocusList, IndexBest, 2)
 	y = ToolLib.GetAround(HewList, IndexBest, 2)
 	
-	Interpolant = UnivariateSpline(x, y, s = len(x))
 	
-	xQuery = np.linspace(x[0], x[-1], 100)
-	yQuery =  Interpolant(xQuery)
-	_ = np.argmin(yQuery)
-	More.BestHew = yQuery[_]
-	More.BestDefocus = xQuery[_]
+	NN = len(x)
+	if NN >3:
+		try:
+			Interpolant = UnivariateSpline(x, y, s = len(x))
+			xQuery = np.linspace(x[0], x[-1], 100)
+			yQuery =  Interpolant(xQuery)
+			_ = np.argmin(yQuery)
+			More.BestHew = yQuery[_]
+			More.BestDefocus = xQuery[_]	
+		except:
+			raise Exception("""Error in Foundation.FocusSweep, command 'UnivariateSpline(x,y,s)\n. Length = %d. Try
+					  to increase the search range defined by DefocusList.""" % NN)
+	else:
+		try:
+			More.BestHew = HewList[IndexBest]
+			More.BestDefocus = DefocusList[IndexBest]
+		except:
+			raise Exception('sticazzi')
+	#@todo
+	
+
 	#=============================================================
 	
 	return (ResultList, HewList, SigmaList, More)

@@ -24,6 +24,15 @@ def EnsureIsArray(x):
 		return np.array(x)
 
 #================================
+#  FUN: MakeArrayZeroOffset
+#================================
+def MakeZeroOffset(x):
+	'''
+	for a given array, ranging from a to b, subtracts a.
+	
+	'''
+	return x - min(x)
+#================================
 #  FUN: PathGetExtension
 #================================
 def PathGetExtension(Path):
@@ -101,6 +110,13 @@ def PathCreate(Path, IsFile = True):
 		os.makedirs(Path)
 		return True
 
+def WrapText(Text,Width = 30):
+	import textwrap
+	TxtList = textwrap.wrap(Text, Width)
+	
+	Str = '\n'.join(TxtList)
+	return(Str)
+	
 #================================
 #  RunFile
 #================================
@@ -672,6 +688,38 @@ def FitGaussian1d(y, x = None, PlotFigure=None):
 def Coerce(x, Min, Max):
 	return Min if x < Min else Max if x > Max else x
 
+def GetMinimumHew(DefocusList, HewList):
+	'''
+	 Find minimum of HEW over Hew Plot.
+	 Conceived for Finding the minimum on  a Hew Plot
+	 
+	 Dev Notes
+	 ------------------------
+	 This code is used inside FocusSweep and somewhere else.
+	 I decided to create a function that attempt to find the minimum in a "smart" way.
+	 For the moment, "smart" = does the interpolation if possible, does not get stuck
+	 if the interpolation is not possible.
+	 
+	'''
+	from scipy.interpolate import UnivariateSpline
+	IndexBest = np.argmin(HewList)
+	x = ToolLib.GetAround(DefocusList_mm, IndexBest, 2)
+	y = ToolLib.GetAround(HewList, IndexBest, 2)
+	
+	if len(x) > 3:
+		Interpolant = UnivariateSpline(x, y, s = len(x))
+		
+		xQuery = np.linspace(x[0], x[-1], 100)
+		yQuery =  Interpolant(xQuery)
+		_ = np.argmin(yQuery)
+		BestHew = yQuery[_]
+		BestDefocus = xQuery[_] * 1e-3
+		#------- Replace values found with FocusFind
+	else:
+		pass
+	
+	return (BestDefocus, BestHew, IndexBest)
+	
 #================================
 #  L2XY
    #================================
@@ -2123,7 +2171,140 @@ def VersorRotateLabToSelf(V : Vector, VReference, ReferenceType = 'norm'):
 #plt.xlim(-5,5)
 #plt.ylim(-5,5)
 #
+class Formatting:
+	
+	@staticmethod
+	def GetFormattedPropertyListB(Object, ConfigList, Separator = ', ', TruncateLength = 5):
+		'''
+		parameters
+		------------
+		ConfigList : List of tuples
+		
+			each tuple is in the form (PropertyName, MathFunction, FormatFunction, FormatSring)
+		
+			Example: ('AngleGrazing', SmartFormatter, '%s')
+			
+		'''
+		from LibWiser.Units import SmartFormatter
+		StrBuffer = []
+		for _ in ConfigList:
+			
+			#default values
+			PropName = None
+			MathFunction = lambda x :x
+			FormatFunction = SmartFormatter
+			Format = '%s'
+	
+			if  type(_) is str:
+				PropName = _
+			elif len(_) == 2:
+				PropName = _[0]
+				MathFunction = _[1]
+			elif len(_) == 4:
+				PropName = _[0]
+				MathFunction = _[1]
+				FormatFunction = _[2]
+			else:
+				raise Exception('''Error in GetFormattedPropertyList. The Tuple specified has %d elements,
+					   instead of 1,2 or 4. This is a stupid programming problem. Fix it!''' % len(_))
+				
+			# additional checkout routine
+			if MathFunction is None:
+				MathFunction = lambda x : x
+			if FormatFunction is None:
+				FormatFunction = SmartFormatter
+			if Format is None:
+				Format = '%s'
+				
+			# shorten the display name, if need be
+			try:
+				if TruncateLength is not None:
+					DisplayName = PropName[0:TruncateLength]
+			except:
+				DisplayName = PropName 
+				
+			x = getattr(Object, PropName)
+			x = MathFunction(x)
+			StrBuffer.append(DisplayName + '=' + (Format % FormatFunction(x)))
+			
+		return Separator.join(StrBuffer)
+	
 
+	
+	@staticmethod
+	def GetFormattedPropertyList(Object, ConfigDict = None, Separator = ', ', TruncateLength = 5):
+		'''
+		parameters
+		------------
+		ConfigList : List of tuples
+		
+			each tuple is in the form (PropertyName, MathFunction, FormatFunction, FormatSring)
+		
+					DefaultConfigDict = {'Prop' : None, 
+						  'Math' : lambda x : x, 
+						  'Formatter' : SmartFormatter,
+						  'Format' : '%s',
+						   'SkipName' : False}
+			
+		'''
+		from LibWiser.Units import SmartFormatter
+		fx = lambda x : x
+		Default = {'Prop' : None, 
+						  'fx' : fx, 
+						  'Formatter' : SmartFormatter,
+						  'Format' : '%s',
+						   'SkipName' : False,
+						   'coccode' : 100}
+		
+		StrBuffer = []
+		for _ in ConfigDict:
+			
+			#default values
+
+#	
+#			if  type(_) is str:
+#				PropName = _
+#				MathFunction = Default['Tfx']
+#				FormatFunction = Default['Formatter']
+#				Format = Default['Format']
+#				SkipName = Default['SkipName']
+								
+			if type(_) is dict: 
+				PropName = _['Prop']
+				FxFunction = _.get('fx', Default['fx'])
+				FormatFunction = _.get('Formatter', Default['Formatter'] )
+				Format = _.get('Format', Default['Format'] )
+				SkipName = _.get('SkipName', Default['SkipName'] )
+				coccode = _.get('coccode', 'no coccode')
+				
+#				print(SkipName)
+#				print(FxFunction)
+#				print(Format)
+#				print(coccode)
+			else:
+				raise Exception('''Error in GetFormattedPropertyList. The Tuple specified has %d elements,
+					   instead of 1,2 or 4. This is a stupid programming problem. Fix it!''' % len(_))
+				
+			# shorten the display name, if need be
+			try:
+				if TruncateLength is not None:
+					DisplayName = PropName[0:TruncateLength]
+			except:
+				DisplayName = PropName 
+				
+			if SkipName: 
+				DisplayName = ''
+			else:
+				DisplayName =  DisplayName + '='
+			try:	
+				x = getattr(Object, PropName)
+				x = FxFunction(x)
+				StrBuffer.append( DisplayName + (Format % FormatFunction(x)))
+			except:
+				StrBuffer.append('<-->')
+				
+		return Separator.join(StrBuffer)
+		
 #========================================================
 #	FUN: FileIO
 #========================================================

@@ -103,6 +103,10 @@ class F2Items:
 		z = 49.8466 
 		GrazingAngle = rad(2.5)
 		
+	class radiators:
+		spacing_f1 = 3.75
+		n_f1 = 6
+		length_f1 = 2-5
 	
 #		 
 #
