@@ -21,7 +21,40 @@ class Enum(StandardEnum):
 			return True
 		else:
 			return False
-		
+
+#==============================================================================
+#  Class LogBuffer
+#==============================================================================
+class LogBuffer():
+	'''
+	Used to make any class capable of carrying debug information.
+	Does not require intitialization.
+	Example:
+	a = LogBuffer()
+	a._LogBuffer__Add('s')
+	a._LogBuffer__Add('ss')
+	a._LogBuffer__LogBuffer
+	a._LogBuffer__Str
+	a._LogBuffer__Print()
+	'''
+	def __init__(self):
+		self.__LogBuffer = []
+
+	def __Add(self,x : str):
+		try:
+			self.__LogBuffer.append(x)
+		except:
+			self.__init__()
+			self._LogBuffer.append(x)
+			
+	
+	@property
+	def __Str(self):
+		return '\n'.join(self.__LogBuffer)
+
+	def __Print(self):
+		print(self.__Str)	
+
 #==============================================================================
 #  Exists
 #==============================================================================
@@ -49,6 +82,28 @@ def SetAttr(x, StrAttr : str, Value):
 			GeldedTokList = '.'.join(TokList[1:])
 			print(GeldedTokList)
 			SetAttr(y,GeldedTokList, Value)
+
+#==============================================================================
+#  FUN: GetTheNotNone
+#==============================================================================
+def GetTheNotNone(ArgList):
+	'''
+	Return the first element which is not None.
+	Used in certain case for parameter handling.
+	It can be used ia try...except structure
+	
+	try:
+		c = GetTheNotNone([a,b])
+	except:
+		c = a
+		
+	'''
+	
+	for _ in ArgList:
+		if _ is not None:
+			return _
+	return None
+
 #==============================================================================
 #  FUN: IsArrayLike
 #==============================================================================
@@ -60,6 +115,22 @@ def IsArrayLike(x):
 		return True
 	else:
 		return False
+
+#==============================================================================
+#  FUN: IsValidArrayLike
+#==============================================================================
+def IsValidArray(x, Complex = False):
+	'''
+	Check that all the values of x are float, with no nan, no string, no inf
+	
+	'''
+	import numpy as np
+	if Complex:
+		return np.any(np.iscomplex(x))
+	else:
+		return np.any(np.isreal((x)))
+
+
 #==============================================================================
 #  FUN: IsValidPythonName
 #==============================================================================	

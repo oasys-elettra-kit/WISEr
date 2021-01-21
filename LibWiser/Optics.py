@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from abc import abstractmethod
-from LibWiser.Scrubs import Enum
-
+from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray
+import LibWiser.Exceptions as Exceptions
 '''
 
 Conventions:
@@ -188,7 +188,7 @@ class OpticsPropDisplayer():
 #==============================================================================
 #	 CLASS: Optics
 #==============================================================================
-class Optics(object):
+class Optics(LogBuffer):
 
 	#================================================================
 	#CLASS (INTERNAL):  _ClassSmallDisplacements
@@ -3333,8 +3333,10 @@ class MirrorElliptic(Mirror, CodeGenerator):
 	# INIT
 	#================================
 	def __init__(self, a =None ,b = None, f1 = None, f2 = None, 
-			  Alpha = None, L = None,
-			  XProp_Centre = None,
+              AngleGrazing = None,
+			  L = None,
+              Alpha = None, # Deprecated, use AngleGrazing instead
+			  XProp_Centre = 0,
 			  MirXMid = None,
 			  XYOrigin = np.array([0,0]),
 			  RotationAngle = 0,
@@ -3389,15 +3391,25 @@ class MirrorElliptic(Mirror, CodeGenerator):
 		self.Options = MirrorElliptic._ClassOptions()
 		self.LastRoughnessUsed = np.array([])
 		self.LastResidualUsed = np.array([])  #@todo tbdisc: LastFigureErrorUsed instead
-
-
 		self.XYOrigin = XYOrigin
 		self.RotationAngle = RotationAngle
+
 
 		if Face == 'down':
 			self._Sign = +1
 		elif Face== 'up':
 			self._Sign = -1
+
+        # Parameter redirection/protection ()
+		try:
+			AngleGrazing = GetTheNotNone([AngleGrazing, Alpha])
+		except:
+			AngleGrazing = Alpha
+		if AngleGrazing is None:
+			raise Exceptions.MissingParameterError('MirrorElliptic: AngleGrazing missing.')
+		
+
+		self._AngleGrazing = AngleGrazing # AngleGrazing must always be stored, even if outstde of ValidateInput
 
 		# Set of input parameters #1
 		# (more mathematical, less common)
@@ -3713,24 +3725,29 @@ class MirrorElliptic(Mirror, CodeGenerator):
 
 
 		# rotation of coefficients
-		self._p1Lab = self._Transformation_PolyPropToPolyLab(self._p1Prop)
-		self._p2Lab = self._Transformation_PolyPropToPolyLab(self._p2Prop)
-		self._pTanLab = self._Transformation_PolyPropToPolyLab(self._pTanProp)
-		self._p1Lab_Angle = np.arctan(self._p1Lab[0])
-		self._p2Lab_Angle = np.arctan(self._p2Lab[0])
+		
+		if np.round(self.a,10) == np.round(self.b,10):
+			pass
+		elif self.a !=  self.b:
+			self._p1Lab = self._Transformation_PolyPropToPolyLab(self._p1Prop)
+			self._p2Lab = self._Transformation_PolyPropToPolyLab(self._p2Prop)	
+			self._pTanLab = self._Transformation_PolyPropToPolyLab(self._pTanProp)	
+			self._p1Lab_Angle = np.arctan(self._p1Lab[0])
+			self._p2Lab_Angle = np.arctan(self._p2Lab[0])
+	
 
-
-		# rotation of angles
-		self._ThetaLab = np.arctan(self._pTanLab[0])
-		self._pTanLab_Angle = np.arctan(self._pTanLab[0])
-
-		# Injection to VersorTan (VersorTan is the primary VersorStuff of Optics numerical)
-		#self.VersorTan = tl.UnitVector(Angle = 1* self._pTanLab_Angle )
-
-		# Injection to VersorLab (VersorLab is linked to AngleLab and XYOrigin,
-		# which are the basis of positioning in  Optics numerical)
-		self.VersorLab = tl.UnitVector(Angle =  self._pTanLab_Angle - np.pi/2 - self.AngleGrazingNominal  )
-
+			# rotation of angles
+			self._ThetaLab = np.arctan(self._pTanLab[0])
+			self._pTanLab_Angle = np.arctan(self._pTanLab[0])
+	
+			# Injection to VersorTan (VersorTan is the primary VersorStuff of Optics numerical)
+			#self.VersorTan = tl.UnitVector(Angle = 1* self._pTanLab_Angle )
+	
+			# Injection to VersorLab (VersorLab is linked to AngleLab and XYOrigin,
+			# which are the basis of positioning in  Optics numerical)
+			self.VersorLab = tl.UnitVector(Angle =  self._pTanLab_Angle - np.pi/2 - self.AngleGrazingNominal  )
+		else:
+			raise WiserException('The ellipse has b>a. MM should know the answer or fix it. This computation can not be performed now.')
 	#================================
 	# _SetMirrorCoordinates
 	#================================
@@ -4293,11 +4310,18 @@ class MirrorElliptic(Mirror, CodeGenerator):
 	@property # Ellipse parameter f2
 	def f2(self):		return self._f2
 
-	@property # Grazing angle
+	@property # Grazing angle (links to _Alpha, which is obsolete)
 	def Alpha(self):		return self._Alpha
 	
 	@property # Grazing angle
-	def AngleGrazing(self):		return self.Alpha
+	def AngleGrazing(self):		return self._AngleGrazing
+
+	@property # Grazing angle: reccomended
+	def _AngleGrazing(self):	return self._Alpha
+	@_AngleGrazing.setter
+	def _AngleGrazing(self,x):		
+		self._Alpha = x    
+    
 	
 	@property # Mirror Length
 	def L(self):		return self._L
@@ -4661,7 +4685,7 @@ class MirrorElliptic(Mirror, CodeGenerator):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = False, **kwargs):
+	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = True, **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
@@ -5052,20 +5076,23 @@ class MirrorSpheric(MirrorElliptic, CodeGenerator):
 		'''
 		
 		
-		# variable facade switch (refactoring)
+        # Parameter redirection/protection ()
 		try:
-			Alpha = AngleGrazing
+			AngleGrazing = AngleGrazing
 		except:
-			pass
+			AngleGrazing = Alpha
+		if AngleGrazing is None:
+			raise Exceptions.MissingParameterError('MirrorElliptic: AngleGrazing missing.')
+		
 		
 		# Argument handling (Use that of the superclass)
 		if tl.CheckArg([R, AngleGrazing,L]):
 			self._R = abs(R)
 			f1 = R/2
 			super(MirrorSpheric, self).__init__(
-					f1 = f1, 
-					f2 = f1,
-					Alpha = Alpha,
+					a = R, 
+					b = R,
+					AngleGrazing = AngleGrazing,
 					L = L,
 					**kwargs)
 			
