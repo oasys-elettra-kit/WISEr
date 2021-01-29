@@ -588,6 +588,56 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
 
     return EbTok
 
+
+##==============================================================================
+## 	FUN: HuygensIntegral_1d_Kernel
+##==============================================================================
+#@jit('complex128[:](float64, complex128[:], float64[:], float64[:], float64[:], float64[:], float64[:], float64[:] ,float64[:])', nopython=True, nogil=True, parallel=True, cache=True)
+#def HuygensIntegral_1d_Kernel_Normalized(wl, Ea, xa, ya, xb, yb,La,Lb,Theta):
+#    """
+#    Parameters
+#    --------------------
+#    wl : float
+#        Wavelength (m)
+#    Ea : 1d complex array
+#        Electromagnetic Field
+#    xa, ya : 1d array float
+#        Coordinates of the start plane
+#    xb, yb : 1d array float
+#        Coordinates of the final plane
+#    The computation is performed on the elements
+#    xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
+#    """
+#
+#    k = 2. * np.pi / wl
+#
+#    bStart = 0
+#    # bEnd = prod(int64(xb.shape))
+#    bEnd = 1.
+#    for x in xb.shape:
+#        bEnd = x * bEnd
+#
+#    EbTokN = np.int32(bEnd - bStart)
+#    EbTok = np.zeros(EbTokN, dtype=np.complex128)
+#
+#    for i in prange(0, EbTokN):
+##        xbi = xb[i]
+##        ybi = yb[i]
+#        # Preliminary normalisation
+#        # 17/01/2017
+#        Normalization = L1 * L2 * Alpha/(np.sqrt(Lambda))
+#        # R = np.array((sqrt((xa - xbi)**2 + (ya - ybi)**2)))
+#
+#        RList = np.sqrt((xa - xb[i])**2 + (ya - yb[i])**2)
+#
+#        #EbTok[i] = 1. / sqrt(wl) * sum(Ea / RList * exp(-1j * k * RList))
+#        D = Ea / RList * np.exp(-1j * k * RList)
+#        EbTok[i] = np.sum(D)
+#
+#    EbTok = 1. / np.sqrt(wl) * EbTok
+#
+#    return EbTok
+	
 #==============================================================================
 # 	FUN: HuygensIntegral_1d_Kernel_Beta   o
 #==============================================================================

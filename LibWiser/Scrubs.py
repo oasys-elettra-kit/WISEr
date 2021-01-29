@@ -16,12 +16,23 @@ class Enum(StandardEnum):
 	Decorator (used as subclass) for making the comparisong between enums behave
 	as we want.
 	'''
+	
 	def __eq__(self, other):
+		'''
+		Useless here: it should be applied to any member
+		'''
 		if self.value == other.value:
 			return True
 		else:
 			return False
-
+		
+#	@classmethod
+#	def ListRoles(cls):
+#		role_names = [member.value for role, member in cls.__members__.items()]
+#		return role_names
+#
+#		
+		
 #==============================================================================
 #  Class LogBuffer
 #==============================================================================

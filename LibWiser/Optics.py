@@ -423,23 +423,49 @@ class OpticsNumerical(Optics):
 
 		#ad hoc correction: multiply by transmission function before propagation
 		E0 = E0 * self.TransmissionFunction(x0,y0)
-
-		# print('--------------------------------')
-		# print('Lambda', type(Lambda), np.shape(Lambda))
-		# print('Ea', type(E0), np.shape(E0))
-		# print(E0)
-		# print('xa', type(x0), np.shape(x0))
-		# print(x0)
-		# print('ya', type(y0), np.shape(y0))
-		# print(y0)
-		# print('xb', type(x0), np.shape(x0))
-		# print(x1)
-		# print('yb', type(y0), np.shape(y0))
-		# print(y1)
-
 		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
 
 		return E1
+
+#	#================================
+#	# EvalField(N)
+#	#================================
+#	def EvalField(self, x1, y1, Lambda, E0, NPools=1,  Options=['HF']):
+#		'''
+#		Helper function (forwards)
+#		Propagates the field E0 from this optical element (x0,y0) onto the plane
+#		x1, y1.
+#		x0 and y0 are are automatically computed.
+#
+#		>>> x0, y0 = self.GetXY(len(x0), Options)
+#
+#		Options can be (they are case insensitive):
+#		- Any of the values of GetXY. Such Options are tunneled to self.GetXY, which is used to get the x0,y0 for the propagations
+#		'''
+#		N = len(x1)
+#		x0, y0 = self.GetXY(N)
+#		tl.Debug.Print('Evaluating Field: N  = %d (EvalField)' % N, NIndent =3 )
+#		tl.Debug.pr('\t\t\tLambda')
+#
+#		#ad hoc correction: multiply by transmission function before propagation
+#		E0 = E0 * self.TransmissionFunction(x0,y0)
+#
+#		# print('--------------------------------')
+#		# print('Lambda', type(Lambda), np.shape(Lambda))
+#		# print('Ea', type(E0), np.shape(E0))
+#		# print(E0)
+#		# print('xa', type(x0), np.shape(x0))
+#		# print(x0)
+#		# print('ya', type(y0), np.shape(y0))
+#		# print(y0)
+#		# print('xb', type(x0), np.shape(x0))
+#		# print(x1)
+#		# print('yb', type(y0), np.shape(y0))
+#		# print(y1)
+#
+#		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
+#
+#		return E1
 
 	@abstractmethod
 	def GetXY(self):
@@ -534,7 +560,7 @@ class OpticsNumerical(Optics):
 	#================================
 	# FieldForwards(N)
 	#================================
-	def FieldForwards(self, x1, y1, Lambda, E0, NPools=1,  Options=['HF']):
+	def FieldPush(self, x1, y1, Lambda, E0, NPools=1,  Options=['HF']):
 		'''
 		Helper function (forwards)
 		Propagates the field E0 from this optical element (x0,y0) onto the plane
