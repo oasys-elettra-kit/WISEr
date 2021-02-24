@@ -11,7 +11,7 @@ from LibWiser.Foundation import OpticalElement
 from LibWiser.WiserImport import *
 from LibWiser.must import *
 import LibWiser.Enums as Enums
-
+from LibWiser.Exceptions import WiserException
 
 HORIZONTAL = Enums.OPTICS_ORIENTATION.HORIZONTAL
 VERTICAL = Enums.OPTICS_ORIENTATION.VERTICAL

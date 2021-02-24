@@ -9,9 +9,22 @@ import warnings
 
 import warnings
 
-def Warn(x:Warning):
-	warning.warn(x)
+def RaiseWarning(w):
+	'''
+	Raise a warning.
 	
+	w can be either a Warning object or a string.
+	If w is a string, the Warning(w) object is created.
+	'''
+	
+	if type(w) is str:
+		w = Warning(w)
+	try:
+		warnings.warn(w)
+	except:
+		raise Exception("Error while raising a warning (yep, it is ironic, don't you think0?")
+	
+
 class SmartException(Exception):
 	
 	def __init__(self, Message = 'A generic Errour Occurred', By =None, Args = []):
@@ -51,7 +64,6 @@ class SmartException(Exception):
 WiserException = SmartException
 
 class BeamlineElementNotFoundError(SmartException):
-	
 	def __init__(self, **kwargs):
 		self.Message = '''Beamline Element not found while using a key.
 						Example: Beamline['source'] returned an error because
@@ -59,6 +71,11 @@ class BeamlineElementNotFoundError(SmartException):
 						Solution: check the key value, or use try...except
 						'''
 		super().__init__(self.Message, **kwargs  )
+
+class MissingParameterError(WiserException):
+	def __init__(self,  By = None, Args = [], **kwargs):
+		self.Message = '''The following parameter(s) is (are) missing: '''
+		super().__init__(self.Message,By, Args, **kwargs  )    
 		
 #a = GenericError('Item not  found', By = 'kernel', Args=[('a',1)])
 #raise a

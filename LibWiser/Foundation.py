@@ -23,6 +23,7 @@ import warnings
 from LibWiser.Optics import TypeOfAngle
 from LibWiser.CodeGeneratorVisitor import CodeGenerator
 import LibWiser.CodeGeneratorVisitor as CGVisitor
+from LibWiser.Exceptions import WiserException
 #=============================
 #     DICT: INSERT_MODE
 #=============================
@@ -1577,9 +1578,17 @@ class BeamlineElements(Tree):
 		print(datetime.datetime.now())
 		Tic = time.time()
 		
-		if len(self.ComputationSettings.OrientationToCompute) ==0: 
-			raise Exception('Error: the list Foundation.BeamlineElements.OrientationToCompute is empty.')
-			return None
+		
+		
+		
+		try:
+			if len(self.ComputationSettings.OrientationToCompute) ==0: 
+				raise Exception('Error: the list Foundation.BeamlineElements.OrientationToCompute is empty.')
+				return None
+		except:
+			raise WiserException("object of type 'OPTICS_ORIENTATION' has no len()", Args = [('self.ComputationSettings.OrientationToCompute',self.ComputationSettings.OrientationToCompute)])
+		
+		
 		
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
