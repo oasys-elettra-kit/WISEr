@@ -301,6 +301,30 @@ class Optics(LogBuffer):
 		If True, then the element can be referred to, otherwise it will be transparent.
 		'''
 		return self._UseAsReference
+	
+	# ================================
+	# PROP: Name
+	# ================================
+	@property
+	def Name(self):
+		'''
+		The CoreOptics object was born nameless. Conversely, the OpticalElement object was
+		designed to own a name.
+		
+		Actually
+		-1 It would make more sense to make OpticalElement link to the .Name attribute of
+		CoreOptics
+		-2 In certain cases we need .Optics to have its own Name
+		
+		So, we directly link to that of the parent container (which is existing in the 95% of cases).
+		
+		
+		'''
+		try:
+			
+			return self.ParentContainer.Name
+		except:
+			return 'unnamed'
 
 	@UseAsReference.setter
 	def UseAsReference(self, Value):
@@ -861,6 +885,7 @@ class OpticsNumerical(Optics):
 		'''
 		ABSTRACT: BETTER TO EXIST
 		'''
+		raise NotImplementedError("OpticsNumerical.Paint() not implemented")
 	#================================================
 	#	 GetPositioningString()
 	#================================================
@@ -1141,7 +1166,7 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
 		self.M2 = M2  # quality factor
-		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
+#		self.Name = 'Gaussian source @ %0.2fnm' % (self.Lambda * 1e9)
 		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
 
 	def __str__(self):
@@ -1415,7 +1440,10 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, Color = 'm', Length = 0.3, ArrowWidth = None, **kwargs):
+	def Paint(self, FigureHandle= None, Color = 'm', Length = 0.3, 
+		   ArrowWidth = None,
+		   Labels = True,
+		    **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 
@@ -1425,11 +1453,16 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		# a star, marking the centre
 		plt.plot(self._XYOrigin[0], self._XYOrigin[1],  marker = '*', markersize = 10)
 		RayOut = self.RayOutNominal
+		# U is the output ray
 		U = tl.UnitVector(vx = RayOut.v[0], vy = RayOut.v[1], XYOrigin = self._XYOrigin)
 
 		Length = Length if Length != None else 0.5
 		U.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
-
+		# print the name
+		if Labels==True:
+			plt.text(self._XYOrigin[0], self._XYOrigin[1], self.Name)
+		
+		
 		return FigureHandle
 #	 END CLASS: SourceGaussian
 #==============================================================================
@@ -3293,7 +3326,12 @@ class MirrorPlane(Mirror, CodeGenerator):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, N = 100, Length = 1, ArrowWidth = 1, Color = 'm', **kwargs):
+	def Paint(self, FigureHandle= None, N = 100, 
+		   Length = 1, 
+		   ArrowWidth = 1,
+		    Color = 'm',
+			Labels = True,
+			 **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
@@ -3306,12 +3344,17 @@ class MirrorPlane(Mirror, CodeGenerator):
 		# mark the mirror centre
 		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
 		plt.axis('equal')
+		
 		# paint the normal versor
 		self.VersorNorm.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
 		# paint the inputray
 		self.RayInNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'g', Shift = True)
 		# paint the output ray
 		self.RayOutNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'c')
+		# print the name
+		if Labels == True:
+			plt.text(x_mir[N//2], y_mir[N//2],self.Name)
+		
 		return FigureHandle
 	#================================
 	#  Draw
@@ -4711,7 +4754,14 @@ class MirrorElliptic(Mirror, CodeGenerator):
 	#================================
 	# FUN: Paint
 	#================================
-	def Paint(self, FigureHandle= None, N = 500, Length = None, ArrowWidth = None, Color = 'm', Complete = True, **kwargs):
+	def Paint(self, FigureHandle= None, 
+		   N = 500, 
+		   Length = None, 
+		   ArrowWidth = None, 
+		   Color = 'r', 
+		   Complete = True, 
+		   Labels = True,
+		   **kwargs):
 		'''
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
@@ -4727,8 +4777,8 @@ class MirrorElliptic(Mirror, CodeGenerator):
 
 		# Paint the ellipse
 		if Complete == True:
-			x_mir, y_mir = self.GetXY_CompleteEllipse(N)
-			plt.plot(x_mir, y_mir, Color + '.', markersize = 0.5)
+			x_mir2, y_mir2 = self.GetXY_CompleteEllipse(N)
+			plt.plot(x_mir2, y_mir2, Color + '.', markersize = 0.5)
 			# mark the focii
 			plt.plot(self.XYF1[0], self.XYF1[1], Color + 'x', markersize = 7)
 			plt.plot(self.XYF2[0], self.XYF2[1], Color + 'x', markersize = 7)
@@ -4747,7 +4797,12 @@ class MirrorElliptic(Mirror, CodeGenerator):
 		self.RayInNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'b', Shift = True)
 		# paint the output ray (red)
 		self.RayOutNominal.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth, Color = 'r')
-
+		# print the name
+		if Labels == True:
+			try:
+				plt.text(x_mir[N//2]*1.05, y_mir[N//2]*1.05,self.ParentContainer.Name)
+			except:
+				pass
 		plt.axis('equal')
 		return FigureHandle
 	
@@ -6362,6 +6417,7 @@ class Slits(OpticsNumerical, CodeGenerator):
 		v = tl.UnitVector(Angle=self.AngleInputLabNominal).v
 		return tl.Ray(vx=v[0], vy=v[1], XYOrigin=self.XYCentre)
 
+
 	# ================================
 	# FUN: Paint
 	# ================================
@@ -6370,19 +6426,26 @@ class Slits(OpticsNumerical, CodeGenerator):
 		Paint the object (somehow... this is a prototype) in the specified figure.
 		N is the number of samples.
 		'''
-		# Paint the mirror
-		Fig = plt.figure(FigureHandle)
-		FigureHandle = Fig.number
-		x_mir, y_mir = self.GetXY_IdealMirror(N)
-		plt.plot(x_mir, y_mir, Color + '.')
-		# mark the mirror centre
-		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
-		# paint the normal versor
-		# paint the inputray
-		self.RayInNominal.Paint(FigureHandle, Length=Length, ArrowWidth=ArrowWidth, Color='g', Shift=True)
-		# paint the output ray
-		self.RayOutNominal.Paint(FigureHandle, Length=Length, ArrowWidth=ArrowWidth, Color='c')
-		return FigureHandle
+		return MirrorPlane.Paint(self,FigureHandle=FigureHandle, 
+						   N=N, 
+						   Length=Length, 
+						   ArrowWidth=ArrowWidth, 
+						   Color='m', 
+						   **kwargs)
+
+#		# Paint the mirror
+#		Fig = plt.figure(FigureHandle)
+#		FigureHandle = Fig.number
+#		x_mir, y_mir = self.GetXY_IdealMirror(N)
+#		plt.plot(x_mir, y_mir, Color + '.')
+#		# mark the mirror centre
+#		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
+#		# paint the normal versor
+#		# paint the inputray
+#		self.RayInNominal.Paint(FigureHandle, Length=Length, ArrowWidth=ArrowWidth, Color='g', Shift=True)
+#		# paint the output ray
+#		self.RayOutNominal.Paint(FigureHandle, Length=Length, ArrowWidth=ArrowWidth, Color='c')
+#		return FigureHandle
 
 	# ================================
 	#  Draw

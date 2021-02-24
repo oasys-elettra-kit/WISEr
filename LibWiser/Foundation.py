@@ -23,7 +23,7 @@ import warnings
 from LibWiser.Optics import TypeOfAngle
 from LibWiser.CodeGeneratorVisitor import CodeGenerator
 import LibWiser.CodeGeneratorVisitor as CGVisitor
-from LibWiser.Exceptions import WiserException
+from LibWiser.Exceptions import WiserException, PrintValues
 #=============================
 #     DICT: INSERT_MODE
 #=============================
@@ -471,6 +471,13 @@ class Tree( CodeGenerator):
 	#================================================
 	@property
 	def ItemList(self):
+		'''
+		It is a secondary attribute (its value is built upon that of primary attributes).
+		
+		It bases on the primary attribute: FirstItem
+		
+		It should be named GetItemList NOT ItemList
+		'''
 		t0 = self.FirstItem
 		if t0 != None:
 			List = []
@@ -609,6 +616,49 @@ class Tree( CodeGenerator):
 						NewName = NewName,
 						Mode = INSERT_MODE.After)
     #================================================
+    #     Remove
+    #================================================
+	def Remove(self, KeyOrItem):
+		
+		raise Exception("Remove does not work! Fix it to use it")
+		
+		if type(KeyOrItem) is not list:
+			KeyOrItem = [KeyOrItem]
+			
+		
+		for _ in KeyOrItem:
+		
+			# get the element within the Tree
+			if type(_) == int:
+				Item = self.ItemList[_]
+			else:
+				Item = _			
+				
+			# cuts and paste the link with parent and children
+			HasParent = Item.Parent is not None
+			HasChildren = Item.Children is not None
+			
+			if HasParent and HasChildren:
+				#links parent to children
+				Item.Parent.Children = Item.Children
+				#links children toparents
+				for Child in Item.Children:
+					Child.Parent = Item.Parent
+			
+			if HasParent and not(HasChildren):
+				#free the parent from children
+				Item.Parent = None
+				
+			if HasChildren and not(HasParent):
+				#free the children from parent
+				for Child in Item.Children:
+					Child.Parent = None
+					
+			
+			
+			
+			
+    #================================================
     #     GetFromTo
     #================================================
 	def GetFromTo(self, FromItem = None,  ToItem = None):
@@ -746,7 +796,10 @@ class OpticalElement(TreeItem, CodeGenerator):
 			# Additional Stuff (such as the distance from previous element, etc...)
 			
 			
-			Str += '\t\t(%s), dZ=%0.2f m, Z=%0.2f m, %s' % (self.CoreOptics.Orientation.name[0], self.GeneralDistanceFromParent(Reference=False), self.DistanceFromSource, self.CoreOptics.GetSummary())
+			Str += '\t\t(%s), dZ=%0.2f m, Z=%0.2f m, %s' % (self.CoreOptics.Orientation.name[0],
+			    self.GeneralDistanceFromParent(Reference=False), 
+				self.DistanceFromSource, 
+				self.CoreOptics.GetSummary())
 			
 
 			return Str
@@ -786,9 +839,17 @@ class OpticalElement(TreeItem, CodeGenerator):
 		# In order to compute info on oe1,
 		# info on oe0 are required.
 		# If oe0 is analytical, info on oe2 are used.
+		raise Warning("OpticalElements.GetNSample is not supposed to work!")
+		ParentSameOrientation = self.GetParent(SameOrientation = True, OnlyReference = False)
+		
+		if ParentSameOrientation is None:
+			raise WiserException("Parent with same orientation is None. Solution:?",
+						By = "GetNSamples",
+						Args = [('self.Name', self.Name)])
+			
 		Debug.Print('GetNSamples:', 0)
 		Debug.Print('Current: %s' % self.Name,  1 )
-		Debug.Print('Upstream Element %s' % self.Parent.Name, 1 )
+		Debug.Print('Upstream Element %s' % ParentSameOrientation.Name, 1 )
 
 
 		if (self.ComputationSettings.UseCustomSampling == True) or (Lambda == None) :
@@ -797,26 +858,41 @@ class OpticalElement(TreeItem, CodeGenerator):
 
 		# The upstream element is numerical (easiest case)
 		#--------------------------------------------------------
-		if self.Parent.CoreOptics._IsAnalytic == False:
-			_NSamples = GetNSamples_OpticalElement(Lambda, self.Parent, self)
-
+		if ParentSameOrientation.CoreOptics._IsAnalytic == False:
+			try:
+				_NSamples = GetNSamples_OpticalElement(Lambda, ParentSameOrientation , self)
+			except:
+				raise WiserException("Could not call GetNSamples_OpticalElement",
+						 By = "GetNSamples",
+						 Args = [('Parent', ParentSameOrientation.Name), ('self', self.Name)])
+			
 		# The upstream element is analytical (a mess)
 		#--------------------------------------------------------
 		else:
 			# Find first OE after oe1 which is not analytical.
 			# If there are no Children, then CustomSampling is used
 			ChildrenList = self.DonwstreamItemList
+#			print(50 * '=A=')
+#			print('CHILDREN LIST')
+#			print(ChildrenList)
 			if ChildrenList == []:
 				return self.ComputationSettings.NSamples
 			for oeChild in ChildrenList:
 #				print(oeChild.Name + 40 *'&')
-				if oeChild.CoreOptics._IsAnalytic == False:
-					_NSamples = GetNSamples_OpticalElement(Lambda, self, oeChild)
-
-					Debug.Print('Mutual sampling bw <%s>-<%s>' % (self.Name, oeChild.Name))
-					break
-				else: # no other elements downstream
-					return self.ComputationSettings.NSamples
+				if HaveSameOrientation(oeChild, self):
+					if oeChild.CoreOptics._IsAnalytic == False:
+						_NSamples = GetNSamples_OpticalElement(Lambda, self, oeChild)
+	
+						Debug.Print('Mutual sampling bw <%s>-<%s>' % (self.Name, oeChild.Name))
+						break
+					else: # no other elements downstream
+						return self.ComputationSettings.NSamples
+		
+		#check the goodness of the result
+		if np.isinf(_NSamples) or np.isnan(_NSamples) or (_NSamples is None):
+			raise LibWiser.Errors.SmartException('Number of samples is wrong.',
+										'Foundation.GetNSamples', 
+										[('NSamples',_NSamples)])
 		return _NSamples
 
 
@@ -1064,7 +1140,28 @@ class OpticalElement(TreeItem, CodeGenerator):
 			warnings.warn("GetParent returned None!")
 
 		return GetParentResult
-
+	
+#	#================================================
+#	#  FUN: GetParentWithSameOrientation
+#	#================================================
+#	def GetParentWithSameOrientation(self):
+#		'''
+#		Return the first element with the same orientation.
+#		Technically it is not a parent... but here it is.
+#		
+#		'''
+#		MyOrientation = self.CoreOptics.Orientation
+#		
+#		Goon = True
+#		Current = self
+#		while Goon:
+#			if Current.Parent is None:
+#				return None
+#			elif Current.Parent.CoreOptics.Orientation == MyOrientation:
+#				return Current.Parent
+#			else:
+#				Current = self.Parent
+				
 	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
 		'''
 		High level function to calculate the distance to parent.
@@ -1087,7 +1184,13 @@ class OpticalElement(TreeItem, CodeGenerator):
 		'''
 
 		if self.Parent != None:
-			distance = np.linalg.norm(self.XYCentre - self.GetParent(SameOrientation=Orientation, OnlyReference=Reference).XYCentre)
+			try:
+				a = self.XYCentre
+				b = self.GetParent(SameOrientation=Orientation, OnlyReference=Reference).XYCentre
+				distance = np.linalg.norm( a- b)
+				
+			except TypeError as Error:
+				raise 	WiserException(Error.Message, Args = ['a','b'])
 		elif self.Parent == None:
 			distance = 0
 		else:
@@ -1209,6 +1312,8 @@ class BeamlineElements(Tree):
 			self.iFigureError = 0
 			self.OrientationToCompute = []
 			self._TotalComputationTimeMinutes = 0
+			self.AllowRepeatedNames = False #When accessing the elements as BeamlineElements[Name], having repeated names is  forbidden! However, in all the other cases, repeated names are not a problem per se.
+			
 
 
 		@property
@@ -1310,6 +1415,11 @@ class BeamlineElements(Tree):
 		is not done. The .Refresh method is invoked instead (at the end of all
 		the positioning operation list)
 		'''
+
+
+		#Check if there are repeated names, if need be
+		if not self.ComputationSettings.AllowRepeatedNames:
+			self._CheckIfRepeatedNames() 
 
 
 		#Here Oncewe thought to put
@@ -1528,6 +1638,9 @@ class BeamlineElements(Tree):
 				setattr(PropertyName, PropertyValue)
 			except:
 				pass
+			
+
+				 
 	#================================================
 	#  FUN: GetSamplingList
 	#================================================
@@ -1546,12 +1659,12 @@ class BeamlineElements(Tree):
 #				Memento.append(Item.ComputationSettings.UseCustomSampling)
 				Item.ComputationSettings.UseCustomSampling = False
 		
-		DummySelf.ComputeFields(oeStart = None, oeEnd = None, Dummy = True, Verbose = False)
+		DummySelf.ComputeFields(oeStart = None, oeEnd = None, Dummy = True, Verbose = True)
 		NList = []
 		NameList = []
 		for i, Oe in enumerate(DummySelf.ItemList):
 			NList.append( Oe.ComputationResults.NSamples)
-			NameList.append(Oe.ComputationResults.Name)
+			NameList.append(Oe.Name)
 			if Verbose:
 				print("%s\t%s" % ( NameList[i], str(NList[i])))
 
@@ -1571,6 +1684,11 @@ class BeamlineElements(Tree):
 
 		Parameters
 		-----
+		
+		oeStart : Foundation.OpticalElement OR string
+			Start optical element. Can be object or key
+		oeEnd : Foundation.OpticalElement OR String
+			End optical element. Can be object or key
 		"""
 		import datetime
 		
@@ -1578,9 +1696,24 @@ class BeamlineElements(Tree):
 		print(datetime.datetime.now())
 		Tic = time.time()
 		
+		#Attempt to assign by key
+		if type(oeStart) is str:
+			try:
+				oeStart = self[oeStart]
+			except:
+				WiserException("OpticalElement not found", 
+				   By = 'ComputeFields',
+				   Args = ['oeStart'])
+
+		if type(oeEnd) is str:
+			try:
+				oeEnd = self[oeEnd]
+			except:
+				WiserException("OpticalElement not found", 
+				   By = 'ComputeFields',
+				   Args = ['oeEnd'])
 		
-		
-		
+		#Check if OrientationToCompute is not empty
 		try:
 			if len(self.ComputationSettings.OrientationToCompute) ==0: 
 				raise Exception('Error: the list Foundation.BeamlineElements.OrientationToCompute is empty.')
@@ -1589,7 +1722,7 @@ class BeamlineElements(Tree):
 			raise WiserException("object of type 'OPTICS_ORIENTATION' has no len()", Args = [('self.ComputationSettings.OrientationToCompute',self.ComputationSettings.OrientationToCompute)])
 		
 		
-		
+		#Do the main loop
 		for Orientation in self.ComputationSettings.OrientationToCompute:
 			self.ComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)
 		Toc = time.time()
@@ -1663,11 +1796,12 @@ class BeamlineElements(Tree):
 		k = 0
 		Ind = 1
 		NoeList = len(oeList)
+		
+		# ---- Loop on optical elements
 		for ioeThis, oeThis in enumerate(oeList):
 #			Debug.Print(50 * '=')
 			tic = time.time()
 			Debug.Print('Compute Fields %d/%d' %( ioeThis+1	, NoeList), NIndent = 0, Header = True)
-#			Debug.Print(50 * '=')
 
 			Debug.Print('\tProcessing:\t'  + oeThis.Name)
 			# ----------------------------------------------
@@ -1684,7 +1818,8 @@ class BeamlineElements(Tree):
 			elif (oeThis.ComputationSettings.Ignore == True):
 				PropInfo.TotalPath += oeThis.GetDistanceFromParent(SameOrientation=True, OnlyReference=False)
 				PropInfo.N += 1
-
+				Action = 'Element Ignored'
+				Debug.print('\tAction:' + Action)
 			# ----------------------------------------------
 			# case:  Compute the field (on this element)
 			# ----------------------------------------------
@@ -1700,12 +1835,18 @@ class BeamlineElements(Tree):
 
 					# Transform oeThis --> oeV (virtual optical element)
 					oeV = self._MakeVirtual(oeThis, PropInfo.oeLast,
-											PropInfo.TotalPath + oeThis.GetDistanceFromParent(SameOrientation=True, OnlyReference=False)) if PropInfo.N > 0 else oeThis
-					NSamples = oeV.GetNSamples(Lambda)
-
+											PropInfo.TotalPath + oeThis.GetDistanceFromParent(SameOrientation=True, 
+															 OnlyReference=False)) if PropInfo.N > 0 else oeThis
+				 
+					 
+					#NSamples = oeV.GetNSamples(Lambda)
+					NSamples = GetNSamplesTwoBody(Lambda, PropInfo.oeLast, oeThis)
 					xV, yV = oeV.GetXY(NSamples)
 					# update registers
 
+					if (xV is None) or (yV is None):
+						raise WiserException('GetXY(NSamples) returned None (1)', Args = ['NSamples'])
+						
 					# ----------------------------------------------
 					# Dummy? (Analytic Branch)
 					# ----------------------------------------------
@@ -1729,6 +1870,7 @@ class BeamlineElements(Tree):
 						# -----------------------------------------------------
 
 						xThis, yThis = oeThis.GetXY(NSamples)
+						
 #						Debug.Print('Detailed info', NInd = Ind + 1)
 #						Debug.Print(20 * '.', NInd = Ind+1)
 #						Debug.print('oeLast.Name = %s' % PropInfo.oeLast.Name, Ind + 1)
@@ -1756,8 +1898,8 @@ class BeamlineElements(Tree):
 					#										|=> Propagate =>
 
 					# TODO: trovare il campionamento N.
-					NSamples = oeThis.GetNSamples(Lambda)
-
+#					NSamples = oeThis.GetNSamples(Lambda)
+					NSamples = GetNSamplesTwoBody(Lambda, PropInfo.oeLast, oeThis)
 					# oeLast is a numerical source and we want to preserve the same sampling
 					# If 'Last field' is different from 0
 					if tl.IsArray(PropInfo.oeLast.Results.Field):
@@ -2066,12 +2208,19 @@ class BeamlineElements(Tree):
 	# ================================================
 	#  FUN: _PickOeList
 	# ================================================
-	def _PickOeList(self, oeStart=None, oeEnd=None, Orientation=Optics.OPTICS_ORIENTATION.ANY):
+	def _PickOeList(self, oeStart=None, oeEnd=None, Orientation=Optics.OPTICS_ORIENTATION.ANY,
+				 Ignore = None):
 		"""
 		Return a list of OE contained between oeStart and oeEnd of given orientation.
 		If oeStart = None, it starts from the first element.
 		If oeEnd = None, it finishes up to the last element.
 		
+		Parameters
+		-----------
+		
+		IgnoreValue : [False, True,None]:
+			If None, does not filter for *OpticalElement.Value*
+			
 		Returns
 		---------------------------
 		OrientedOEList
@@ -2087,6 +2236,9 @@ class BeamlineElements(Tree):
 		oeList = self.GetFromTo(oeStart, oeEnd)
 		oeListOriented = []
 		for _ in oeList:
+			
+			#Filters for the orientation
+			#---------------------------------------------------------
 			# Any Orientation?
 			if (Orientation == Optics.OPTICS_ORIENTATION.ANY or
 				Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC):
@@ -2097,6 +2249,13 @@ class BeamlineElements(Tree):
 				_.CoreOptics.Orientation == Optics.OPTICS_ORIENTATION.ISOTROPIC or
 					_.CoreOptics.Orientation == Orientation):
 				oeListOriented.append(_)
+
+			#Filters for "Ignore"
+			#---------------------------------------------------------
+#			if Ignore == None:
+#				pass
+#			elif:
+				
 
 		if len(oeListOriented) == 0:
 			oeStart = None
@@ -2121,7 +2280,31 @@ class BeamlineElements(Tree):
 					return _
 		return _
 			
+	# ================================================
+	#  FUN: _CheckIfRepeatedNames
+	# ================================================		
+	def _CheckIfRepeatedNames(self, Verbose = False):
+		'''
+		Scan across the names of the optical element to
+		check if there are repeated names.
+		
+		Repeated names can create unexpected behavior and shall be avoided
+		'''
+		NameList = []
+		for Item in self.ItemList:
 
+			if Item.Name in NameList:
+				repeated_name = Item.Name
+				raise WiserException('''Foundation.BeamlineElements => has repeated
+						 Names. The beamline elements should have different
+						 names in scripting. If you want to disable this warning,
+						 switch BeamlineElements.ComputationSettings.AllowRepeatedNames''',
+						  Args = ['repeated_name'])
+			else:
+				NameList.append(Item.Name)
+		if Verbose :
+			print(NameList)
+		return False
 	# ================================================
 	#  FUN: GetSubBeamline
 	# ================================================		 	
@@ -2144,9 +2327,9 @@ class BeamlineElements(Tree):
 		NewBeamline.Append(ElementList)
 		NewBeamline.RefreshPositions()
 		return NewBeamline
-
+	
 	# ================================================
-	#  FUN: GetSubBeamline
+	#  FUN: GetSubBeamlineCopy
 	# ================================================		 	
 	def GetSubBeamlineCopy(self,
 					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
@@ -2160,6 +2343,7 @@ class BeamlineElements(Tree):
 		
 		'''
 		import copy
+		# copy the elements
 		ElementList = self.GetElementList(oeStart = None, 
 									oeEnd = None,
 									Orientation = Orientation)
@@ -2170,12 +2354,97 @@ class BeamlineElements(Tree):
 		NewBeamline = BeamlineElements()
 		NewBeamline.Append(NewElementList)
 		NewBeamline.RefreshPositions()
+		
+		#copy the ComputationSettings
+		NewBeamline.ComputationSettings = copy.deepcopy(self.ComputationSettings)
+		
 		return NewBeamline
+
+#	# ================================================
+#	#  FUN: GetSubBeamline
+#	# ================================================		 	
+#	def GetSubBeamlineCopy(self,
+#					Orientation = Optics.OPTICS_ORIENTATION.ANY ):
+#		'''
+#		Returns a BeamlineElements object which contains only the elements
+#		specified by the Orientation parameter.
+#		
+#		Notice: the returned object is DIFFERENT from the current beamline object.
+#		If you want to access the same elements of the current Beamline object,
+#		use GetElementList instead
+#		
+#		'''
+#		import copy
+#		# strategy0: copy the bl and then removes the extra elements
+##		NewBeamline = copy.deepcopy(self)
+##		ElementList = NewBeamline.GetElementList(oeStart = None, 
+##									oeEnd = None)
+##		ListOfRemovedElementsIndex = []
+##		for i,Element in enumerate(ElementList):
+##			if Element.CoreOptics.Orientation == Orientation:
+##				pass
+##			else:
+##				NewBeamline.Remove(Element)
+##				ListOfRemovedElementsIndex.append(i)
+##				
+##		return NewBeamline
+##		
+#	# Strategy1: create a list of copies
+#		
+#		
+#		# init the new beamline
+#		NewBeamline = BeamlineElements()
+#		# Copy the elements(with specified orientation)
+#		ElementList = self.GetElementList(oeStart = None, 
+#											 oeEnd = None,
+#											 Orientation= Orientation)
+#		NewElementList = [] 
+#		for Element in ElementList:
+#			NewElementList.append(copy.deepcopy(Element))
+#		NewBeamline.Append(NewElementList)
+#		
+#		# Copy the computation settings
+#		NewBeamline.ComputationSettings = copy.deepcopy(self.ComputationSettings)
+#		
+#		return NewBeamline
+#		#
+#		
+#			
+##		# Strategy2: just use the same list of references.
+###		NewElementList = ElementList
+##			
+##
+##		NewBeamline = BeamlineElements()
+##		NewBeamline.Append(NewElementList)
+##		NewBeamline.RefreshPositions()
+##		
+##		
+##		#Strategy3: copy the whole Beamline, then REMOVE the unwanted items
+##		NewBeamline = copy.deepcopy(self)
+#		
+##		NewElementNameList = [_.Name for _ in NewElementList]
+##		
+##		for _ in self.GetElementList():
+##			
+##			Name = _.Name
+##			if Name is not in NewElementNameList:
+##				self.Remove(Name)
+#		
+		
 	
 	# ================================================
 	#  FUN: GetElementList
 	# ================================================		 
 	def GetElementList(self, oeStart=None,
+					oeEnd=None, 
+					Orientation=Optics.OPTICS_ORIENTATION.ANY):	
+		oeListOriented, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
+		return oeListOriented
+	
+	# ================================================
+	#  FUN: GetElementList
+	# ================================================		 
+	def GetElementToPropagateList(self, oeStart=None,
 					oeEnd=None, 
 					Orientation=Optics.OPTICS_ORIENTATION.ANY):	
 		oeListOriented, oeStart, oeEnd = self._PickOeList(oeStart, oeEnd, Orientation)
@@ -2193,11 +2462,17 @@ class BeamlineElements(Tree):
 	#================================================
 	#  FUN: Paint
 	#================================================
-	def Paint(self,hFig = 1, Length = 1 , ArrowWidth = 0.2,N=100):
+	def Paint(self,hFig = 1, Length = 1 , ArrowWidth = 0.2,N=100,
+		   OrientationAny = False,
+		   Labels = True):
 		# improve 101
 		Elements = self.ItemList
+		
 		for Element in Elements:
-			Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth, N = N)
+			HasSameOrientation = (Element.CoreOptics.Orientation in self.ComputationSettings.OrientationToCompute)
+			if OrientationAny or HasSameOrientation:
+				Element.CoreOptics.Paint(hFig, Length = Length , ArrowWidth = ArrowWidth, N = N, 
+							 Labels = Labels)
             
 		plt.grid(True)
 
@@ -2217,7 +2492,39 @@ class BeamlineElements(Tree):
 			plt.title('%d) - %s' %(i,Element.Name))
 			print(Element.Name + ' onto figure ' + str(hFig))
 
- 	
+
+	# ================================================
+	#	PROP: PlotIntensity [OpticalElement]
+	# ================================================
+	def PlotIntensity(self,StartFigureIndex = None, Label = None, Normalization = 'int'):
+		'''
+		Create a list of plots each one containing the intensity on that optical element.
+		'''
+		
+		#Loop on the elements of the beamline
+		k = 0
+		for i, Item in enumerate(self.ItemList):
+			
+			#Plots only if the element is of the same kind of OrientationToComupte
+			#it can be a bad or good idea.
+			
+			if Item.CoreOptics.Orientation in self.ComputationSettings.OrientationToCompute:
+				
+				# Choose the figure index
+				if StartFigureIndex is not None:
+					k+=1
+					FigureIndex = StartFigureIndex + k
+				else:
+					FigureIndex  = None
+					
+				# Do the plot
+				Item.PlotIntensity(FigureIndex = FigureIndex,
+								  Label = Label, 
+								      Normalization = Normalization)
+		
+	#================================================
+	#  FUN: GenerateCode
+	#================================================
 	def GenerateCode(self):
 		 return CGVisitor.GenerateCodeForBeamlineElements(self)			
 
@@ -2492,6 +2799,56 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 #==========================================
 # FUN: GetNSamples_OpticalElement
 #==========================================
+def GetNSamplesTwoBody(Lambda: float, oeParent : OpticalElement, oeCurrent : OpticalElement) -> int:
+	'''
+		:param Lambda: wavelength
+		:param oe0: optical element 1
+		:param oe1: optical element 2
+		:return: sampling
+		Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
+		
+		'''
+	
+	oe0 = oeParent
+	oe1 = oeCurrent
+		
+	if oeCurrent.ComputationSettings.UseCustomSampling == True:
+		return oeCurrent.ComputationSettings.NSamples
+	
+	try:
+		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
+		L0 = oe0.CoreOptics.L  # Size of element 1
+		L1 = oe1.CoreOptics.L  # Size of element 2
+		Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+		print('=o=' * 20)
+		print(oe1.Name)
+		print(z)
+		print(L0)
+		print(L1)
+		print(Theta1)
+		if z==0:
+			raise WiserException('''
+						  ERROR, the distance between two subsequent elements is 0. 
+						  This case (which may have a physical meaning), can not be treated in the present version
+						  of WISER.''',
+						  Args = [('oe0', oe0.Name ), ('oe1', oe1.Name),('z', z), ('L0', L0), ('L1', L1), ('Theta1', Theta1), ('N', N)  ])
+
+		N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
+		print('Number of points: {}'.format(int(N)))
+		N = int(N)
+		return N
+	except:
+		oe0_name = oe0.Name
+		oe1_name = oe1.Name
+		raise WiserException('''Something is wrong while computing the number of samples. Check the
+							   Distance between optical element (it can be 0) and/or the orientation.''',
+									     'GetNSamples_OpticalElement',
+										['oe0 ', 'oe1_name', 'z','L0', 'L1' ,'Theta1','N', 'Lambda'  ])
+		return None
+
+#==========================================
+# FUN: GetNSamples_OpticalElement
+#==========================================
 def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : OpticalElement) -> int:
 	'''
 		:param Lambda: wavelength
@@ -2499,27 +2856,90 @@ def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : Optica
 		:param oe1: optical element 2
 		:return: sampling
 		Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
+		
 		'''
+	
+	
+	try:
+		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
+		L0 = oe0.CoreOptics.L  # Size of element 1
+		L1 = oe1.CoreOptics.L  # Size of element 2
+		Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+		print('=o=' * 20)
+		print(oe1.Name)
+		print(z)
+		print(L0)
+		print(L1)
+		print(Theta1)
+		if z==0:
+			raise WiserException('''
+						  ERROR, the distance between two subsequent elements is 0. 
+						  This case (which may have a physical meaning), can not be treated in the present version
+						  of WISER.''',
+						  Args = [('oe0', oe0.Name ), ('oe1', oe1.Name),('z', z), ('L0', L0), ('L1', L1), ('Theta1', Theta1), ('N', N)  ])
 
-	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
-	L0 = oe0.CoreOptics.L  # Size of element 1
-	L1 = oe1.CoreOptics.L  # Size of element 2
-	Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+		N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
+		print('Number of points: {}'.format(int(N)))
+		N = int(N)
+		return N
+	except:
+		oe0_name = oe0.Name
+		oe1_name = oe1.Name
+		raise WiserException('''Something is wrong while computing the number of samples. Check the
+							   Distance between optical element (it can be 0) and/or the orientation.''',
+									     'GetNSamples_OpticalElement',
+										['oe0 ', 'oe1_name', 'z','L0', 'L1' ,'Theta1','N', 'Lambda'  ])
+		return None
+									      
 
-	N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
-	print('Number of points: {}'.format(int(N)))
+#	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
+#	L0 = oe0.CoreOptics.L  # Size of element 1
+#	L1 = oe1.CoreOptics.L  # Size of element 2
+#	Theta1 = pi / 2. + oe1.CoreOptics.VersorNorm.Angle  # Grazing incidence angle
+#
+#	if z==0:
+#		raise WiserException('''
+#					  ERROR, the distance between two subsequent elements is 0. 
+#					  This case (which may have a physical meaning), can not be treated in the present version
+#					  of WISER.''',
+#					  Args = [('oe0', oe0.Name ), ('oe1', oe1.Name),('z', z), ('L0', L0), ('L1', L1), ('Theta1', Theta1), ('N', N)  ])
+#
+#	N = 4. * pi * L0 * L1 * abs(sin(Theta1)) / (Lambda * z)  # Sampling
+#	print('Number of points: {}'.format(int(N)))
+#	N = int(N)
+#	return N
 
-	return int(N)
+									   	
 
 
 # ================================================
 #  FUN: FocusSweep
 # ================================================
-def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.deg2rad(90)):
-	''' Created for computing the field on a detector placed nearby the focal plane of
-	oeFocussing : Focussing element
-	oeFocussing : optical element that focusses radiation
-	DefocusList :
+def FocusSweep(oeFocussing, 
+			   DefocusList, 
+			   DetectorSize=50e-6, 
+			   		  StartAtNominalFocus = True,
+			  Distance = 0,
+			   AngleInNominal=np.deg2rad(90)):
+	''' 
+	Created for computing the field on a detector placed nearby the focal plane of
+	oeFocussing.
+	
+	The function assumes that a field is olready computed on oeFocussing.
+	If 
+	
+	Parameters
+	------
+	oeFocussing: 		
+		Foundation.OpticalElement. It is the optical element that focusses radiation
+	
+	DefocusList: array like
+		The list of the positions from the *nominal focus* at which the detector is place. 
+		
+	AngleInNominal : float (rad)
+		Grazing angle of the detector. Default is pi/2. Normally not used.
+		
+		Example [1,2,3]
 
 	Return
 	--------
@@ -2539,11 +2959,20 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 		L=DetectorSize,
 		AngleGrazing=AngleInNominal)
 
-	d_pd = PositioningDirectives(
-		ReferTo='upstream',
-		PlaceWhat='centre',
-		PlaceWhere='downstream focus',
-		Distance=0)
+	if StartAtNominalFocus:
+		d_pd = PositioningDirectives(
+			ReferTo='upstream',
+			PlaceWhat='centre',
+			PlaceWhere='downstream focus',
+			Distance=0)
+	else:
+		raise Warning("Gaurda che non funziona, anche se non so perché... correggere!")
+		d_pd = PositioningDirectives(
+			ReferTo ='upstream',
+			PlaceWhat ='centre',
+			PlaceWhere = 'centre',
+			Distance = Distance)
+	
 	d = OpticalElement(
 		d_k,
 		PositioningDirectives=d_pd,
@@ -2648,13 +3077,21 @@ def FocusSweep(oeFocussing, DefocusList, DetectorSize=50e-6, AngleInNominal=np.d
 
 	#=============================================================
 	
+	IntensityList =[]
+	for _ in ResultList:
+		IntensityList.append(_.Intensity) 
+	More.IntensityList = IntensityList 	
+	More.DefocusList = DefocusList
 	return (ResultList, HewList, SigmaList, More)
 # ================================================
 #  FUN: FocusFind
 # ================================================
-def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
+def FocusFind(oeFocussing,	 
+			     DefocusRange = (-10e-3, 10e-3),
 			  DetectorSize=200e-6,
 			  MaxIter = 31,
+			  StartAtNominalFocus = True,
+			  Distance = 0,
 			  AngleInNominal=np.deg2rad(90)):
 	'''
 	Find the best focus. Similar to FocusSweep, except that it does not provide the
@@ -2662,6 +3099,11 @@ def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 	the best focus as fast as possible.
 
 	Faster, perhaps less fancy.
+	
+	If *StartAtNominalFocus* is True (default),
+	
+	If *StartAtNominalFocus* is False, the search starts at distance *Distance* from *oeFocussing*.
+	
 
 	For automation purposes, when producing publication-quality plots,
 	it could be a nice idea to use feed FocusSweep with the
@@ -2669,10 +3111,23 @@ def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 
 	Parameters
 	------
-	oeFocussing : Focussing element
-	oeFocussing : optical element that focusses radiation
+	oeFocussing : OpticalElement
+		optical element that focusses radiation. The detector is **automatically** placed in the focus of
+		``oeFocussing``. This is don by hardcoding the positioning directive *place at downstream focus*,
+		which must be implemented.
+		 
 	DefocusList : array like
 		List of defocus distances
+		
+	StartAtNominalFocus : bool
+		If **true**,  the search starts at the nominal downstream focus
+		of *oeFocussing*. **The positioning directive** "place at downstream focus must be implemented".
+		If **False**, the search starts at distance *Distance* from *oeFocussing*.
+	
+	Distance : float
+		Used only with *StartAtNominalFocus = False*.
+		
+		
 
 	Return
 	--------
@@ -2691,7 +3146,7 @@ def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 
 	Notes
 	--------
-	In the test I did, convergence was reached within few (5-7) iterations,
+	-In the test I did, convergence was reached within few (5-7) iterations,
 	with BestDefocus of the order of 10mm (which was a pretty high value, indeed!).
 	N of samples used: 1e4, lambda=2nm [MMan2020]
 
@@ -2705,16 +3160,26 @@ def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 	d_k = Optics.Detector(
 		L=DetectorSize,
 		AngleGrazing=AngleInNominal)
-
-	d_pd = PositioningDirectives(
-		ReferTo='upstream',
-		PlaceWhat='centre',
-		PlaceWhere='downstream focus',
-		Distance=0)
+	
+	if StartAtNominalFocus:
+		d_pd = PositioningDirectives(
+			ReferTo='upstream',
+			PlaceWhat='centre',
+			PlaceWhere='downstream focus',
+			Distance=0)
+	else:
+		d_pd = PositioningDirectives(
+			ReferTo ='upstream',
+			PlaceWhat ='centre',
+			PlaceWhere = 'centre',
+			Distance = Distance)
+		
 	d = OpticalElement(
 		d_k,
 		PositioningDirectives=d_pd,
 		Name='detector')
+	
+	
 
 	oeFocussing._IsSource = True  # MUSTBE!
 	oeFocussing.PositioningDirectives.ReferTo = 'locked'
@@ -2795,6 +3260,7 @@ def FocusFind(oeFocussing,	  DefocusRange = (-10e-3, 10e-3),
 	Results.OptResult = OptResult
 
 	return Results
+
 
 # ================================================
 #  FUN: FocusFind
@@ -2944,7 +3410,7 @@ def ZSweep(oeStart, DistanceList, DetectorSize = 50e-6, AngleInNominal = np.deg2
 
 
 
-
+#%% Corrected Sampling for items with different orientation.
 
 
 #%% Fine
