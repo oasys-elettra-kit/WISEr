@@ -803,7 +803,14 @@ class OpticsNumerical(Optics):
 		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
 
 		return(xNew, yNew)
-
+	#================================================
+	#	 MatchHeightProfile
+	#================================================
+	def _MatchHeightProfile(self, MirrorSamples, Profile, ProfileStep):
+		ProfileStepNew = self.L / MirrorSamples
+		ProfileNew = rm.MatchHeightProfile(self.L, MirrorSamples, Profile, ProfileStep)
+		return ProfileNew, ProfileStepNew
+	
 #	#================================================
 #	#	 _Transformation_XYProp_To_XYLab
 #	#================================================
@@ -2424,12 +2431,13 @@ class Mirror(OpticsNumerical):
 	#===============================================================		
 	def _ApplyHeightProfileProjection(self,x,y, HeightProfile):
 		'''
+		APPARENTLY THIS FUNCTION IS NOT USED?!
 		Applies HeightProfile to x,y.
 
 			L: Unused
 
 		Uses 
-		- self.GetXY_Ideal to get the ideal surface (it uses the same size as x)
+		- self.GetXY_Ideal to get the ideal surface (it uses the same array size as x)
 		- the "self. self.Get_LocalTangentAngle(x_ideal, y_ideal)" to get the correct
 		tangent.
 		'''
@@ -2514,23 +2522,12 @@ class Mirror(OpticsNumerical):
 
 		'''
 		N = int(N)
-		# carico il figure error e, se necessario, lo ricampiono
-		#-----------------------------------------------------------------
-		if len(self._FigureErrors)-1 >= iFigureError:
-			hFigErr  = self.FigureErrors[iFigureError]
-			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
-			self._L = LMeasured  # serve davvero?
-			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
-		else:
-			hFigErr   = np.zeros(N)
-			LMeasured = self.L
 
-
-
-		# Get the ideal mirror (in the self- Reference frame)
+		# 1) Get the ideal mirror (in the self- Reference frame)
 		# -----------------------------------------------------------------
-		Mir_x, Mir_y = self.GetXY_IdealMirror(N, ReferenceFrame = 'self', L = LMeasured)
-		#HACK: GetXY_IdealMirror and ReferenceFrame
+		Mir_x, Mir_y = self.GetXY_IdealMirror(N, 
+										L = self.L,
+										ReferenceFrame = 'self')
 		'''ReferenceFrame is something that was originally used only in EllipticalMirror
 		Are we sure that we want to keep it as generic parameter in optics?
 		What for Otics which do not need it? (e.g. PlaneMirror)
@@ -2539,7 +2536,25 @@ class Mirror(OpticsNumerical):
 			=> Use **kwargs ?
 		'''
 
-		# aggiungo la roughness (se richiesto, rigenero il noise pattern)
+		# 2) Get Figure error, pad, resample if needed. il figure error e, se necessario, lo ricampiono
+		#-----------------------------------------------------------------
+		
+		#if the figure error exists...
+		if len(self._FigureErrors)-1 >=  iFigureError:
+			
+			FigureError  = self.FigureErrors[iFigureError] # array
+			FigureErrorStep= self.FigureErrorSteps[iFigureError] # scalar, the x step
+			
+			# Make the profile of the same sampling and physical size of the mirror
+			print(self.L)
+#			hFigErr, FigureErrorStepNew = self._MatchHeightProfile(MirrorSamples = N, 
+#								   Profile = FigureError ,
+#								   ProfileStep = FigureErrorStep)
+
+	
+			hFigErrS, hFigErr, = self.FigureError_GetProfileAligned(iFigureError, N)
+
+		# 3) aggiungo la roughness (se richiesto, rigenero il noise pattern)
 		#-----------------------------------------------------------------
 		if self.ComputationSettings.UseRoughness == True:
 			hRoughness = self.Roughness.MakeProfile(LMeasured, N)
@@ -2552,6 +2567,7 @@ class Mirror(OpticsNumerical):
 			myResidual = hFigErr + hRoughness
 		else:
 			myResidual = hFigErr
+
 		#HINT: LastResidualUsed
 		self.LastResidualUsed = myResidual
 		self.LastFigureErrorUsed = myResidual
@@ -2572,7 +2588,97 @@ class Mirror(OpticsNumerical):
 			Mir_xx, Mir_yy = self._Transformation_XYPropToXYLab(Mir_xx, Mir_yy)
 
 		return Mir_xx, Mir_yy
-
+#   #================================
+#	# GetXY_MeasuredMirror (class: Mirror)          BACKUP
+#	#================================
+#	def GetXY_MeasuredMirror(self, N, iFigureError = 0, Reference = 'lab' ):
+#		'''
+#		Returns the (x,y) coordinates of a "real" mirror, generated as
+#		Real mirror = Ideal Mirrir + Figure Error pofile + Roughness profile
+#
+#		This function shall be called by self.GetXY
+#
+#
+#		Parameters
+#		-------
+#		N : int
+#			number of samples
+#		iFugreError : int
+#			Index of the FigureError to use
+#			If iFigureError = None, then iFigureError = iLastFigureErrorUsed + 1 is used.
+#			@todo: diatriba se iFigureError debba stare qui o in configuration setting
+#		Reference : string {lab,self}
+#			wheter the output is given in the lab reference or "self" reference
+#
+#		Uses
+#		-----
+#		self.ComputationSettings.UseRoughness : (class member)
+#
+#		Return
+#		-----
+#		x,y : arrays
+#			Coordinates of the mirror.
+#
+#		'''
+#		N = int(N)
+#		# carico il figure error e, se necessario, lo ricampiono
+#		#-----------------------------------------------------------------
+#		if len(self._FigureErrors)-1 >= iFigureError:
+#			hFigErr  = self.FigureErrors[iFigureError]
+#			LMeasured = len(hFigErr) * self._FigureErrorSteps[iFigureError]
+#			self._L = LMeasured  # serve davvero?
+#			hFigErr  = rm.FastResample1d(hFigErr - np.mean(hFigErr  ), N)
+#		else:
+#			hFigErr   = np.zeros(N)
+#			LMeasured = self.L
+#
+#
+#
+#		# Get the ideal mirror (in the self- Reference frame)
+#		# -----------------------------------------------------------------
+#		Mir_x, Mir_y = self.GetXY_IdealMirror(N, ReferenceFrame = 'self', L = LMeasured)
+#		#HACK: GetXY_IdealMirror and ReferenceFrame
+#		'''ReferenceFrame is something that was originally used only in EllipticalMirror
+#		Are we sure that we want to keep it as generic parameter in optics?
+#		What for Otics which do not need it? (e.g. PlaneMirror)
+#			=> Use None? good candidate
+#			=> Improve polimorfism?
+#			=> Use **kwargs ?
+#		'''
+#
+#		# aggiungo la roughness (se richiesto, rigenero il noise pattern)
+#		#-----------------------------------------------------------------
+#		if self.ComputationSettings.UseRoughness == True:
+#			hRoughness = self.Roughness.MakeProfile(LMeasured, N)
+#			########################### added by L.Rebuffi
+#			if len(hRoughness) < N:
+#				filler = np.zeros(N-len(hRoughness))
+#				hRoughness = np.append(filler, hRoughness)
+#			##############################################
+#			self.LastRoughnessUsed = hRoughness
+#			myResidual = hFigErr + hRoughness
+#		else:
+#			myResidual = hFigErr
+#		#HINT: LastResidualUsed
+#		self.LastResidualUsed = myResidual
+#		self.LastFigureErrorUsed = myResidual
+#		self.LastFigureErrorUsedIndex = iFigureError
+#
+#		# Add figure error - FigureErrorAdd
+#		# I Project the figure error on the Mirror Surface
+#		# -----------------------------------------------------------------
+#		# colpo di fulmine! :-)
+#		ThetaList = self.Get_LocalTangentAngle(Mir_x, Mir_y)
+#		ResidualToUse = myResidual * self._GetFigureErrorSummationSign()
+#		Mir_xx = Mir_x + ResidualToUse * np.sin(ThetaList)
+#		Mir_yy = Mir_y + ResidualToUse * np.cos(ThetaList)
+#
+#		if Reference == 'lab':
+#			# Notice: This transformation is an IDENTITY by default. Only for specific
+#			# classes (e.g. MirrorElliptic) it really does something
+#			Mir_xx, Mir_yy = self._Transformation_XYPropToXYLab(Mir_xx, Mir_yy)
+#
+#		return Mir_xx, Mir_yy
 	#================================
 	# GetXY_MeasuredMirror
 	#================================
@@ -2732,7 +2838,10 @@ class Mirror(OpticsNumerical):
 	# PROP: FigureErrorGetHeightAndPosition
 	#================================
 	def FigureError_GetProfile (self, Index = 0): 
+		'''
 		
+		return s, h
+		'''
 		if len(self.FigureErrors)-1 >= Index:
 			h = self.FigureErrors[Index]
 			ds = self.FigureErrorSteps[Index]
@@ -2747,6 +2856,51 @@ class Mirror(OpticsNumerical):
 			return [],[]
 #		return self._FigureErrorSteps # ????
 
+	#================================================
+	#	 FigureError_GetProfileAligned
+	#================================================
+	def FigureError_GetProfileAligned(self, Index = 0 , N = None):
+		'''
+		Returns the Figure Error almost ready to be added to the mirror coordinates,
+		and plotted.
+		
+		To be added, the projection must still be done.
+		
+		Returns
+		--------
+		s : array
+			Longitudinal coordinate
+		
+		h : height profile
+		'''
+		
+		s,h  = self.FigureError_GetProfile(Index)
+		ds =np.mean(np.diff(s))
+#		ds = s[1] - s[0]
+		
+		if N is None:
+			N = 2 * len(h)
+			
+		if 1==1 : #debug
+			h_new = rm.MatchHeightProfile(self.L, N, h, ds)
+			
+			# Catch possible exception
+			if len(h_new) < N:
+				raise WiserException('''Error while getting the figure error. 
+						 Check that parameters such as mirror size and the figure error step are correct.
+						 Common issue: wrong unit?''', Args = [('ds',ds)])
+				
+			ds_new = self.L / N
+			s_new = np.arange(0,N) * ds_new
+			
+			#I set the offset
+			h_new = h_new - (h_new[0] + h_new[-1]) * 0.5
+		else:
+			h_new = h
+			s_new = s
+		return  s_new, h_new
+	
+	
 	#================================
 	# PROP: FigureErrorLastUsed
 	#================================
@@ -2886,7 +3040,7 @@ class Mirror(OpticsNumerical):
 			Needs <PathFile, XScaleFactor, YScaleFactor>
 			
 			- ELETTRA_LTP_JAVA1: 
-			needs <PathFile, YScaleFactor>
+			needs <PathFile, YScaleFactor>. Both X and Y are in mm (XScaleFactor = YScaleFactor= 1e-3).
 			
 			-ELETTRA_LTP_DOS:
 			needs <PathFile>
@@ -2951,7 +3105,7 @@ class Mirror(OpticsNumerical):
 		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
 		self.FigureErrorLoad(h = Height,
 							   Step = Step,
-							   AmplitudeScaling = YScaling,
+							   AmplitudeScaling = 1,
 							   Append = False,
 							   AmplitudeSign = np.sign(YScaling))
 		return Height, Step

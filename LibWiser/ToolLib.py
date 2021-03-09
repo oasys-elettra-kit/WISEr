@@ -22,7 +22,6 @@ def EnsureIsArray(x):
 		return np.array([x])
 	else:
 		return np.array(x)
-
 #================================
 #  FUN: MakeArrayZeroOffset
 #================================
@@ -294,6 +293,14 @@ def CheckArg(NotNoneArgs, NoneArgs = []):
 #	else:
 #		return a and all([arg ==None for arg in NoneArgs])
 #		#return a and (NoneArgs == None)
+def GetCentre(N):
+    '''
+    %  Y = GetCentre(X)
+    % Restituisce il centro del vettore X. Il centro è inteso come
+    % il punto in cui compare la DC della trasformata di Fourier.
+    % Ovviamente, il tutto è in base-1, compatibile con matlab.
+    '''
+    return int(np.floor(N/2))
 
 def Oversample(x = np.array([]), N=1):
 	'''
@@ -304,7 +311,9 @@ def Oversample(x = np.array([]), N=1):
 	x = np.array([])
 	for i, xi in enumerate(x):
 		x = np.append()
+		
 
+		
 #def CombinedRange(ListOfTuples, UseLinspace = False):
 #	'''
 #	ListOfTuples is a list of tuples containing the parameters
@@ -2690,7 +2699,14 @@ class Metrology:
 			'''
 
 		#----Load Heights
-		x,h0 = FileIO.ReadXYFile(PathFile, Delimiter, SkipLines)
+		try:
+			x,h0 = FileIO.ReadXYFile(PathFile, Delimiter, SkipLines)
+		except:
+			# If the Delimiter is wrong, try with another "default one".v 
+			try:
+				x,h0 = FileIO.ReadXYFile(PathFile, '\t', SkipLines)
+			except:
+				raise ValueError("Error in ileIO.ReadXYFile: could not convert string to float. Check the format/delimiter. ")
 		x = x * XScaling
 		h0 = h0 * YScaling
 
@@ -2997,6 +3013,7 @@ class Metrology:
 		#Internal Reassignment
 		Item = OpticalElement
 		Tot = len(OpticalElement.CoreOptics.FigureErrors)
+		# Use the last used
 		if LastUsed == True:
 			y = Item.CoreOptics.LastFigureErrorUsed
 			Index = Item.CoreOptics.LastFigureErrorUsedIndex
@@ -3006,11 +3023,21 @@ class Metrology:
 			dx = Item.CoreOptics.FigureErrorSteps[Index]
 			x = np.linspace(0,len(y) * dx, len(y))
 			TitleStr = 'Figure Error[%d/%d], Last Used' % (Index + 1,Tot)
+		# Use another one specified by Index
 		else:
 			y = Item.CoreOptics.FigureErrors[Index]
 			dx = Item.CoreOptics.FigureErrorSteps[Index]
 			x = np.linspace(0,len(y) * dx, len(y))
 			TitleStr = 'Figure Error[%d/%d]' % (Index + 1,Tot)  + AppendToTitle
+			
+		N = 2 * len(y) # Since I have toresamplem I arbitrarily choose 2*current size
+		
+		L =  OpticalElement.CoreOptics.L
+		y = OpticalElement.CoreOptics.__MatchHeightProfile(MirrorLength = L, 
+													 MirrorSamples = N, 
+													 Profile = y, 
+													 ProfileStep = dx)
+		dx = L/N
 		'''
 		Notes: Index +1 => In order so that the maximum is e.h. 5/5 and min is 1/5
 		'''

@@ -27,3 +27,5 @@ Examples Layout Files/layout_elettra_mono_0.py
 .spyproject/vcs.ini
 .spyproject/encoding.ini
 .spyproject/codestyle.ini
+*.nbc
+*.nbi
