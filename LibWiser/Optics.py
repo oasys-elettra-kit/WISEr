@@ -1214,7 +1214,7 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 			\\theta = M^2\\frac{\\lambda}{\\pi w_0}
 
 		'''
-		return  self.M^2*self.Lambda/np.pi/self.Waist0
+		return  self.M**2*self.Lambda/np.pi/self.Waist0
 
 	#================================================
 	#	 WaistZ
