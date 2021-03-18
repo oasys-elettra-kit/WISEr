@@ -112,26 +112,31 @@ def GetSiUnitScale(x):
 
 
 def GetEngFactor(x):
-	UnitLetter = GetSiUnitScale(x)
-	return  Units.UnitString2UnitScale(UnitLetter)
+	ScaleLetter = GetSiUnitScale(x)
+	return  Units.UnitString2UnitScale(ScaleLetter)
 	
-def GetEngNumber(x, SignificantDigits = 1):
-	UnitLetter = GetSiUnitScale(x)
-	if UnitLetter == '':
-		return str(x)
+def GetEngNumber(x, SignificantDigits = 1, UnitLetter = ''):
+	ScaleLetter = GetSiUnitScale(x)
+	if ScaleLetter == '':
+		Return = str(x) + UnitLetter
 	else:
-		a = Units.UnitString2UnitScale(UnitLetter)
+		a = Units.UnitString2UnitScale(ScaleLetter)
 		aString = '%0.0e' % a
 		ExpString = str(aString)[1:]
 		y = x/a
 		FormatterStr = '%s%df%s' % ("%0.", SignificantDigits, '%s')
 #		FormatterStr = '%0f%s'
 		Str = FormatterStr %(y, ExpString)
-		return Str
-	
+		Return =  Str + UnitLetter
+		
+	return Return
+
+def GetEngNumberSI(x):
+	return str(EngNumber(x))
+
 GetEngLetter = GetSiUnitScale
 GetEngPrefix = GetSiUnitScale
-GetEngNumberSI = lambda x : str(EngNumber(x))
+#GetEngNumberSI = lambda x : str(EngNumber(x))
 
 
 
