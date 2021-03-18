@@ -24,10 +24,55 @@ def RaiseWarning(w):
 	except:
 		raise Exception("Error while raising a warning (yep, it is ironic, don't you think0?")
 	
+def PrintValues(Message = 'VariableValues', Args = []):
+	import inspect
+	'''
+	
+	Parameters
+	------
+	Mssage : Str
+	
+		message to display
+		
+	Args : List of Tuples
+	
+		List of two-element tuples in the form [(name1, value1), (name2, value2),...]
+		used to display more info.
+	'''
+	
+	
+	
+	ExtraMsg = []
+	
+	# I have only variable names: ['a', 'b', 'c']
+	if len(Args) > 0 :
+		if type(Args[0]) is not tuple:
+			Frame = inspect.currentframe()
+			CallerLocals = Frame.f_back.f_locals
+		
+		for _ in Args:
+			try:
+				Label = _
+				ValueStr =  str(CallerLocals[_])  
+				ExtraMsg.append('%s: %s' % (Label, ValueStr))
+			except:
+				ExtraMsg.append('%s: Not Found' % Label)
+	# I have variable names and their labels
+	else:
+		for _ in Args:
+			try:
+				ExtraMsg.append('%s: %s' % (_[0], str(_[1])))
+			except:
+				pass
+	message = '\n'.join(ExtraMsg)
+	
+	print(message)
+			
 
 class SmartException(Exception):
 	
 	def __init__(self, Message = 'A generic Errour Occurred', By =None, Args = []):
+		import inspect
 		'''
 		
 		Parameters
@@ -47,11 +92,27 @@ class SmartException(Exception):
 		
 		
 		ExtraMsg = []
-		for _ in Args:
-			try:
-				ExtraMsg.append('%s: %s' % (_[0], str(_[1])))
-			except:
-				pass
+		
+		# I have only variable names: ['a', 'b', 'c']
+		if len(Args) > 0 :
+			if type(Args[0]) is not tuple:
+				Frame = inspect.currentframe()
+				CallerLocals = Frame.f_back.f_locals
+			
+			for _ in Args:
+				try:
+					Label = _
+					ValueStr =  str(CallerLocals[_])  
+					ExtraMsg.append('%s: %s' % (Label, ValueStr))
+				except:
+					ExtraMsg.append('%s: Not Found' % Label)
+		# I have variable names and their labels
+		else:
+			for _ in Args:
+				try:
+					ExtraMsg.append('%s: %s' % (_[0], str(_[1])))
+				except:
+					pass
 		message = Message + '\n' + '\n'.join(ExtraMsg)
 		
 		

@@ -14,6 +14,7 @@ import numpy as np
 #import cmath as cm
 from numpy import sum, cos, sin, tan, pi, array, arange, polyval, dot, exp, real, sqrt
 from LibWiser.ToolLib import Debug, RMat
+from LibWiser.Errors import WiserException
 from numba import jit, prange
 
 from  scipy import ndimage
@@ -102,7 +103,78 @@ def FastResample1d(*args):
         raise  ValueError('Wrong argument number in calling FastResample1d')
         return None
 
+def AlignAndPadArrays(LongArraySize, 
+					  ShortArray = np.array([]), 
+					  Filling = 0,
+					  AlignTo = 'centre'):
+	'''
+	Given two arrays of different sizes, it pads the shorter one to match the size of the longer
+	one.
+	
+	The missing elements are filled with scalar value specified by _Filling_.
+	
+	Elements are added symmetrically with respect to the central element obtaine by means of GetCentre.
+	
+	PArameters
+	---------------------
+	LongArray : array size
+		Long array
+		
+	ShortArray : array
+		short array
+		
+	Filling : scalar
+		Value used to pad ShortArray
+		
+	AlignTo : {'centre','left','right'}
+		Specify where to put missing items.
+	'''
+	ShortArraySize = len(ShortArray)
+	try:
+		if LongArraySize < ShortArraySize:
+			raise Exception("AlignAndPadArrays: ShortArray is longer thatn LongArray. That should not occur")
+		elif LongArraySize == ShortArraySize:
+			return ShortArray
+	except:
+		raise WiserException(''' AlignAndPadArrays: one of the two arrays has zero length. 
+					   This is a problem in the workflow (typically with FigureError 
+					   or Mirror Surface)''', Args = [('LongArraySize', LongArraySize),
+										     ( 'ShortArraySize', ShortArraySize)])
 
+	NDiff = LongArraySize - ShortArraySize
+	NSx = GetCentre(NDiff)
+	NDx = NDiff - NSx 
+	
+	if AlignTo == 'centre':
+		return np.pad(ShortArray, (NSx, NDx), 'edge')
+	elif AlignTo == 'left':
+		return np.pad(ShortArray, (0, NDiff), 'edge')
+	elif AlignTo == 'right':
+		return np.pad(ShortArray, (NDiff, 0), 'edge')
+	else:
+		raise Exception("AlignAndPadArrays: the values of *AlignTo* is wrong.")
+
+
+def MatchHeightProfile(MirrorLength, MirrorSamples, Profile, ProfileStep):
+	'''
+	Given a height profile of total length L1 and a mirror of size L0 >= L1,
+	the function:
+		- align the Profile with respectto the mirror centre
+		- oversample the Profile with the same sampling density of the Mirror
+		- pad the right and left sides with zeros
+		
+	The returned profile has sampling equalt to MirrorSamples and physical size equal to MirrorLength.
+	'''
+	MirrorStep = MirrorLength / MirrorSamples
+	
+	ProfileSamples = len(Profile)
+	ProfileLength = ProfileSamples * ProfileStep
+	ProfileSamplesNew = ProfileLength / MirrorStep
+	
+	ProfileNew  = FastResample1d(Profile - np.mean(Profile  ), ProfileSamplesNew)
+	
+	ProfileNewPadded = AlignAndPadArrays(MirrorSamples, ProfileNew)
+	return ProfileNewPadded
 
 def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None,
                         AlgorithmType = 0):

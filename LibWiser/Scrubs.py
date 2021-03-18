@@ -7,7 +7,7 @@ Still to define if it will be kept
 @author: Mike - Manfredda
 """
 from enum import Enum as StandardEnum
-
+from pathlib import Path as MakePath
 #==============================================================================
 #  Class Enum
 #==============================================================================
@@ -119,6 +119,9 @@ def GetTheNotNone(ArgList):
 #  FUN: IsArrayLike
 #==============================================================================
 def IsArrayLike(x):
+	'''
+	Check if it is a list or a ndparray
+	'''
 	import numpy as np
 	if type(x) == list:
 		return True
@@ -132,7 +135,7 @@ def IsArrayLike(x):
 #==============================================================================
 def IsValidArray(x, Complex = False):
 	'''
-	Check that all the values of x are float, with no nan, no string, no inf
+	Check that all the values of x are float, with no nan, no string, no inf, no none
 	
 	'''
 	import numpy as np
@@ -141,6 +144,20 @@ def IsValidArray(x, Complex = False):
 	else:
 		return np.any(np.isreal((x)))
 
+#==============================================================================
+#  FUN: IsValidArrayLike
+#==============================================================================
+def IsValidNumericArray(x, Complex = False):
+	'''
+	Check that all the values of x are float, with no nan, no string, no inf, no none
+	
+	'''
+	import numpy as np
+	#not optimized loop.... I cand do better than that
+	for _ in x:
+		if _ in [None, np.inf, np.nan]:
+			return False
+	return True
 
 #==============================================================================
 #  FUN: IsValidPythonName
@@ -490,6 +507,13 @@ def ListAttrRecursive(x, TypeList = None, Preset = None,
 
 	return AttrStr0, AttrObj0
 	#force to list
+
+#==============================================================================
+#  FUN: ListClassProps
+#==============================================================================
+def PathGetParent(Path):
+	from pathlib import Path as MakePath
+	return MakePath(Path).parent
 
 
 
