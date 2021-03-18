@@ -3305,8 +3305,10 @@ def FocusSweep(oeFocussing,
 			  Distance = 0,
 			   AngleInNominal=np.deg2rad(90)):
 	''' 
+	EXTENSIVE FOCUS SCAN
 	Created for computing the field on a detector placed nearby the focal plane of
-	oeFocussing.
+	oeFocussing. It performs an EXTENSIVE scan by computing the field at
+	the distances specified in DefocusList
 	
 	The function assumes that a field is olready computed on oeFocussing.
 	If 
@@ -3477,6 +3479,7 @@ def FocusFind(oeFocussing,
 			  Distance = 0,
 			  AngleInNominal=np.deg2rad(90)):
 	'''
+	OPTIMIZED FOCAL SCAN
 	Find the best focus. Similar to FocusSweep, except that it does not provide the
 	full sampling of the DefocusRange, but it uses an optimization algorithms to find
 	the best focus as fast as possible.
@@ -3523,6 +3526,8 @@ def FocusFind(oeFocussing,
 				Defocus of the best spot
 	- BestHew : scalar (real)
 				Half energy width of the best spot
+	- S : 1d array(real) :
+		Transversal coordinate at the best focus (detector)
 
 	- OptResult : OptimizationResult object
 				Contains the results of the optimization
@@ -3641,6 +3646,8 @@ def FocusFind(oeFocussing,
 	Results.BestDefocus = OptResult.x
 	Results.BestHew = OptResult.fun
 	Results.OptResult = OptResult
+	Results.S = d.ComputationData.S
+#	Results.BestCompudationDate = d.ComputationData
 
 	return Results
 
