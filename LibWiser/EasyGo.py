@@ -13,8 +13,11 @@ from LibWiser.Foundation import OpticalElement
 import LibWiser.Enums as Enums
 from LibWiser.Exceptions import WiserException
 
+from LibWiser.ToolLib import CommonPlots
+SmartPlot = CommonPlots.SmartPlot
 
 from time import time
+from LibWiser.Scrubs import UpdateDictionary
 
 HORIZONTAL = Enums.OPTICS_ORIENTATION.HORIZONTAL
 VERTICAL = Enums.OPTICS_ORIENTATION.VERTICAL

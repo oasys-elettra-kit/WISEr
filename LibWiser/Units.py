@@ -70,10 +70,14 @@ def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
 	except:
 		UsePrefix = True
 		
-	if type(x) is float or type(x) is int:
+	tp = type(x)
+	if (tp is float) or (tp is int) or (tp is np.float64):
 		
 		if UsePrefix:
-			return GetEngNumberSI(x) + VariableInfo['unit']
+			try:
+				return GetEngNumberSI(x) + VariableInfo['unit']
+			except:
+				raise WiserException('GetEngNumber failed, with number')
 		else:
 			return GetEngNumber(x, VariableInfo['digits'])
 	else:
@@ -93,7 +97,7 @@ def GetSiUnitScale(x):
 		x=1e-5 => u
 		x=1e-4 => u
 
-   if x is an array, it uses the mean value
+   if x is an array, it uses the mean value.
 	'''
 
 	if type(x) is np.ndarray:
@@ -150,13 +154,16 @@ def GetSIInfoD(x):
 		raise Warning("[GetSIInfoD] input variable x is None. Array or float expected.")
 		return None
 	if 	Scrubs.IsArrayLike(x):
-		x = np.std(x)
-	a = GetEngFactor(x) # => 1e-9
+		try:
+			XMean = np.mean(x)
+		except:
+			raise 
+	a = GetEngFactor(XMean) # => 1e-9
 	aa = 1/a # => 1e9
-	b = x * aa #=> 100
-	c = GetEngLetter(x) #=> n
-	d = GetEngNumber(x) #=> 100e-9
-	e = GetEngNumberSI(x) #=> 100n
+	b = XMean * aa #=> 100
+	c = GetEngLetter(XMean) #=> n
+	d = GetEngNumber(XMean) #=> 100e-9
+	e = GetEngNumberSI(XMean) #=> 100n
 
 	
 	Ans = {'EngExp' : a,

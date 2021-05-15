@@ -6,6 +6,7 @@ Still to define if it will be kept
 
 @author: Mike - Manfredda
 """
+from LibWiser.Errors import WiserException
 from enum import Enum as StandardEnum
 from pathlib import Path as MakePath
 #==============================================================================
@@ -21,6 +22,17 @@ class Enum(StandardEnum):
 		'''
 		Useless here: it should be applied to any member
 		'''
+		
+		if type(other) is str:
+			try:
+				return str(self.value) == other
+			except:
+				WiserException('''I have failed the comparison between two enums. Maybe in writin 
+				   A == B, one of the two is not an enum, but a number or a string.
+			   ''')
+				return None
+			
+		
 		if self.value == other.value:
 			return True
 		else:
@@ -177,7 +189,41 @@ def IsValidPythonName(x):
 		return True
 	except:
 		return False
+#==============================================================================
+#  FUN: UpdateDictionary
+#==============================================================================	
+def UpdateDictionary(Old, 
+					 New, 
+					 SkipIfMagic = False, 
+					 Magic = None ):
+	'''
+	Updates the dictionary.
+	The direction is: New ---> Old
+	
+	Keys in New that also exist in Old are REPLACED
+	Keys in New that do not exist in Old are CREATED
+	
+	If _SkipIfMagic_ is True, than the values of New that are equal to _Magic_ are
+	retrieved from Old, that is the order is inverted: Old--->New
+	
+	Used in WiserLegacy, mostly. But it is wise to have it here :-)
+	'''
+	VeryNew = Old.copy()
+	VeryNew.update(New)
 
+	# Nones are replaced with the values of SettingsDefault (if existing)
+	if SkipIfMagic:
+		for Item in VeryNew.items():
+			Key = Item[0]
+			Value = Item[1]
+			if Value is None:
+				try:
+					VeryNew[Key] = Old[Key]
+				except:
+					pass	
+				
+	return VeryNew
+	
 #==============================================================================
 #  Class: FrozenClass
 #==============================================================================
@@ -196,14 +242,24 @@ class FrozenClass(object):
 #==============================================================================
 class DataContainer():
 	'''
-
-	DataContainer class is a struct-like object conceived for easy-to-use data
-	storage. It is designed with user-friendliness in mind rather than performance.
-	So it is more suitable for gathering many light-wight data rather than heavy-weight
-	ones.
+	DataContainer class is a dictionary-like class, similar to the "Named tuples"
+	(but, in the author's view, more practical)
+	
+	 When DataContainer should be preferred to a dictionary?:
+		 - if you prefer writing Body.Leg instead of Body['Leg'] 
+		 - if you want to take advantage of auto-completion
+		 - if you expect to have many similar data structures with the same fields, 
+			 rather than a unique data structure with a widely variable set of fields
+		 - if you are building a data-structure that will be saved in hdf format. 
+			 DataContainers automatically maps Dataset1.Dataset2.Value into 'Dataset1/Dataset2/Value'
+			 
+	 What are the CONS of data-container?
+		 - It is a non-standard class, with quite sophisticated code. You may not want to add it to yout liteweight script/library.
+		  
+		  (It shall be noticed, however, that DataContainer has a quite obvious usage).
 
 	Still to define
-	--------
+	----
 
 	The ListAttr function list only certain preferred data types.
 	One should define this preferred data types in this class....
@@ -216,7 +272,7 @@ class DataContainer():
 	The function will have remarking ramifications in the development of WISErLab plotting
 	and data storage tools.
 
-	Example 1
+	Example 1 (Author's favourite)
 	-----
 	>>> D = DataContainer()
 	D.Name = 'lambda'
@@ -224,9 +280,11 @@ class DataContainer():
 	D.Unit = 'm'
 	print(D)
 
-	Example 2
+	Example 2 (Similar do dict(...) )
 	-----
-	>>> D = DataContainer(Name = 'lambda', Value = 5e-9)
+	
+	>>> D = DataContainer(Name = 'lambda', 
+	Value = 5e-9)
 	print(D)
 
 	Example 3 (Nesting)
@@ -236,6 +294,16 @@ class DataContainer():
 	D.y = DataContainer()
 	D.y.yy = 10
 
+	Example 4 (Converting to a Dictionary)
+	----
+	>>> D = DataContainer()
+	D.x = 1
+	D.y = DataContainer()
+	D.y.yy = 10
+	D.y.yz = 11
+	MyDict = D._GetDict()
+	#{'x': 1, 'y/yy': 10, 'y/yz': 11}
+	
 	>>> Items = D._GetItems()
 	print('\n'.join([str(_[0]) +':\t' + str(_[1]) for _ in Items]))
 
@@ -314,6 +382,10 @@ class DataContainer():
 	def _GetSubItems(self, TypeList = [None], Preset = None):
 		'''
 		Returns a list of tuples
+		
+		Example
+		[('item1', value1),
+		 ('item2', value2)]
 
 
 		Philosophy:
@@ -342,7 +414,26 @@ class DataContainer():
 			TupleList.append((a,o))
 		return TupleList
 
+	def _GetDict(self):
+		'''
+		Return the representation of DataContainer as Dictionary.
+		
+		NOTICE: DataContainer actually has the same functionalities of a dictionary.
+		In most of cases a dictionary can be used instead of DataContainer.
+		
+		
+		
+		'''
+		Attr, Obj = ListAttrRecursive(self, RecursionTypeList = [DataContainer])
+
+		Dict= {}
+		for i, a in enumerate(Attr):
+			o = Obj[i]
+			Dict.update({a:o})
+		
+		return Dict
 	pass
+
 a = DataContainer(x=1)
 
 

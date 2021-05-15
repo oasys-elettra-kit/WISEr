@@ -85,6 +85,7 @@ class SmartException(Exception):
 		
 			List of two-element tuples in the form [(name1, value1), (name2, value2),...]
 			used to display more info.
+			
 		'''
 		
 		self._Message = Message
