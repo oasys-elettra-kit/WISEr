@@ -20,7 +20,7 @@ from LibWiser.Scrubs import Enum
 import time
 import warnings
 
-from LibWiser.Optics import TypeOfAngle
+from LibWiser.Optics import TypeOfAngle, OPTICS_ORIENTATION
 from LibWiser.CodeGeneratorVisitor import CodeGenerator
 import LibWiser.CodeGeneratorVisitor as CGVisitor
 from LibWiser.Exceptions import WiserException, PrintValues
@@ -288,7 +288,7 @@ class TreeItem(object):
 		return self.Name
 
 	def __disp__(self):
-		__HardcodedStyle = \
+		__HardcodedStyle = 1
 		NameChildren= ','.join([Child.Name for Child in self.Children])
 		NameParent = ('' if self.Parent == None else self.Parent.Name)
 		
@@ -884,6 +884,10 @@ class OpticalElement(TreeItem, CodeGenerator):
 	#==========================================
 	@staticmethod
 	def GetNSamples_2Body(Lambda: float, oe0 , oe1) -> int:
+		'''
+		THIS IS THE FUNCTION REALLY USED TO COMPUTE THE SAMPLING.
+		It uses: Rayman.ComputeSamplingA
+		''' 
 		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
 		L0 = oe0.CoreOptics.L
 		L1 = oe1.CoreOptics.L
@@ -1376,7 +1380,12 @@ class OpticalElement(TreeItem, CodeGenerator):
 			TitleDecorator = '(Raw)'
 			
 		y = y/NN 
+		# it does not really work
 		xToPlot, xPrefix = LibWiser.Units.GetAxisSI(x)
+		
+		
+#		xToPlot = x*1e-6
+#		xPrefix =
 		
 		plt.figure(FigureIndex)
 		Label = Label if not( Label is None) else ('%s, $\lambda: %0.1f nm$' % ( self.Name, self.ComputationData.Lambda*1e9)  )
@@ -1495,7 +1504,59 @@ class BeamlineElements(Tree):
 		self.ComputationSettings = BeamlineElements._ClassComputationSettings(ParentContainer = self)
 
 
+
+    #================================================
+    #   FUN: __str__ [BeamlineElements]
+    #================================================
+	def __str__(self):
+		
+		"""
+		Uses TreeItem.__disp__
+		
+		"""
+		
+		
+		StrList = ['']
+		Itm0 = self.FirstItem
+		StrList.append(Itm0.__disp__())
+		while True:
+			if len(Itm0.Children) == 0:
+				break
+			else:
+				Itm1 = Itm0.Children[0]
+				StrList.append(Itm1.__disp__())
+				Itm0 = Itm1
+		return 'Name:' + self.Name + 'n'+ 10*'=' + '\n'+ '\n'.join(StrList)
 	
+	#================================================
+    #   FUN: __str__ [BeamlineElements]
+    #================================================
+	def Print(self, Orientation = OPTICS_ORIENTATION.ANY, 
+		   ApplyIgnore = True ):
+		'''
+		The same as print(BeamlineElements), but can choos the orientation to print
+		and some other flags
+		
+		ApplyIgnore : {bool|None}
+			If False => show alla the elements
+			If True => show the elements with (Ignore = False) [so, it "ignores the element to be ignored"]
+		'''
+		
+		
+		IgnoreValueToMatch = {False : None, True : False}[ApplyIgnore] # baroque line just to map False into None, etc...
+		
+		ItemList = self.GetElementList(Orientation = Orientation,
+								 Ignore = IgnoreValueToMatch)
+		
+		StrList = ['']
+		for Item in ItemList:
+			StrList.append(Item.__disp__())
+			
+		print( 'Name:' + self.Name)
+		print( '\n'.join(StrList))
+				
+		
+		
 	#================================================
 	#  PROP: Source
 	#================================================
@@ -1832,7 +1893,6 @@ class BeamlineElements(Tree):
 
 		# If not specified, I choose the orientation of the first oriented element
 		# Then I return the sampling list for all the elements with that orientation (or ANY orientation)
-		# It is bettere to provide
 		
 		if Orientation is None:
 			OrientationToCompute = self._GetFirstOrientedElement().CoreOptics.Orientation
@@ -2577,6 +2637,8 @@ class BeamlineElements(Tree):
 		OEEnd
 		"""
 
+		if self.ItemList == []:
+			raise WiserException("Attention! The Beamline is empty :-). Perhaps you commented something while composing it...")
 		oeStart = self.FirstItem if oeStart == None else oeStart
 		oeEnd = self.LastItem if oeEnd == None else oeEnd
 		
@@ -2872,7 +2934,7 @@ class BeamlineElements(Tree):
 
 
 	# ================================================
-	#	PROP: PlotIntensity [OpticalElement]
+	#	PROP: PlotIntensity [BeamlineElements]
 	# ================================================
 	def PlotIntensity(self,StartFigureIndex = None, Label = None, Normalization = 'int'):
 		'''
@@ -2889,8 +2951,8 @@ class BeamlineElements(Tree):
 				
 				# Choose the figure index
 				if StartFigureIndex is not None:
-					k+=1
-					FigureIndex = StartFigureIndex + k
+#					k+=1
+					FigureIndex = StartFigureIndex +i
 				else:
 					FigureIndex  = None
 					
@@ -2900,7 +2962,9 @@ class BeamlineElements(Tree):
 #								  Label = Label, 
 #								      Normalization = Normalization)
 		
-				ToolLib.CommonPlots.IntensityAtOpticalElement(Item)
+				ToolLib.CommonPlots.IntensityAtOpticalElement(Item, 
+												  FigureIndex = FigureIndex,
+												  Label = Label)
 	#================================================
 	#  FUN: GenerateCode
 	#================================================
@@ -3217,7 +3281,7 @@ def GetNSamplesTwoBody(Lambda: float,
 		Calculate sampling between two subsequent optical elements, according to Raimondi, Spiga, A&A (2014), eq. 12
 		
 		'''
-	
+	raise Exception("using this")
 	if oeCurrent.ComputationSettings.UseCustomSampling == True:
 		return oeCurrent.ComputationSettings.NSamples
 	
@@ -3275,7 +3339,7 @@ def GetNSamples_OpticalElement(Lambda: float, oe0 : OpticalElement, oe1 : Optica
 		
 		'''
 	
-	
+	raise Exception("using this 2")
 	try:
 		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)  # distance between the elements
 		L0 = oe0.CoreOptics.L  # Size of element 1
@@ -3455,9 +3519,9 @@ def FocusSweep(oeFocussing,
 		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
 
 		ResultList[i] = copy.deepcopy(d.ComputationResults)
-		I = abs(d.ComputationResults.Field) ** 2
+#		I = abs(d.ComputationResults.Field) ** 2
 		A2 = abs(d.ComputationResults.Field) ** 2
-		I = A2 / max(A2)
+		I = A2 / max(A2) # Normalized intensity
 		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCentreOfMass = False) # FocusSweep
 		try:
 			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationResults.S)

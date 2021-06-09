@@ -2665,6 +2665,7 @@ class CommonPlots:
 							   FigureIndex = None,
 							   Type = 'f',
 							   AppendToTitle = '',
+							   Label = None,
 							   **kwargs ):
 		'''
 		Helper function. Plots the Radiation (either Intensity or the absolute value
@@ -2683,6 +2684,10 @@ class CommonPlots:
 			- 'f' : plots the Field (absolute value)
 			- 'i' : plots the Intensity
 
+		Label : {str|None}:
+			it is the label associated to the plot. If None it is automatically built in the form
+			_element_name = 20nm_
+			
 		kwargs are redirected to the plot command. So you can use the label
 		parameter to assign plot names
 
@@ -2754,6 +2759,7 @@ class CommonPlots:
 							   Normalize = True ,
 							   FigureIndex = None,
 							   AppendToTitle ='',
+							   Label = None,
 							   **kwargs ):
 		'''
 		Specialised version of RadiationAtOpticalElement
@@ -2764,6 +2770,7 @@ class CommonPlots:
 							   FigureIndex = FigureIndex,
 							   Type = 'i',
 							   AppendToTitle = AppendToTitle,
+							   Label = Label,
 							   **kwargs )
 	#=============================================================#
 	# FUN FieldAtOpticalElement

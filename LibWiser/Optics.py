@@ -130,6 +130,15 @@ class OPTICS_ORIENTATION(Enum):
 	HORIZONTAL = 2**2
 	ANY = 2**3
 
+#
+##=============================
+##     ENUM: OPTICS_ORIENTATION
+##=============================
+#class OPTICS_ORIENTATION(Enum):
+#	ISOTROPIC = 'iso'
+#	VERTICAL = 'v'
+#	HORIZONTAL = 'h'
+#	ANY = 'any'
 
 #==============================================================================
 #	 CLASS: OpticsPropDisplayer
@@ -5141,7 +5150,7 @@ class GratingMono(MirrorPlane):
 	def RayOutNominal(self):
 		# Incidence => measured wrt normal
 		# Grazing => measured wrt surface
-		# Incidence = pi/" - Grazing
+		# Incidence = pi/2 - Grazing
 		# theta_m = arcsin(theta_i - m*lambda/d)
 		
 		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal

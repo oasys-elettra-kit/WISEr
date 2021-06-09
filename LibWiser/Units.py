@@ -155,7 +155,9 @@ def GetSIInfoD(x):
 		return None
 	if 	Scrubs.IsArrayLike(x):
 		try:
-			XMean = np.mean(x)
+			# I used to pick up the mean, but ultimately I understood
+			# that probably this 
+			XMean = abs(np.max(x))
 		except:
 			raise 
 	a = GetEngFactor(XMean) # => 1e-9
