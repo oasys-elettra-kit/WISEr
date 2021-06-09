@@ -5,17 +5,23 @@ Created on Thu Jan 12 11:58:09 2017
 @author: Mic
 """
 from __future__ import division
+from LibWiser.Errors import WiserException
+
 import scipy
 import LibWiser.must  as must
 from LibWiser.must import *
 from collections import namedtuple
-from LibWiser.Units import Units
+import LibWiser.Units as Units
 import inspect
 import logging
 import os
 from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
+
+
+
+Logger = logging.getLogger()
 
 def EnsureIsArray(x):
 	if np.isscalar(x):
@@ -1864,7 +1870,8 @@ class Ray(Vector):
 	# FUN: __init__
 	#======================
 	def __init__(self, x0 = None,y0 = None ,x1 = None ,y1 = None,
-					XYOrigin = None, Angle = None, FocalLength = float('inf'), Length = 1,
+					XYOrigin = None, Angle = None, FocalLength = float('inf'), 
+					Length = 1,
 					vx = None, vy = None	):
 		'''
 		Parameters Set
@@ -2472,14 +2479,26 @@ class FileIO:
 		PathCreate(FileName, True)
 
 		import h5py # For hdf5 files
-
-		DataFile = h5py.File(FileName, mode = Mode)
-
+		try:
+			DataFile = h5py.File(FileName, mode = Mode)
+		except OSError:
+			raise WiserException('The h5 file is already open.', 
+						By = "SaveToH5",
+						Args = [('FileName', FileName)])
+			
+			
+			
 		# loop on each tuple in the form: (Path, Value)
 		# Path is actually referred to as 'group'
 		for i, Tuple in enumerate(PathValueTuples):
 			GroupName = Tuple[0]
 			Value = Tuple[1]
+			try :
+				GroupAttributes = Tuple[2]
+			except:
+				GroupAttributes = None
+				
+				
 
 			# Performs DataContainer expansion
 			if type(Value) == DataContainer and ExpandDataContainers:
@@ -2502,8 +2521,16 @@ class FileIO:
 				except:
 					pass
 
-				DataFile.create_dataset(GroupName, data=Value)
-
+				try:
+					Group = DataFile.create_dataset(GroupName, data=Value)
+					if GroupAttributes is not None:
+						try:
+							Group.attrs.update( GroupAttributes)
+						except:
+							raise WiserException("Cant set attributes", Args = [('GroupAttributes', GroupAttributes)] )
+				except TypeError:
+					raise WiserException('''Wrong data type while savinf hdf file''',
+						  Args = [('Value', Value)])
 		if Attributes is not None:
 			Items = list(Attributes.items())
 			for Attr in Items:
@@ -2517,6 +2544,104 @@ class FileIO:
 
 class CommonPlots:
 
+
+	def SmartPlot(
+				   x, 
+				   y=None,
+				   XInfo = {'Units' : '', 'Label' : ''},
+				   YInfo = {'Units' : '', 'Label' : ''},
+				   FigureIndex =None,
+				   Title = None,
+				   *args,
+				   **kwargs
+				   ):
+		'''
+		A wrapper of the plot command which take cares of
+		nicely formatting the number on the axes.
+		
+		Parameters
+		-----------------------
+		see definitions and example
+		
+		Example
+		-----
+		>>> # example that formats X axis only
+		from LibWiser.ToolLib import CommonPlots
+		SmartPlots = CommonPlots.SmartPlot
+		import numpy as np
+		x = np.linspace(100e-6, 200e-6,1000)
+		SmartPlot(x,x**2, XInfo ={'Units' : 'm', 
+		'Label' : 'Protozoa trip'},label = 'test')
+
+		
+		''' 
+		FormatX = True
+		FormatY = False#hardwired, they should be put into options
+		
+		'''
+		Update Info structure
+		This code enables the user to specify, in XInfo and YInfo, only the fields
+		that s\he wants to change. The other ones are defaulted.
+		'''
+		XInfoDefault = {'Units' : '', 'Label' : ''}
+		YInfoDefault = {'Units' : '', 'Label' : ''}
+		XInfoDefault.update(XInfo)
+		YInfoDefault.update(YInfo)
+		XInfo = XInfoDefault
+		YInfo = YInfoDefault
+		'''
+		Prepare X formatting
+		'''
+		if FormatX:
+			print(dir(Units))
+			xToPlot, xPrefix = Units.GetAxisSI(x)
+		else:
+			xToPlot = x
+			xPrefix = ''
+
+		if FormatY:
+			yToPlot, yPrefix = Units.GetAxisSI(y)
+		else: 
+			yToPlot = y
+			yPrefix = ''
+		
+		
+		'''
+		Prepare Y formatting:
+			to do
+		'''
+		
+		
+		if FigureIndex is not None:
+			plt.figure(FigureIndex)
+		else:
+			plt.figure()
+			
+			
+			
+	#	Label = Label if not( Label is None) else ('%s, $\lambda: %0.1f nm$' % ( self.Name, self.ComputationData.Lambda*1e9)  )
+		
+		
+	
+		PlotReturn = plt.plot(xToPlot, yToPlot, *args, **kwargs)
+		
+		# Layout
+		#--------------------------------------------------------------
+		
+		
+		plt.xlabel('%s [%s%s]' % (XInfo['Label'], xPrefix, XInfo['Units']))
+		plt.ylabel('%s [%s%s]' % (YInfo['Label'], yPrefix, YInfo['Units']))
+	#	plt.ylabel('%s ' % (XInfo['Label']))
+		
+		plt.legend()
+		plt.grid(True, which = 'major')
+		plt.minorticks_on()
+		if Title is not None:
+			plt.title(Title)
+		plt.show()
+		return PlotReturn
+		
+		
 	#=============================================================#
 	# FUN FigureError
 	#=============================================================#
@@ -2540,6 +2665,7 @@ class CommonPlots:
 							   FigureIndex = None,
 							   Type = 'f',
 							   AppendToTitle = '',
+							   Label = None,
 							   **kwargs ):
 		'''
 		Helper function. Plots the Radiation (either Intensity or the absolute value
@@ -2558,58 +2684,72 @@ class CommonPlots:
 			- 'f' : plots the Field (absolute value)
 			- 'i' : plots the Intensity
 
+		Label : {str|None}:
+			it is the label associated to the plot. If None it is automatically built in the form
+			_element_name = 20nm_
+			
 		kwargs are redirected to the plot command. So you can use the label
 		parameter to assign plot names
 
 		'''
-		try:
-			x = OptElement.Results.S
+		# get x axis
+		x = OptElement.Results.S
+		if x is None:
+			print('Data not found in OpticalElement.Results.S. OpticalElement Name = %s' % OptElement.Name)
+			return None
+			raise WiserException('Data not found in OpticalElement.Results.S. OpticalElement Name = %s' % OptElement.Name)
+		plt.figure(FigureIndex, **kwargs)
 
-			plt.figure(FigureIndex, **kwargs)
-
-			if XUnitPrefix is None:
-				XUnitPrefix = Units.GetSiUnitScale(x)
-			XUnitScale = Units.SiPrefixes[XUnitPrefix]
-
-
-			x = OptElement.Results.S / XUnitScale
-			A  = abs(OptElement.ComputationData.Field)
-			I = A**2
-
-			# Switch y (Observable to plot)
-			#------------------------------------------------------------
-			if Type.lower() == 'i':
-				y = I
-				Title = 'Intensity @'
-				YLabel = 'I'
-			else:
-				y = A
-				Title = 'Field @'
-				YLabel = '|E|'
-
-			# Normalization
-			#------------------------------------------------------------
-			if bool(Normalize == True) or str(Normalize).lower() == 'max':
-				y = y/max(y)
-			elif (str(Normalize).lower() == 'total') or str(Normalize).lower() == 'sum':
-				y = y/ np.sum(y)
-
-			else:
-				y = y
+		# Unit Conversion
+		if XUnitPrefix is None:
+			XUnitPrefix = Units.Units.GetSiUnitScale(x)
+		XUnitScale = Units.Units.SiPrefixes[XUnitPrefix]
 
 
-			# --- plot x,y
-			plt.plot(x,y)
-			# --- layout
-			plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
-			plt.xlabel(XUnitPrefix+'m')
-			plt.ylabel(YLabel)
-			plt.grid('on')
+		x = OptElement.Results.S / XUnitScale
+		A  = abs(OptElement.ComputationData.Field)
+		I = A**2
 
-			if LegendOn:
-				plt.legend()
-		except:
-			pass
+
+		# Switch y (Observable to plot)
+		#------------------------------------------------------------
+		if Type.lower() == 'i':
+			y = I
+			Title = 'Intensity @'
+			YLabel = 'I'
+		else:
+			y = A
+			Title = 'Field @'
+			YLabel = '|E|'
+		
+		# Format Label for the legend
+		#------------------------------------------------------------
+		LabelStr = "$\\lambda$=%0.1f nm" % (OptElement.Results.Lambda * 1e9)
+		
+		# Normalization
+		#------------------------------------------------------------
+		if bool(Normalize == True) or str(Normalize).lower() == 'max':
+			y = y/max(y)
+		elif (str(Normalize).lower() == 'total') or str(Normalize).lower() == 'sum':
+			y = y/ np.sum(y)
+
+		else:
+			y = y
+
+
+		# --- plot x,y
+		plt.plot(x,y, label = LabelStr)
+		plt.legend()
+#			plt.legend()
+		
+		# --- layout
+		plt.title(Title + OptElement.Name + ' ' + AppendToTitle)
+		plt.xlabel(XUnitPrefix+'m')
+		plt.ylabel(YLabel)
+		plt.grid('on')
+
+
+
 
 	#=============================================================#
 	# FUN IntensityAtOpticalElement
@@ -2619,6 +2759,7 @@ class CommonPlots:
 							   Normalize = True ,
 							   FigureIndex = None,
 							   AppendToTitle ='',
+							   Label = None,
 							   **kwargs ):
 		'''
 		Specialised version of RadiationAtOpticalElement
@@ -2629,6 +2770,7 @@ class CommonPlots:
 							   FigureIndex = FigureIndex,
 							   Type = 'i',
 							   AppendToTitle = AppendToTitle,
+							   Label = Label,
 							   **kwargs )
 	#=============================================================#
 	# FUN FieldAtOpticalElement
@@ -2950,6 +3092,7 @@ class Metrology:
 			FileName XUnit YUnit XScale YScale XStep
 			example: XStep = FileInfo.XStep
 		'''
+		
 		FileInfo = namedtuple('FileInfo', 'FileName XUnit YUnit XScale YScale XStep Type')
 		with open(Path, 'r') as f:
 		    Lines = f.readlines()
@@ -2973,8 +3116,8 @@ class Metrology:
 		FileInfo.YUnit = (Lines[I_Y_UNIT].strip()).split(':')[1]
 
 		#Get X,Y Scale
-		FileInfo.XScale = Units.UnitString2UnitScale(FileInfo.XUnit)
-		FileInfo.YScale = Units.UnitString2UnitScale(FileInfo.YUnit) if not ForceYScalingToUnity else 1
+		FileInfo.XScale = Units.Units.UnitString2UnitScale(FileInfo.XUnit)
+		FileInfo.YScale = Units.Units.UnitString2UnitScale(FileInfo.YUnit) if not ForceYScalingToUnity else 1
 
 		# Get XStep
 		FileInfo.XStep = float((Lines[I_STEP_SIZE].strip()).split(':')[1]) * FileInfo.XScale
@@ -2996,13 +3139,17 @@ class Metrology:
 	#=============================================================#
 	# FUN PlotFigureError
 	#=============================================================#
-	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = False,FigureIndex = None,
+	def PlotFigureError(OpticalElement, Index = 0,  LastUsed = True,FigureIndex = None,
 					 AppendToTitle = '', fmt = '-', **kwargs ):
 		'''
 		Type: Helper/Developer function
 		-----
 
 		Plots the Figure Error of OpticalElement.CoreOptics.
+		WARNING: It can plot the figure error EVEN IF it is not used in the computation.
+			_LastUsed == True_ => plots the one used in the computation
+			_LastUsed == True_ => plots the one assigned to the optical element (even if not used)
+			
 		This function should not really stay here, but it could be a good idea to
 		be placed in the future CoreOptics.Metrology subclass
 

@@ -130,6 +130,15 @@ class OPTICS_ORIENTATION(Enum):
 	HORIZONTAL = 2**2
 	ANY = 2**3
 
+#
+##=============================
+##     ENUM: OPTICS_ORIENTATION
+##=============================
+#class OPTICS_ORIENTATION(Enum):
+#	ISOTROPIC = 'iso'
+#	VERTICAL = 'v'
+#	HORIZONTAL = 'h'
+#	ANY = 'any'
 
 #==============================================================================
 #	 CLASS: OpticsPropDisplayer
@@ -2294,6 +2303,7 @@ class Mirror(OpticsNumerical):
 		# METROLOGY (figure error)
 		self._FigureErrors = []
 		self._FigureErrorSteps = []
+		self._LastFigureErrorUsed = np.array([])
 		self.LastFigureErrorUsed = np.array([])
 		self.LastFigureErrorUsedIndex = None # the last figure error used
 
@@ -3477,6 +3487,7 @@ class MirrorPlane(Mirror, CodeGenerator):
 		V = tl.UnitVector(Angle = self.AngleInputLabNominal)
 		v_ref = tl.UnitVectorReflect(V.v, self.VersorNorm.v)
 		return tl.Ray(vx = v_ref[0], vy = v_ref[1], XYOrigin = self.XYCentre)
+	
 	#================================
 	# FUN: Paint
 	#================================
@@ -5139,7 +5150,7 @@ class GratingMono(MirrorPlane):
 	def RayOutNominal(self):
 		# Incidence => measured wrt normal
 		# Grazing => measured wrt surface
-		# Incidence = pi/" - Grazing
+		# Incidence = pi/2 - Grazing
 		# theta_m = arcsin(theta_i - m*lambda/d)
 		
 		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal
@@ -5248,7 +5259,21 @@ class GratingMono(MirrorPlane):
 		
 	def _GrazingThetaM(self):
 		return np.arcsin(np.pi/2-self.AngleGrazingNominal - self.Order * self.Lambda / self.GroovePitch)
- 
+	
+	@property
+	def AngleDiffractedGrazing(self):
+		'''
+		Computes the diffraction angle w.r.t the surface (i.e. Grazing angle).
+		
+		waevelength, diffraction order, the angle of incident radiation and groove pitch
+		are automatically get from the settings of the device.
+		
+		'''
+		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal
+		IncidenceThetaM = np.arcsin( np.sin(AngleIncidenceNominal) -  self.Order * self.Lambda / self.GroovePitch)
+		GrazingThetaM = np.pi/2 - IncidenceThetaM
+		return GrazingThetaM 
+	
 #==============================================================================
 #	 CLASS: MirrorSpheric
 #==============================================================================
@@ -6454,8 +6479,11 @@ class Slits(OpticsNumerical, CodeGenerator):
 	# ================================
 	@property
 	def AngleNorm(self):
-		return self._AngleNorm
-
+		'''
+		Angle of the Normal To Surface in the Laboratory Reference Frame.
+		'''
+		return self.AngleTanLab + np.pi/2
+		#return self._AngleNorm=> changed on 15 05 2021
 	# ================================
 	#  PROP: Line_Tan
 	# ================================
