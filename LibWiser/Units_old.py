@@ -97,7 +97,11 @@ def GetSiUnitScale(x):
 		x=1e-5 => u
 		x=1e-4 => u
 
-   if x is an array, it uses the mean value.
+   if x is an array, it uses the MAXIMUM value.
+	   - The mean value (mean(array)) could be zero
+	   - The Max-MIN could also be zero.
+	   - Other ideas?
+	   
 	'''
 
 	if type(x) is np.ndarray:
@@ -148,7 +152,6 @@ def GetSIInfoD(x):
 	'''
 	Return all the info that are necessary for SI-ENG formatting.
 	
-	
 	'''
 	if x is None:
 		raise Warning("[GetSIInfoD] input variable x is None. Array or float expected.")
@@ -157,15 +160,16 @@ def GetSIInfoD(x):
 		try:
 			# I used to pick up the mean, but ultimately I understood
 			# that probably this 
-			XMean = abs(np.max(x))
+			XValue = abs(np.max(x))
 		except:
 			raise 
-	a = GetEngFactor(XMean) # => 1e-9
+			
+	a = GetEngFactor(XValue) # => 1e-9
 	aa = 1/a # => 1e9
-	b = XMean * aa #=> 100
-	c = GetEngLetter(XMean) #=> n
-	d = GetEngNumber(XMean) #=> 100e-9
-	e = GetEngNumberSI(XMean) #=> 100n
+	b = XValue* aa #=> 100
+	c = GetEngLetter(XValue) #=> n
+	d = GetEngNumber(XValue) #=> 100e-9
+	e = GetEngNumberSI(XValue) #=> 100n
 
 	
 	Ans = {'EngExp' : a,
@@ -218,7 +222,6 @@ def GetAxisSI(x):
 		raise Exception("Error in GetAxisSI")
 		print(x)
 		
-x = 0.1e-6	
 #class (Unit ='',  # e.g. 'm'
 #	   Name = '',   # e.g. 'FocalShift' if empty set equal to label.
 #	   Label = '',  # e.g. '\Delta f' if empty set equal to Name
