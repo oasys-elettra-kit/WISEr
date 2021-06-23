@@ -79,8 +79,8 @@ def FastResample1d(*args):
     # input: y,N
     if len(args) == 2:
         y = args[0]
-        N0 = len(y)
-        N = args[1]
+        N0 = int(len(y))
+        N = int(args[1])
         if N == N0:
             return y
 

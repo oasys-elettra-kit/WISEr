@@ -1418,6 +1418,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 		if FigureErrorIndex>=0:
 #			x,h = self.CoreOptics.FigureError_GetProfile(FigureErrorIndex)		
 			x,h = self.CoreOptics.FigureError_GetProfileAligned(FigureErrorIndex)
+			
 		else:
 			# that's a workaround for getting x
 			Index = self.CoreOptics.LastFigureErrorUsedIndex
@@ -2961,10 +2962,18 @@ class BeamlineElements(Tree):
 #				Item.PlotIntensity(FigureIndex = FigureIndex,
 #								  Label = Label, 
 #								      Normalization = Normalization)
-		
-				ToolLib.CommonPlots.IntensityAtOpticalElement(Item, 
-												  FigureIndex = FigureIndex,
-												  Label = Label)
+				try:
+					#corrected 2021-06-23
+					Item.PlotIntensity(FigureIndex = FigureIndex,
+								   Label = Label,
+								   Normalization = Normalization
+								   )
+				except:
+					#old
+					ToolLib.CommonPlots.IntensityAtOpticalElement(Item, 
+													  FigureIndex = FigureIndex,
+													  Label = Label)
+					
 	#================================================
 	#  FUN: GenerateCode
 	#================================================
