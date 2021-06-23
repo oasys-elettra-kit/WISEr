@@ -31,6 +31,7 @@ import engineering_notation
 from engineering_notation import EngNumber, EngUnit
 import numpy as np
 import LibWiser.Scrubs as Scrubs
+from LibWiser.Scrubs import WiserException
 
 
 from matplotlib.ticker import EngFormatter
@@ -97,28 +98,51 @@ def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
 		
 		if UsePrefix:
 			try:
-				return GetEngNumberSI(x) + VariableInfo['unit']
+				return GetEngFormatWithPrefix(x) + VariableInfo['unit']
 			except:
 				raise WiserException('GetEngNumber failed, with number')
 		else:
-			return GetEngNumber(x, VariableInfo['digits'])
+			return GetEngFormatWithExponential(x, VariableInfo['digits'])
 	else:
 		return str(x)
 	
 	
 	
-def GetEngFormat(x):
-	return str(EngFormat(x))
+def GetEngFormatWithPrefix(x):
+	'''
+	Return the Ebngineering formatting, as a string.
+	Example: 1e-6 => 1u
+	
+	This is the only point where LibWiser accesses to EngFormat (matplotlib)
+	'''
+	Str  = str(EngFormat(x))
+	Str = Str.replace('μ', 'u')
+	return  Str
 
+def GetEngFormatWithExponential(x, SignificantDigits = 1, UnitLetter = ''):
+	ScaleLetter = GetSiUnitScale(x)
+	if ScaleLetter == '':
+		Return = str(x) + UnitLetter
+	else:
+		a = Units.UnitString2UnitScale(ScaleLetter)
+		aString = '%0.0e' % a
+		ExpString = str(aString)[1:]
+		y = x/a
+		FormatterStr = '%s%df%s' % ("%0.", SignificantDigits, '%s')
+#		FormatterStr = '%0f%s'
+		Str = FormatterStr %(y, ExpString)
+		Return =  Str + UnitLetter
+		
+	return Return
 
-def GetEngLetter(x):
+def GetEngPrefix(x):
 	'''
 	GetEngLetter(0.00015) =>'u'
 	GetEngLetter(1e-24) => 'y'
 	
 	'''
 
-	_ = EngFormat(x).split(' ')		
+	_ = GetEngFormatWithPrefix(x).split(' ')		
 	
 	if len(_) == 2:
 		return _[1]
@@ -195,7 +219,7 @@ def GetEngInfo(x):
 	a = GetEngExponent(XValue) # => 1e-9
 	b = GetEngArgument(XValue)
 	c = GetEngLetter(XValue) #=> n
-	d = GetEngFormat(XValue) #=> 100e-9
+	d = GetEngFormatWithPrefix(XValue) #=> 100e-9
 
 	
 #	Ans = {'EngExp' : a,
@@ -240,4 +264,13 @@ def GetEngAxis(x):
 		raise Exception("Error in GetAxisSI")
 		print(x)
 
-GetAxisSI = GetEngAxis
+def GetAxisSI(x):
+	'''
+	Wrapper function for GetAxis, created essentially for backcompatibility.
+	It returns only 2 arguments and not 3-
+	'''
+	Axis, Prefix, Exponent = GetEngAxis(x)
+	return (Axis, Prefix)
+
+# ALIASES
+GetEngLetter = GetEngPrefix
