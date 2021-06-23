@@ -82,26 +82,31 @@ class F2Items:
 		Name = 'dpi_kbh'
 		f1 = 91.1066 
 		f2 = 1.75 
-		GrazingAngle = rad(2)
+		GrazingAngleDeg = 2
+		GrazingAngle = rad(GrazingAngleDeg)
 		z=f1
 	class ldm_kbv:
 		Name = 'ldm_kbv'
 		f1 = 87.9102 
 		f2 = 1.82 
-		GrazingAngle = rad(2)
+		GrazingAngleDeg = 2
+		GrazingAngle = rad(GrazingAngleDeg)
 		z=f1
 	class ldm_kbh:
 		Name = 'ldm_kbh'
 		f1 = 88.4596 
 		f2 = 1.27 
-		GrazingAngle = rad(2)		
+		GrazingAngleDeg = 2 
+		GrazingAngle = rad(GrazingAngleDeg)		
 		z=f1
 	class pm2a:
 		z = 41.4427 
-		GrazingAngle = rad(2.5)
+		GrazingAngleDeg = 2.5
+		GrazingAngle = rad(GrazingAngleDeg )
 	class presto:
 		z = 49.8466 
-		GrazingAngle = rad(2.5)
+		GrazingAngleDeg = 2.5
+		GrazingAngle = rad(GrazingAngleDeg)
 		
 	class radiators:
 		spacing_f1 = 3.75
