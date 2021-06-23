@@ -54,6 +54,59 @@ PrefixLookup = {
     'T': 12
 }
 
+# this class is kept for backcompatibility: e.g. used in  ReadLtp2File
+class Units:
+	SiPrefixes = PrefixLookup
+	@staticmethod
+	def UnitString2UnitScale(UnitString : str):
+		''' Scans a unit string (e.g. mm, um, km) and returns the corresponding
+			scaling value: e.g (1e-3, 1e-6, 1e3).
+
+			Behavior:
+			----
+			It trims the white spaces, then takes the first character as SI
+			prefix.
+
+			Then a dictionary is used to match the prefix to the multiplier.
+
+			By M Man
+		'''
+		if UnitString is not None:
+			return  Units.SiPrefixes[UnitString.strip()[0]]
+		else:
+			return '' 
+	
+
+def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
+	'''
+	Attempts a smart formatting of x.
+	It returns
+	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
+	- A smart formatting if x is decorated with VariableInfo object [not deeple implemented yet]
+	- str(x) in any other case
+	:-)
+	'''
+
+	try:
+		UsePrefix = VariableInfo['prefix']
+	except:
+		UsePrefix = True
+		
+	tp = type(x)
+	if (tp is float) or (tp is int) or (tp is np.float64):
+		
+		if UsePrefix:
+			try:
+				return GetEngNumberSI(x) + VariableInfo['unit']
+			except:
+				raise WiserException('GetEngNumber failed, with number')
+		else:
+			return GetEngNumber(x, VariableInfo['digits'])
+	else:
+		return str(x)
+	
+	
+	
 def GetEngFormat(x):
 	return str(EngFormat(x))
 

@@ -3060,40 +3060,55 @@ class Mirror(OpticsNumerical):
 		
 		XScaling  = XScaleFactor
 		YScaling = YScaleFactor 
+		
 		if FileType.value == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY.value:
-
-			Height = ToolLib.FileIO.ReadYFile(PathFile,  SkipLines = SkipLines)
-			Height *= YScaling * YSign 
-			Step = Step
-
+			try:
+				Height = ToolLib.FileIO.ReadYFile(PathFile,  SkipLines = SkipLines)
+				Height *= YScaling * YSign 
+				Step = Step
+			except:
+				raise WiserException('''Error while reading figure error in the format HEIGHT_ONLY. 
+						 Please, check if the file format is correct''')
 		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT.value:
-
-			x, Height = ToolLib.FileIO.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
-			x *= XScaling
-
-			Height *= YScaling * YSign 
-			Step = np.mean(np.diff(x))
-
+			try:
+				
+				x, Height = ToolLib.FileIO.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+				x *= XScaling
+	
+				Height *= YScaling * YSign 
+				Step = np.mean(np.diff(x))
+			except:
+				raise WiserException('''Error while reading figure error in the format POSITION_AND_HEIGHT. 
+						 Please, check if the file format is correct''')
 
 		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1.value:
-			x,h, ComputedStep = tl.Metrology.ReadLtpLtpJavaFileA(PathFile,
-												   Decimation = 2,
-													ReturnStep = True,
-													XScaling = 1e-3, # input is in mm
-													YScaling = 1e-3)    # input isk in mm
-			Height = h*YScaling * YSign 
-			Step = ComputedStep
-
+			try:
+				x,h, ComputedStep = tl.Metrology.ReadLtpLtpJavaFileA(PathFile,
+													   Decimation = 2,
+														ReturnStep = True,
+														XScaling = 1e-3, # input is in mm
+														YScaling = 1e-3)    # input isk in mm
+				Height = h*YScaling * YSign 
+				Step = ComputedStep
+			except:
+				raise WiserException('''Error while reading figure error in the format ELETTRA_LTP_JAVA1. 
+						 Please, check if the file format is correct''')
+				
 		elif FileType.value  == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS.value :
-			x,y,FileInfo  = tl.Metrology.ReadLtp2File(PathFile) # read slopes
-
-			if PathFile.suffix.upper() == '.SLP':
-				h = tl.Metrology.SlopeIntegrate(y,dx = FileInfo.XStep) # integrate slopes
-			elif PathFile.suffix.upper() == '.HGT':
-				h = y
-
-			Height = h * YSign 
-			Step = FileInfo.XStep
+			
+			try:
+				x,y,FileInfo  = tl.Metrology.ReadLtp2File(PathFile) # read slopes
+	
+				if PathFile.suffix.upper() == '.SLP':
+					h = tl.Metrology.SlopeIntegrate(y,dx = FileInfo.XStep) # integrate slopes
+				elif PathFile.suffix.upper() == '.HGT':
+					h = y
+	
+				Height = h * YSign 
+				Step = FileInfo.XStep
+			except:
+				raise WiserException('''Error while reading figure error in the format ELETTRA_LTP_DOS. 
+						 Please, check if the file format is correct''')
 		else:
 			raise Exception("""Error in Optics.FigureErrorLoadFromFile. Could not match the righ 
 				   FileType.\n
