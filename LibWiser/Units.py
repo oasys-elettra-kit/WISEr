@@ -276,7 +276,7 @@ def GetAxisSI(x):
 		Prefix2 = 'u'
 	else:
 		Prefix2 = Prefix
-	Prefix2 = 'K'	
+
 		
 	return (Axis, Prefix2)
 
