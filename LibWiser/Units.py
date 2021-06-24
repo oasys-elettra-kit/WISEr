@@ -55,6 +55,223 @@ PrefixLookup = {
     'T': 12
 }
 
+PrefixLookupI = {
+	-24: "y",
+	-21: "z",
+	-18: "a",
+	-15: "f",
+	-12: "p",
+	-9: "n",
+	-6: "u",
+	-3: "m",
+	 0: "",
+	3: "k",
+	6: "M",
+	9: "G",
+	12: "T",
+	15: "P",
+	18: "E",
+	21: "Z",
+	24: "Y"
+	}
+
+
+
+def _PickMeaningfulValue(x):
+	'''
+	Helper function to call in GetEngInfo.
+	If x is an array, it selects the most meaningful value (which
+	is determined as the absolute maximum of the array).
+		
+	'''
+	
+	if x is None:
+		raise Warning("[_PickMeaningfulValue] input variable x is None. Array or float expected.")
+		return None
+	
+
+	
+	if 	Scrubs.IsArrayLike(x):
+		try:
+			# I used to pick up the mean, but ultimately I understood
+			# that probably this 
+			XValue = abs(np.max(x))
+		except:
+			raise 
+	else:
+		XValue = x
+		try:
+			_ = XValue +1
+		except:
+			raise Exception ("Error: the argument x is not float-like.")
+	return XValue
+	
+def GetEngInfo(x, places = None):
+	"""
+	Formats a number in engineering notation, appending a letter
+	representing the power of 1000 of the original number.
+	Some examples:
+
+	>>> format_eng(0)	   # for self.places = 0
+	'0'
+
+	>>> format_eng(1000000) # for self.places = 1
+	'1.0 M'
+
+	>>> format_eng("-1e-6") # for self.places = 2
+	u'-1.00 \N{GREEK SMALL LETTER MU}'
+
+	`num` may be a numeric value or a string that can be converted
+	to a numeric value with ``float(num)``.
+	"""
+	MAX_ENG_PREFIX = 12
+	MIN_ENG_PREFIX = -24
+	import math, six
+	num = _PickMeaningfulValue(x) 
+	if isinstance(num, six.string_types):
+		warnings.warn(
+			"Passing a string as *num* argument is deprecated since"
+			"Matplotlib 2.1, and is expected to be removed in 2.3.",
+			mplDeprecation)
+
+	dnum = float(num)
+	sign = 1
+	fmt = "g" if places is None else ".{:d}f".format(places)
+
+	if dnum < 0:
+		sign = -1
+		dnum = -dnum
+
+	if dnum != 0:
+		pow10 = int(math.floor(math.log10(dnum) / 3) * 3)
+	else:
+		pow10 = 0
+		# Force dnum to zero, to avoid inconsistencies like
+		# format_eng(-0) = "0" and format_eng(0.0) = "0"
+		# but format_eng(-0.0) = "-0.0"
+		dnum = 0.0
+
+	pow10_all = pow10
+	pow10 = np.clip(pow10, MIN_ENG_PREFIX, MAX_ENG_PREFIX)
+	mant = sign * dnum / (10.0 ** pow10)
+	mant_all = sign * dnum / (10.0 ** pow10_all)
+	
+	
+	# Taking care of the cases like 999.9..., which
+	# may be rounded to 1000 instead of 1 k.  Beware
+	# of the corner case of values that are beyond
+	# the range of SI prefixes (i.e. > 'Y').
+	_fmant = float("{mant:{fmt}}".format(mant=mant, fmt=fmt))
+	if _fmant >= 1000 and pow10 != max(self.ENG_PREFIXES):
+		mant /= 1000
+		pow10 += 3
+		
+	_fmant = float("{mant:{fmt}}".format(mant=mant_all, fmt=fmt))
+	if _fmant >= 1000:
+		mant_all /= 1000
+		pow10_all += 3
+
+	prefix = PrefixLookupI[int(pow10)]
+
+#	formatted = "{mant:{fmt}}{sep}{prefix}".format(
+#		mant=mant, sep=self.sep, prefix=prefix, fmt=fmt)
+
+	Output = dict()
+	Output['SIMant'] = mant
+	Output['SIPow10'] = int(pow10)
+	Output['SIPrefix'] = prefix
+	Output['EngMant'] = mant_all
+	Output['EngPow10'] = int(pow10_all)	  
+
+	return Output
+
+def GetFormattedSI(x, places = None):
+	'''
+	Returns a number formatted in ENG notation With SI prefixes
+	0.0000001=> "1 u"
+	'''
+	fmt = "g" if places is None else ".{:d}f".format(places)
+	EngInfo = GetEngInfo(x)
+	mant = EngInfo['SIMant']
+	prefix = EngInfo['SIPrefix']
+	sep = ' '
+	
+	formatted = "{mant:{fmt}}{sep}{prefix}".format(
+		mant=mant, sep=sep, prefix=prefix, fmt=fmt)
+	return formatted
+
+def GetFormattedEng(x, places = None):
+	'''
+	Returns a number formatted in ENG notation With SI prefixes
+	0.0000001=> "1e-6"
+	
+	
+	'''
+	fmt = "g" if places is None else ".{:d}f".format(places)
+	EngInfo = GetEngInfo(x)
+	mant = EngInfo['EngMant']
+	pow10  = EngInfo['EngPow10']
+	sep = 'e'
+	
+	formatted = "{mant:{fmt}}{sep}{pow10}".format(
+		mant=mant, sep=sep, pow10=pow10, fmt=fmt)
+	return formatted
+
+
+
+def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
+	'''
+	Attempts a smart formatting of x.
+	It returns
+	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
+	- A smart formatting if x is decorated with VariableInfo object [not deeple implemented yet]
+	- str(x) in any other case
+	:-)
+	'''
+
+	try:
+		UsePrefix = VariableInfo['prefix']
+	except:
+		UsePrefix = True
+		
+	tp = type(x)
+	if (tp is float) or (tp is int) or (tp is np.float64):
+		
+		if UsePrefix:
+			try:
+				return GetFormattedSI(x) + VariableInfo['unit']
+			except:
+				raise WiserException('GetEngNumber failed, with number')
+		else:
+			return GetFormattedEng(x, VariableInfo['digits'])
+	else:
+		return str(x)
+	
+
+def GetAxisSI(x):
+	'''
+	This function provides a rescaled axis + a SI unit to use in plot.
+	
+	This is the ONLY access point to Units.py from within OASYS.
+	
+	Do not change the output format (Axis, Prefix)
+	'''
+	# attempt to force a list to a numpy array
+	if type(x) is list:
+		try:
+			x  =np.array(x)
+		except:
+			raise WiserException('Failed when converting X to array', 
+						By = "GetEngAxis")
+			
+	A = GetEngInfo(x)
+	Axis = x *10**(-A['SIPow10'])
+	Prefix =A['SIPrefix']
+	Pow10 = A['SIPow10']
+	
+	return (Axis, Prefix)
+
+
 # this class is kept for backcompatibility: e.g. used in  ReadLtp2File
 class Units:
 	SiPrefixes = PrefixLookup
@@ -77,209 +294,3 @@ class Units:
 		else:
 			return '' 
 	
-
-def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
-	'''
-	Attempts a smart formatting of x.
-	It returns
-	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
-	- A smart formatting if x is decorated with VariableInfo object [not deeple implemented yet]
-	- str(x) in any other case
-	:-)
-	'''
-
-	try:
-		UsePrefix = VariableInfo['prefix']
-	except:
-		UsePrefix = True
-		
-	tp = type(x)
-	if (tp is float) or (tp is int) or (tp is np.float64):
-		
-		if UsePrefix:
-			try:
-				return GetEngFormatWithPrefix(x) + VariableInfo['unit']
-			except:
-				raise WiserException('GetEngNumber failed, with number')
-		else:
-			return GetEngFormatWithExponential(x, VariableInfo['digits'])
-	else:
-		return str(x)
-	
-	
-	
-def GetEngFormatWithPrefix(x):
-	'''
-	Return the Ebngineering formatting, as a string.
-	Example: 1e-6 => 1u
-	
-	This is the only point where LibWiser accesses to EngFormat (matplotlib)
-	'''
-	Str  = str(EngFormat(x))
-	Str = Str.replace('μ', 'u')
-	return  Str
-
-def GetEngFormatWithExponential(x, SignificantDigits = 1, UnitLetter = ''):
-	raise Exception("GetEngFormatWithExponential is not working and must be fixed. Use GetEngFormatWithPrefix instead.")
-	ScaleLetter = GetEngPrefix(x)
-	if ScaleLetter == '':
-		Return = str(x) + UnitLetter
-	else:
-		a = Units.UnitString2UnitScale(ScaleLetter)
-		aString = '%0.0e' % a
-		ExpString = str(aString)[1:]
-		y = x/a
-		FormatterStr = '%s%df%s' % ("%0.", SignificantDigits, '%s')
-#		FormatterStr = '%0f%s'
-		Str = FormatterStr %(y, ExpString)
-		Return =  Str + UnitLetter
-		
-	return Return
-
-def GetEngPrefix(x):
-	'''
-	GetEngPrefix(0.00015) =>'u'
-	GetEngPrefix(1e-24) => 'y'
-	
-	'''
-
-	_ = GetEngFormatWithPrefix(x).split(' ')		
-	
-	if len(_) == 2:
-		return _[1]
-	elif len(_) == 1:
-		return ''
-	else:
-		raise Exception('Unexpected case while converting the unit. Check the code and report to the mantainer.')
-		
-def GetEngArgument(x):
-	'''
-	Return the Argument of Eng formatting.
-	
-	Example:
-	GetEngArgument(1e-6) #=>1
-	GetEngArgument(1e-24) #=>1
-	GetEngArgument(1e-26) #=>0.01
-	'''
-	_ = GetEngFormatWithPrefix(x).split(' ')		
-	return _[0]
-
-			
-
-			
-def GetEngExponent(x):
-	'''
-	Return the exponent corresponding to the SI/Eng notation returned by GetEngPrefix.
-	
-	GetEngExponent(0.00015) =>-6
-	GetEngExponent(1e-24) => -24
-	
-	Note:
-		Ideally, the function would like to return the exponent, as multiple of 1000.
-		Since a lookuptable is used, this works only for values between 1e-24 and 1e12
-	
-	'''
-	
-	EngPrefix = GetEngPrefix(x)
-	
-	return PrefixLookup[EngPrefix]
-
-
-
-def GetEngInfo(x):
-	'''
-	Return all the info that are necessary for SI-ENG formatting.
-	
-	Example
-	>>>GetEngInfo(23.234e-22)
-	>> {'Exponent': -21,
-	  'Argument': '2.3234',
-	   'Prefix': 'z',
-	    'Formatting': '2.3234 z'}
-	
-	'''
-	if x is None:
-		raise Warning("[GetSIInfoD] input variable x is None. Array or float expected.")
-		return None
-	
-	if 	Scrubs.IsArrayLike(x):
-		try:
-			# I used to pick up the mean, but ultimately I understood
-			# that probably this 
-			XValue = abs(np.max(x))
-		except:
-			raise 
-	else:
-		XValue = x
-		try:
-			_ = XValue +1
-		except:
-			raise Exception ("Error: the argument x is not float-like.")
-		
-	
-	a = GetEngExponent(XValue) # => 1e-9
-	b = GetEngArgument(XValue)
-	c = GetEngPrefix(XValue) #=> n
-	d = GetEngFormatWithPrefix(XValue) #=> 100e-9
-
-	
-#	Ans = {'EngExp' : a,
-#		 'EngIExp' : aa, 
-#		 'EngCoeff' : b, 
-#		 'SIPrefix' : c , 
-#		 'EngFormatting' :d,
-#		 'SIFormatting' :e}
-	Ans = {'Exponent' : a,
-	 'Argument' : b, 
-	 'Prefix' : c, 
-	 'Formatting' :d}
-	return Ans
-
-def GetEngAxis(x):
-	'''
-	Assumed that x is either the x or y axis of an x,y plot, the function unterstand
-	which SI prefix better fits the range of x, multiploes x accordingly, then return
-	the scaled x and the SI prefix.
-	
-	e.g.
-	import numpy
-	x = np.arange(10e-6, 43.5e-6, 1e-7)
-	(NewX, Prefix, Exponent) = GetEngAxis(x) => ([10...43.5], 'u', '-6')
-	
-	
-	
-	Return
-	--------
-	x*alpha : array like
-	
-		rescaled x
-	
-	SI Prefix : string
-		the SI prefix
-	'''
-	A = GetEngInfo(x)
-	
-	try:
-		return (x *10**(-A['Exponent']), A['Prefix'], A['Exponent'])
-	except:
-		raise Exception("Error in GetAxisSI")
-		print(x)
-
-def GetAxisSI(x):
-	'''
-	Wrapper function for GetAxis, created essentially for backcompatibility.
-	It returns only 2 arguments and not 3-
-	'''
-	Axis, Prefix, Exponent = GetEngAxis(x)
-
-	#debug lines
-	if Prefix == 'μ':
-		Prefix2 = 'u'
-	else:
-		Prefix2 = Prefix
-
-		
-	return (Axis, Prefix2)
-
-# ALIASES
-GetEngLetter = GetEngPrefix # GetEngLetter is deprecated. 
