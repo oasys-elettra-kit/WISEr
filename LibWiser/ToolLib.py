@@ -397,7 +397,7 @@ def SamplingAlongLine(Theta, XYCentre, Length, NSamples = None, Step = None):
 		N = Length/Step
 	elif NSamples !=None and NSamples > 0:
 		N = NSamples
-
+	N = int(N)
 	x = np.linspace(x_start, x_end, N)
 	y = m*x+q
 	return x,y
@@ -493,7 +493,7 @@ def RotPoly(P, NewOrigin = np.array([0,0]), Angle = 0, Deg = False):
 		print('Errror: Polynomial order too low (<1), finding coefficient is useles...')
 		return None
 
-	x = np.linspace(0,N, N+1)
+	x = np.linspace(0,N, int(N+1))
 	y = np.polyval(P,x)
 
 	x_new, y_new = RotXY(x,y, Angle ,NewOrigin)

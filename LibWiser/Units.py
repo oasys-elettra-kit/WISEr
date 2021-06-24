@@ -160,7 +160,7 @@ def GetEngArgument(x):
 	GetEngArgument(1e-24) #=>1
 	GetEngArgument(1e-26) #=>0.01
 	'''
-	_ = EngFormat(x).split(' ')		
+	_ = GetEngFormatWithPrefix(x).split(' ')		
 	return _[0]
 
 			
@@ -270,7 +270,15 @@ def GetAxisSI(x):
 	It returns only 2 arguments and not 3-
 	'''
 	Axis, Prefix, Exponent = GetEngAxis(x)
-	return (Axis, Prefix)
+
+	#debug lines
+	if Prefix == 'μ':
+		Prefix2 = 'u'
+	else:
+		Prefix2 = Prefix
+	Prefix2 = 'K'	
+		
+	return (Axis, Prefix2)
 
 # ALIASES
 GetEngLetter = GetEngPrefix
