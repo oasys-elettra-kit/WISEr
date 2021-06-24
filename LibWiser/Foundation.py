@@ -1225,7 +1225,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 			ReturnOE = NextChild
 		return ReturnOE
 	# ================================================
-	#	FUNC: GetParent
+	#	FUNC: GetParent [OpticalElement]
 	# ================================================
 	def GetParent(self, SameOrientation=False, OnlyReference=False):
 		'''
@@ -1273,6 +1273,10 @@ class OpticalElement(TreeItem, CodeGenerator):
 		# Raise a warning in case if GetParent remains None
 		if GetParentResult == None:
 			warnings.warn("GetParent returned None!")
+			warnings.warn("OpticalElement: %s" % self.Name)
+			raise Exception('''GetParent returned None! This occurs when
+							   - There is no Reference opticale element
+							   - ...''')
 
 		return GetParentResult
 	
@@ -1727,6 +1731,8 @@ class BeamlineElements(Tree):
 
 		'''
 		Pd = oeY.PositioningDirectives
+		
+		print('Positioning: %s' % oeY.Name)
 
 		if oeY.IsSource == False:
 			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX

@@ -4,26 +4,19 @@ Created on Mon Nov 11 16:12:18 2019
 
 @author: Mike
 
-Class that provide a simplified access to Eng formatting.
+Class that provide a simplified access to Eng and SI formatting.
 
-.
-GetEngPrefix(0.00015) =>'u'
-GetEngArgument(1e-6) #=>1
-GetEngExponent(0.00015) =>-6
+With Eng formatting we denote the fact that the numbers are expressed as multiple of 1000
 
+1, 1e3, 0.1e3, 1e6, etc.
 
-
-
-
-GetEng
-
-GetEngNumber(0.00015) => '150.0e-06'
-GetEngNumber(0.15) => '150.0e-03'
-GetEngNumber(0.15,0) => '150e-03'
-GetEngPrefix(0.00015) =>'u'
+With SI formatting we denote the use of SI prefixes
+1, 1 k , 0.1k, 1M, etc.
 
 
-GetEngAxis
+The logic is contained in GetEngInfo
+The interface function (To oasys-wiser) is GetAxisSI
+
 """
 
 
