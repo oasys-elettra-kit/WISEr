@@ -749,8 +749,12 @@ class OpticsNumerical(Optics):
 				py = py + XYTranslation[1]
 				px_new, py_new = tl.RotXY(px,py, Rotation, RotationCentre)
 
-			# Polynomial fit
+			# Polynomial fit (historical)
 			P_new = np.polyfit(px_new, py_new, NP)
+			# Polynomial fit (new, to get rid of warnings)
+			from numpy.polynomial import Polynomial as P
+			P_new  = P.fit(px_new, py_new, NP)
+			
 			P_new2 = [Val if 1e-15 < abs(Val) else 0 for Val in P_new]
 			return P_new2
 		else:

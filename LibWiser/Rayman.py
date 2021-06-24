@@ -109,7 +109,7 @@ def AlignAndPadArrays(LongArraySize,
 					  AlignTo = 'centre'):
 	'''
 	Given two arrays of different sizes, it pads the shorter one to match the size of the longer
-	one.
+	one. 
 	
 	The missing elements are filled with scalar value specified by _Filling_.
 	
