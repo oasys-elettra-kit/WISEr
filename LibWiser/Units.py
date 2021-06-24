@@ -7,7 +7,7 @@ Created on Mon Nov 11 16:12:18 2019
 Class that provide a simplified access to Eng formatting.
 
 .
-GetEngLetter(0.00015) =>'u'
+GetEngPrefix(0.00015) =>'u'
 GetEngArgument(1e-6) #=>1
 GetEngExponent(0.00015) =>-6
 
@@ -20,7 +20,7 @@ GetEng
 GetEngNumber(0.00015) => '150.0e-06'
 GetEngNumber(0.15) => '150.0e-03'
 GetEngNumber(0.15,0) => '150e-03'
-GetEngLetter(0.00015) =>'u'
+GetEngPrefix(0.00015) =>'u'
 
 
 GetEngAxis
@@ -120,7 +120,8 @@ def GetEngFormatWithPrefix(x):
 	return  Str
 
 def GetEngFormatWithExponential(x, SignificantDigits = 1, UnitLetter = ''):
-	ScaleLetter = GetSiUnitScale(x)
+	raise Exception("GetEngFormatWithExponential is not working and must be fixed. Use GetEngFormatWithPrefix instead.")
+	ScaleLetter = GetEngPrefix(x)
 	if ScaleLetter == '':
 		Return = str(x) + UnitLetter
 	else:
@@ -137,8 +138,8 @@ def GetEngFormatWithExponential(x, SignificantDigits = 1, UnitLetter = ''):
 
 def GetEngPrefix(x):
 	'''
-	GetEngLetter(0.00015) =>'u'
-	GetEngLetter(1e-24) => 'y'
+	GetEngPrefix(0.00015) =>'u'
+	GetEngPrefix(1e-24) => 'y'
 	
 	'''
 
@@ -168,7 +169,7 @@ def GetEngArgument(x):
 			
 def GetEngExponent(x):
 	'''
-	Return the exponent corresponding to the SI/Eng notation returned by GetEngLetter.
+	Return the exponent corresponding to the SI/Eng notation returned by GetEngPrefix.
 	
 	GetEngExponent(0.00015) =>-6
 	GetEngExponent(1e-24) => -24
@@ -179,9 +180,9 @@ def GetEngExponent(x):
 	
 	'''
 	
-	EngLetter = GetEngLetter(x)
+	EngPrefix = GetEngPrefix(x)
 	
-	return PrefixLookup[EngLetter]
+	return PrefixLookup[EngPrefix]
 
 
 
@@ -218,7 +219,7 @@ def GetEngInfo(x):
 	
 	a = GetEngExponent(XValue) # => 1e-9
 	b = GetEngArgument(XValue)
-	c = GetEngLetter(XValue) #=> n
+	c = GetEngPrefix(XValue) #=> n
 	d = GetEngFormatWithPrefix(XValue) #=> 100e-9
 
 	
@@ -281,4 +282,4 @@ def GetAxisSI(x):
 	return (Axis, Prefix2)
 
 # ALIASES
-GetEngLetter = GetEngPrefix
+GetEngLetter = GetEngPrefix # GetEngLetter is deprecated. 
