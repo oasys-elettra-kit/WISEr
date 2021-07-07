@@ -701,9 +701,13 @@ class OpticalElement(TreeItem, CodeGenerator):
     #================================================
     #     __init__[OpticalElement]
     #================================================
-	def __init__(self, CoreOpticsElement = None, Name = None, IsSource = False,
-					PositioningDirectives = None,
-					ComputationSettings = None,
+	def __init__(self, 
+				  CoreOpticsElement = None,
+				  Name = None,
+				  IsSource = False, # IsSource denotes the
+				  PositioningDirectives = None,
+				  ComputationSettings = None,
+				  VirtualOffset = 0,
 					*kwargs):
 		# The baroque notation I used for 'CoreOptics' is because the name of the
 		# attribute (stored in the class) and the name of the parameter (of the init function) 
@@ -715,6 +719,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 		TreeItem.__init__(self)
 		self._IsSource = IsSource
 		self.PositioningDirectives = PositioningDirectives
+		self._VirtualOffset = VirtualOffset
 		self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
 
 		self.Results = ComputationResults()			# this data field should be discontinued
@@ -803,7 +808,9 @@ class OpticalElement(TreeItem, CodeGenerator):
 			#		NameParent, self.Name, NameChildren, self.XYCentre[0], self.XYCentre[1])
 			#
 
-			print(self.GeneralDistanceFromParent(Reference=False))
+			DistanceFromParent = self.GetDistanceFromParent(False,False)
+#			print(self.GeneralDistanceFromParent(Reference=False))
+			print(DistanceFromParent)
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			
 			Str = '*[%s]*' % self.Name
@@ -816,7 +823,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 			
 			Str += '\t(%s), dZ=%0.2f m, Z=%0.2f m, %s' % (
 					self.CoreOptics.Orientation.name[0],
-					   self.GeneralDistanceFromParent(Reference=False), 
+					   self.GetDistanceFromParent(False), 
 				self.DistanceFromSource, 
 				self.CoreOptics.GetSummary())
 			
@@ -834,7 +841,8 @@ class OpticalElement(TreeItem, CodeGenerator):
 	def CoreOpticsElement(self, value : Optics.Optics):
 		value.ParentContainer = self
 		self._CoreOpticsElement= value
-		
+
+
 		
 	#==========================================
 	# FUN: GetNSamples[OpticalElement]
@@ -996,7 +1004,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 	#================================================
 	@property
 	def XYCentre(self):
-		return self.CoreOptics.XYCentre
+		return np.array(self.CoreOptics.XYCentre)
 
 
 #	#================================================
@@ -1029,19 +1037,37 @@ class OpticalElement(TreeItem, CodeGenerator):
 	@property
 	def DistanceFromParent(self):
 		'''
+		BASE FUNCTION for computing the distance b\w OpticalElements.
+		
+		WARNING: It considers only the "Reference" optical elements, i.e.
+		detectors and slits are typically ignored.
+		
+		If you want something more versatile, use GetDistanceFromParent, instead.
 		
 		Distance from parent optical element corresponds to the optical distance between the element (self)
 		and the first optical element with the same orientation and UseAsReference flag True (obtained with
 		>>> self.GetParent(SameOrientation=True, OnlyReference=True))
 
+			20210630: it adds OpticalElement._VirtualOffset to the computation.
+		(Introduced to handle the numerical sources, which often
+		would ideally be at 0, but are not.)
+		
 		'''
 
-		if self.Parent != None:
-			distance = np.linalg.norm(self.XYCentre - self.GetParent(SameOrientation=True, OnlyReference=True).XYCentre)
-		elif self.Parent == None:
+		Parent = self.GetParent(SameOrientation=True, OnlyReference=True)
+
+		if Parent != None:
+			distance = np.linalg.norm(self.XYCentre - Parent.XYCentre)
+			if Parent._IsSource: #20210630
+				distance += Parent._VirtualOffset
+
+		elif Parent == None: # self is the source
 			distance = 0
+			distance += self._VirtualOffset
 		else:
 			raise ValueError('Something wrong in DistanceFromParent!')
+
+
 
 		return distance
 
@@ -1063,8 +1089,17 @@ class OpticalElement(TreeItem, CodeGenerator):
 	@property
 	def DistanceFromSource(self):
 		'''
-		Distance from the source.
+		Distance from the source
+		
+		USES: OpticalElement.DistanceFromParent
+		
 		'''
+		#patch added 20210630
+		# Why? it was working before...
+		# Consequence of workingon numerical source
+		if self._IsSource:
+			return 0 
+		#
 		ItemList = self.UpstreamItemList # First element is the closest element, last element is the source
 		ItemListSameOrientation = []
 		for oe in ItemList:
@@ -1250,6 +1285,14 @@ class OpticalElement(TreeItem, CodeGenerator):
 
 		GetParentResult = None
 
+		#20210630 - PATCH
+		# Before it was no needed, why?
+		# However, now, it sounds good to me...
+		if self._IsSource:
+			return None
+		
+		
+		# end of patch
 		if SameOrientation and OnlyReference:
 			for oe in self.UpstreamItemList:
 				if HaveSameOrientation(oe, self) and oe.CoreOptics.UseAsReference:
@@ -1275,8 +1318,9 @@ class OpticalElement(TreeItem, CodeGenerator):
 			warnings.warn("GetParent returned None!")
 			warnings.warn("OpticalElement: %s" % self.Name)
 			raise Exception('''GetParent returned None! This occurs when
-							   - There is no Reference opticale element
-							   - ...''')
+							   - There is no Reference optical element
+							   - ...
+							      OpticalElement = %s''' % self.Name)
 
 		return GetParentResult
 	
@@ -1301,8 +1345,34 @@ class OpticalElement(TreeItem, CodeGenerator):
 #			else:
 #				Current = self.Parent
 				
+	def GetDistanceFromSource(self):
+		'''
+		Alias function for the proeprty: DistanceFromSource
+		'''
+		return self.DistanceFromSource
+	
 	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
 		'''
+		Advanced function, that implements more arguments than GetDistanceFromParent
+	
+		USES: OpticalElement.DistanceFromSource
+		
+		WARNING: The dependency chain is quite complicated.
+		
+		DistanceFromParent->DistanceFromSource->GetDistanceFromParent
+		
+		
+		
+		Parameters
+		-----
+		SameOrientation : bool
+			If _true_, measures the distance from the closest upstream element
+			that has the same orientation.
+			
+		OnlyReference: bool
+			if _true_, measures the distance from the closes upstream element
+			that is marked as "reference" (e.g. detectors, slits are excluded).
+		
 		High level function to calculate the distance to parent.
 		The parent can be filtered by orientation, reference type.
 
@@ -1311,10 +1381,24 @@ class OpticalElement(TreeItem, CodeGenerator):
 		It uses the distance from source and requires XYCentre to be already computed.
 		Best version (20201023) - AF + MM
 		'''
-		result = self.DistanceFromSource - self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference).DistanceFromSource
+		Parent = self.GetParent(SameOrientation=SameOrientation, OnlyReference=OnlyReference)
+		
+		if Parent is not None:
+			result = self.DistanceFromSource - Parent.DistanceFromSource
+		else:
+			if self._IsSource:
+				result = 0
+			else:
+				raise WiserException(r'''
+						 The parent element is None, but the current element
+						 is not a source, as one would expect to be.
+						 Why?
+				''')
 		return result
 
 	def GeneralDistanceFromParent(self, Orientation=True, Reference=True):
+		
+		#DEPRECATED??
 		'''
 		Generalized DistanceFromParent. As DistanceFromParent is a property and linked to a lot of other things
 		in the code, this was added later for correct __str__ behaviour.
@@ -1322,7 +1406,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 		Orientation and Reference.
 		>>> self.GetParent(SameOrientation=Orientation, OnlyReference=Reference))
 		'''
-
+		raise Exception(" Message for MManfredda: GeneralDistanceFromParent is deprecated. Use GetDistanceFromParent instead.")
 		if self.Parent != None:
 			try:
 				a = self.XYCentre
@@ -1579,7 +1663,50 @@ class BeamlineElements(Tree):
 			else:
 				return None
 		return None
+	@property
+	def MainLambda(self):
+		'''
+		Return the wavelength of the beamline. The wavelength is picked
+		from the first element which has a valid
+		OpticalElement.CoreOptics.Lambda attribute.
+		
+		All the sources must have.
+		'''
+		Found= False
+		for Item in self.ItemList:
+			try:
+					Lambda = Item.CoreOptics.Lambda
+					Found = True
+					break
+			except:
+				pass	
+			
+		if Found:
+			return Lambda
+		else:
+			raise WiserException("BeamlineElements.MainLambda could not identify the lambda of the simulation.")
+			
+	#================================================
+	#  PROP: Source
+	#================================================
+	@property
+	def LightSource(self):
+		'''
+		Return the 'Source' element in the sequence of element.
+		What is the Source? The element such that .IsSource=True.
+		A gaussian Source is a Source
+		'''
 
+		for Itm in self.ItemList:
+			if Itm.IsSource == True:
+				return Itm
+			else:
+				return None
+		return None
+
+
+	
+	
 	@property
 	def ComputationMinutes(self):
 		return self._TotalComputationTimeMinutes
@@ -1591,9 +1718,44 @@ class BeamlineElements(Tree):
 	def Lambda(self):
 		'''
 		Return the wavelength of the simulation.
+		There are different cases.
+		1) the source is analytical => Lambda is stored in its properties
+		2) the source is any kind of OpticsNumericalobject (e.g. a mirror)
+			=> Lambda is stored in the ComputationData
+		3) The source is a VirtualSource, which means that there must be another
+			optical element delivering the light. For the moment, I assume
+			that such an element is a SourceWavefront object.
 		'''
 		
-		return self.Source.CoreOptics.Lambda
+		ClassOfTheSource = type(self.Source.CoreOptics)
+		
+		#1) the source is analytical		
+		if issubclass(ClassOfTheSource, LibWiser.Optics.SourceAnalytical):
+			# The source is analytical, so it directly has the info on the lambda
+			Lambda = Source.CoreOptics.Lambda
+		#2) The source is a generic numericaloptics element
+		elif (issubclass(ClassOfTheSource, LibWiser.Optics.SourceNumerical) 
+				 and not (ClassOfTheSource  == LibWiser.Optics.SourceVirtual)):
+			Lambda = Source.ComputationData.Lambda
+			
+		# The "source" is a virtual source
+		elif ClassOfTheSource  == LibWiser.Optics.SourceVirtual:
+			# Check that there is at least  one child (i.e. the SourceWavefront)
+			try:
+				Child = self.Source.GetChildren()[0]
+			except:
+				raise WiserException('''The Virtual Source itself does not contain 
+						 infos about the wavelength. Append a SourceWavefront object 
+						 to the beamline to specify the wavelength''')
+			#if ok, try to get the wavelenght from the child,
+			# that should be a SourceWavefront.
+			
+			try:
+				Lambda = Child.Lambda
+			except:
+				raise WiserException("BeamlineElements.Lambda failed. Why? Check the code")
+				
+		return Lambda
 #	#================================================
 #	#  FUN: RefreshPositions
 #	#================================================
@@ -1657,7 +1819,7 @@ class BeamlineElements(Tree):
 		'''
 
 
-		#Check if there are repeated names, if need be
+		#Check if there are repeated names.
 		if not self.ComputationSettings.AllowRepeatedNames:
 			self._CheckIfRepeatedNames() 
 
@@ -1709,7 +1871,8 @@ class BeamlineElements(Tree):
 			Parameters
 			------------------
 			oeY : OpticalElement
-				The optical element to place
+				The optical element to place. The other info (parent elements, etc)
+				are got as attributes of oeY.
 
 			Behavior
 			------------------
@@ -1718,7 +1881,7 @@ class BeamlineElements(Tree):
 				and you don't want to recompute all the sequence.
 				I introduced this when I do the focus sweep, keeping an optical element fixed ('locked') and moving the screen
 				only.
-			- Upstream reference is workin as one expects to
+			- Upstream reference is working nice.
 			- Downstream focus will find the firs element (with the same orientation) that has f2 as attribute, then
 			will use f2 as positioning distance
 			- UseAsReference=False means that the Element is not considerend for positioning other elements.
@@ -1732,13 +1895,14 @@ class BeamlineElements(Tree):
 		'''
 		Pd = oeY.PositioningDirectives
 		
+		
 		print('Positioning: %s' % oeY.Name)
 
 		if oeY.IsSource == False:
 			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
 			oeXSameOrientation = oeY.GetParent(SameOrientation=True, OnlyReference=True)
-
-
+			VirtualOffset = oeY.ParentContainer.Source._VirtualOffset
+		
 		# Somehow posdir_ was defined before in class PositioningDirectives as posdir_ = PositioningDirectives
 		# -------------------------------------------
 		if Pd.ReferTo == posdir_.ReferTo.DoNotMove:
@@ -1779,8 +1943,10 @@ class BeamlineElements(Tree):
 				# All the conditions select the last arm as distance, as this is the one used in SetXYAngle_Centre
 				if Pd.ReferTo == 'source' and Pd.What == 'centre':
 					realDistance = Pd.Distance - oeXSameOrientation.DistanceFromSource
+					
 				elif Pd.ReferTo == 'source' and Pd.What == 'upstream focus':
 					realDistance = oeY.CoreOptics.f1 - oeXSameOrientation.DistanceFromSource
+					
 				else:
 					if Pd.ReferTo != 'source' and Pd.What == 'upstream focus':
 						realDistance = oeY.CoreOptics.f1
@@ -1792,7 +1958,9 @@ class BeamlineElements(Tree):
 
 					if oeX != oeXSameOrientation:
 						realDistance = oeX.DistanceFromSource - oeXSameOrientation.DistanceFromSource + realDistance
-
+				
+				realDistance += VirtualOffset 
+				
 				newXYCentre = LastXY + realDistance * tl.Normalize(RayIn.v)
 				oeY.CoreOptics.SetXYAngle_Centre(newXYCentre, RayIn.Angle, WhichAngle=TypeOfAngle.InputNominal)
 
@@ -2184,14 +2352,14 @@ class BeamlineElements(Tree):
 		# CRITICAL: Where shall I get Lambda from?
 		# If oeStart is a source, then from its properties.
 		# Else, from the previous computed field.
-		if (oeStart == self.FirstItem) and (oeStart.IsSource == True):
-			try:
-				Lambda = self.FirstItem.CoreOptics.Lambda
-			except:
-				Lambda = oeStart.ComputationResults.Lambda
-		else:
-			Lambda = oeStart.ComputationResults.Lambda
-
+#		if (oeStart == self.FirstItem) and (oeStart.IsSource == True):
+#			try:
+#				Lambda = self.FirstItem.CoreOptics.Lambda
+#			except:
+#				Lambda = oeStart.ComputationResults.Lambda
+#		else:
+#			Lambda = oeStart.ComputationResults.Lambda
+		Lambda = self.MainLambda
 		k = 0
 		Ind = 1
 		NoeList = len(oeList)
@@ -2220,12 +2388,22 @@ class BeamlineElements(Tree):
 				Action = 'Element Ignored'
 				Debug.print('\tAction:' + Action)
 			# ----------------------------------------------
+			# case:  The present element is a Wavefront, so it already has a field
+			# ----------------------------------------------
+			elif (isinstance(oeThis.CoreOptics, LibWiser.Optics.SourceWavefront)):
+				Action = 'no Action (Field already stored in the OpticalElement)'
+				Debug.print('\tAction:' + Action)
+				
+				PropInfo.oeLast = oeThis
+				pass
+
+			# ----------------------------------------------
 			# case:  Compute the field (on this element)
 			# ----------------------------------------------
 			else:
 
 				# ----------------------------------------------
-				# oeLast is Analitical
+				# the past element oeLast is Analitical
 				# ----------------------------------------------
 				# I require to transform oeThis --> Virtual(oeThis)
 				if PropInfo.oeLast.CoreOptics._IsAnalytic == True:
@@ -2315,10 +2493,10 @@ class BeamlineElements(Tree):
 						oeThis.Results.Field = []
 						Debug.pr('NSamples', Ind + 1)
 					else:
-#						Debug.print('Computing field (Numeric)', Ind)
-#						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
-#						Debug.print('target object = %s' % oeThis.Name, Ind )
-#						Debug.pr('NSamples', Ind + 1)
+						Debug.print('Computing field (Numeric)', Ind)
+						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
+						Debug.print('target object = %s' % oeThis.Name, Ind )
+						Debug.pr('NSamples', Ind + 1)
 
 						# definizione di promemoria
 						# EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
@@ -2369,7 +2547,7 @@ class BeamlineElements(Tree):
 				oeThis.Results.Name = oeThis.Name
 				oeThis.Results.ComputationTime = ComputationTime
 				# ----------------------------------------------
-				# Computing field => PropInfo
+				# ITERATE TO THE NEXT Computing field => PropInfo
 				# ----------------------------------------------
 				PropInfo.oeLast = oeThis
 				PropInfo.TotalPath = 0
@@ -3100,6 +3278,16 @@ def CheckOrientation(OpticalElement,
 #================================================
 def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElement):
 	'''
+	
+		WARNING: 20210630 MMan
+			in the code this function is used only once in _MakeVirtual.
+			It works, but it does not seem to cover all the cases
+			(for instance, the one where the reference is the Source).
+			
+			THERE IS ANOTHER FUNCTION: BeamlineElements
+			
+			
+			
 		MILESTONE function: finds the location of optical element oeY
 		starting from optical	element oeX according to the info contained
 		in oeY.PositioninDirectives
@@ -3148,6 +3336,8 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 
 	'''
 	Pd = oeY.PositioningDirectives
+	
+	
 	_DebugTab = 3
 
 	oeX_Name = oeX.Name if oeX != None else 'None'
@@ -3190,7 +3380,7 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 		Debug.print('positioning respect with upstream element', _DebugTab+1)
 		RayIn = oeX.CoreOptics.RayOutNominal	# the incident ray
 		RayIn2 = tl.Ray(Angle = RayIn.Angle, XYOrigin = [0,0])
-
+		
 		#........................................
 		#  put centre Distance away from centre
 		#........................................

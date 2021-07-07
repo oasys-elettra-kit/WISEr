@@ -51,11 +51,15 @@ AngleOut : The same as AngleIn, but for the Output beam
 #	 Enum: OPTICS_BEHAVIOUR
 #===============================
 class OPTICS_BEHAVIOUR:
-	Source = 'source'
-	Mirror = 'mirror'
-	Focus = 'focus'
-	Split = 'split'
-	Slits = 'slits'
+	Source = 2**1
+	PhotonSource = 2**1
+	CoordinateOrigin = 2**2
+	Mirror = 2**3
+	Focus = 2**4
+	Split = 2**5
+	Slits = 2**6
+
+
 
 class FIGURE_ERROR_FILE_FORMAT(Enum):
 	HEIGHT_ONLY = 0 	#  label: "Height (Y)"
@@ -253,11 +257,11 @@ class Optics(LogBuffer):
 	#	 CLASS: __init__ [Optics]
 	#===============================
 	def __init__(self, XPosition=0 , YPosition=0, Orientation=OPTICS_ORIENTATION.ANY, UseAsReference=True):
-		self.XY = np.array([XPosition, YPosition])
-		self.SmallDisplacements = Optics._SmallDisplacements()
-		self.ComputationSettings = Optics._ComputationSettings()
-		self.Orientation = Orientation
-		self.UseAsReference = UseAsReference
+		self.XY = np.array([XPosition, YPosition]) #?
+		self.SmallDisplacements = Optics._SmallDisplacements() #property
+		self.ComputationSettings = Optics._ComputationSettings() #property
+		self.Orientation = Orientation #property
+		self.UseAsReference = UseAsReference #property
 	
 	def GetSummary(self):
 		return OpticsPropDisplayer.GetDisplay(self)
@@ -280,6 +284,15 @@ class Optics(LogBuffer):
 	@ParentContainer.setter
 	def ParentContainer(self,x):
 		self._ParentContainer = x
+		
+		
+#	@property
+#	def SmallDisplacements(self):
+#		return self.__SmallDisplacements
+#	@SmallDisplacements.setter
+#	def SmallDisplacements(self,x):
+#		self.__SmallDisplacements= x
+		
 		
 	#================================
 	# PROP: Orientation
@@ -350,7 +363,26 @@ class Optics(LogBuffer):
 		plt.tile(Title)
 
 		pass
+ 	
+	 #================================
+	# RayInNominal
+	#================================
+	@property
+	def RayInNominal(self)-> tl.Ray:
+		'''
+		ABSTRACT
+		'''
+		raise NotImplementedError("RayInNominal is not implemented")
 
+ 	#================================
+	# RayOutNominal
+	#================================
+	@property
+	def RayOutNominal(self) -> tl.Ray:
+		'''
+		ABSTRACT
+		'''
+		raise NotImplementedError("RayOutNominal is not implemented")	
 #==============================================================================
 #	 CLASS ABSTRACT: Analytical Optics
 #==============================================================================
@@ -429,7 +461,7 @@ class OpticsNumerical(Optics):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self._Transformation_List = [ [], [], [] ]
-		self.AngleLab = 0
+		self.AngleNormLab = 0
 		self._XYLab_Centre = np.array([0,0])
 
 		self.ComputationSettings = OpticsNumerical._ComputationSettings()
@@ -520,58 +552,68 @@ class OpticsNumerical(Optics):
 	@XYCentre.setter
 	def XYCentre(self, Value):
 		self._XYLab_Centre = Value
+#
+#	#================================
+#	# PROP: AngleLab
+#	#================================
+#	@property
+#	def AngleLab(self) -> float:
+#		"""
+#		AngleLab is the orientation angle of
+#			-the normal of the mirror
+#			- in the lab ref frame
+#	   """
+#		return self._AngleLab
+#	@AngleLab.setter
+#	def AngleLab(self, Value):
+#		self._AngleLab = Value
+
 
 	#================================
-	# PROP: AngleLab
+	#  PROP: AngleGrazingNominal [OpticsNumerical]
 	#================================
 	@property
-	def AngleLab(self) -> float:
+	def AngleGrazingNominal(self):
+		raise NotImplementedError()
+		'''
+		
+		Next closest subclass that implements: OpticsPlane
+		
+		AngleGrazingNominal SHOULD be defined in OpticsNumerical,
+		but up to now I have handled it in the subclasses like
+		MirrorPlane, MirrorElliptic,etc.
+		
+		Since the name of this parameter is changing (Alpha for
+		elliptical mirror, AngleGrazing forMirrorPlane, I will
+		postpone the refactoring)
+		
+		'''
+	@AngleGrazingNominal.setter
+	def AngleGrazingNominal(self,x):
+		raise NotImplementedError()
+		
+	#================================
+	# PROP: AngleNormLab
+	#================================
+	@property
+	def AngleNormLab(self) -> float:
 		"""
-		AngleLab is the orientation angle of
+		AngleNormLab is the orientation angle of
 			-the normal of the mirror
 			- in the lab ref frame
 	   """
 		return self._AngleLab
-	@AngleLab.setter
-	def AngleLab(self, Value):
+	@AngleNormLab.setter
+	def AngleNormLab(self, Value):
 		self._AngleLab = Value
-#		self._VersorLab = UnitVector(Angle = self._AngleLab, XYOrigin = self.XYOrigin)
 
-
-
-
-	#================================
-	# PROP: VersorLab
-	#================================
-	@property
-	def VersorLab(self) ->tl.UnitVector:
-		"""
-		VersorLab is the versor specifying the orientation of the mirror in the Lab ref. frame.
-		   DIRECTION is
-		   - NORMAL to the mirror surface
-		   - centred in the mirror centre
-		   - oriented on the same half-plane containing the reflectiong surface.
-
-		"""
-		return tl.UnitVector(Angle = self.AngleLab, XYOrigin = self.XYCentre)
-	@VersorLab.setter
-	def VersorLab(self, Value):
-		if type(Value) == np.ndarray:
-			 V = tl.UnitVector(Value)
-		elif type(Value) == tl.UnitVector:
-			V = Value
-		else:
-			print('Error in Optics.OpticsNumerical.VersorTan setter')
-
-		self.XYOrigin = V.XYOrigin
-		self._AngleLab = V.Angle
 
 	#================================
 	# PROP: AngleTanLab
 	#================================
 	@property
 	def AngleTanLab(self) -> float:
-		return self.VersorLab.Angle - np.pi/2
+		return self.VersorNorm.Angle - np.pi/2
 	@AngleTanLab.setter
 	def AngleTanLab(self, Value):
 		self._AngleLab = Value + np.pi/2
@@ -587,9 +629,119 @@ class OpticsNumerical(Optics):
 	# PROP: VersorNorm
 	#================================
 	@property
-	def VersorNorm(self) -> tl.UnitVector:
-		return self.VersorLab
+	def VersorNorm(self) ->tl.UnitVector:
+		"""
+		VersorLab is the versor specifying the orientation of the mirror in the Lab ref. frame.
+		   DIRECTION is
+		   - NORMAL to the mirror surface
+		   - centred in the mirror centre
+		   - oriented on the same half-plane containing the reflectiong surface.
 
+		"""
+		return tl.UnitVector(Angle = self.AngleNormLab, XYOrigin = self.XYCentre)
+	@VersorNorm.setter
+	def VersorNorm(self, Value):
+		if type(Value) == np.ndarray:
+			 V = tl.UnitVector(Value)
+		elif type(Value) == tl.UnitVector:
+			V = Value
+		else:
+			print('Error in Optics.OpticsNumerical.VersorTan setter')
+
+		self.XYOrigin = V.XYOrigin
+		self._AngleLab = V.Angle
+
+	#================================
+	#  PROP: AngleInputLabNominal [OpticsNumerical]
+	#================================
+	@property
+	def AngleInputLabNominal(self):
+		'''
+		Angle (in the Lab reference) of the incident beam.
+		
+		USES: AngleNorm and AngleGrazingNominal
+		
+		AngleInputLabNominal = AngleNorm - AngleGrazingNominal - pi/2
+
+		'''
+		return self.AngleNormLab - np.pi/2 - self.AngleGrazingNominal
+
+
+	#================================
+	# PROP: GetRayInNominal [OpticsNumerical]
+	#================================
+	@property
+	def RayInNominal(self):
+		'''
+		Defines the input ray.
+		
+		USES: OpticsNumerical->Subclasses.AngleInputLabNominal
+		
+		'''
+		try:
+			Angle = self.AngleInputLabNominal
+		except AttributeError:
+			raise NotImplementedError('Angle InputNominal not implemented')
+			
+
+		v = tl.UnitVector(Angle=Angle).v
+		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+	
+ 	#================================
+	# RayOutNominal [OpticsNumerical]
+	#================================
+	@property
+	def RayOutNominal(self) -> tl.Ray:
+		'''
+		ABSTRACT
+		
+		The output ray must continain the behavior
+		of the optical element (e.g. reflection for mirror,
+		diffraction for grating, free propagation for detectors and
+		slits, etc...)
+		'''
+		raise NotImplementedError()
+
+
+	#================================
+	#  PROP: AngleInputNominal
+	#================================
+	@property
+	def AngleInputNominal(self) -> float:
+		"""
+		In laboratory reference
+		"""
+		return self.RayInNominal.Angle
+	@AngleInputNominal.setter
+	def AngleInputNominal(self):
+		raise ValueError('AngleInGrazingNominal can not be set.')
+
+#	#================================
+#	# PROP: VersorLab
+#	#================================
+#	@property
+#	def VersorLab(self) ->tl.UnitVector:
+#		"""
+#		VersorLab is the versor specifying the orientation of the mirror in the Lab ref. frame.
+#		   DIRECTION is
+#		   - NORMAL to the mirror surface
+#		   - centred in the mirror centre
+#		   - oriented on the same half-plane containing the reflectiong surface.
+#
+#		"""
+#		return tl.UnitVector(Angle = self.AngleLab, XYOrigin = self.XYCentre)
+#	@VersorLab.setter
+#	def VersorLab(self, Value):
+#		if type(Value) == np.ndarray:
+#			 V = tl.UnitVector(Value)
+#		elif type(Value) == tl.UnitVector:
+#			V = Value
+#		else:
+#			print('Error in Optics.OpticsNumerical.VersorTan setter')
+#
+#		self.XYOrigin = V.XYOrigin
+#		self._AngleLab = V.Angle		
+		
 	#================================
 	# FieldForwards(N)
 	#================================
@@ -820,22 +972,17 @@ class OpticsNumerical(Optics):
 	#	 MatchHeightProfile
 	#================================================
 	def _MatchHeightProfile(self, MirrorSamples, Profile, ProfileStep):
+		'''
+		Make the HeightProfile of the same size of the optics length.
+		This is done by padding zeros (and typically creates some unwanted
+		diffractive effects, if the whole optics is illuminated)
+		
+		'''
 		ProfileStepNew = self.L / MirrorSamples
 		ProfileNew = rm.MatchHeightProfile(self.L, MirrorSamples, Profile, ProfileStep)
 		return ProfileNew, ProfileStepNew
 	
-#	#================================================
-#	#	 _Transformation_XYProp_To_XYLab
-#	#================================================
-#	def _Transformation_Update_XYPropToXYLab_Point(self, XYPropPoint):
-#		''' The same as _Transformation_XYPropToXYLab_Point, except that the usage
-#		of this one is shorter for updating the class members.
-#
-#			>>> a  =_Transformation_XYPropToXYLab_Point(a)
-#
-#			>>> _Transformation_Update_XYPropToXYLab_Point(a)
-#		'''
-#
+
  	#================================
 	# GetXY
 	#================================
@@ -844,49 +991,18 @@ class OpticsNumerical(Optics):
 		ABSTRACT
 		'''
 		pass
- 	#================================
-	# RayInNominal
-	#================================
-	@property
-	def RayInNominal(self)-> tl.Ray:
-		'''
-		ABSTRACT
-		'''
-		pass
-
- 	#================================
-	# RayOutNominal
-	#================================
-	@property
-	def RayOutNominal(self) -> tl.Ray:
-		'''
-		ABSTRACT
-		'''
-		pass
-
- 	#================================
-	# RayOutNominal
-	#================================
-	@property
-	def RayOutNominalSelf(self) -> tl.Ray:
-		'''
-		Returns the Output Ray (as a vector), computed with respect to the surface 
-		'''
-		pass
-
-	#================================
-	#  PROP: AngleInputNominal
-	#================================
-	@property
-	def AngleInputNominal(self) -> float:
-		"""
-		In laboratory reference
-		"""
-		return self.RayInNominal.Angle
-	@AngleInputNominal.setter
-	def AngleInputNominal(self):
-		raise ValueError('AngleInGrazingNominal can not be set.')
-
+# 	#================================
+#	# RayInNominal
+#	#================================
+#	@property
+#	def RayInNominal(self)-> tl.Ray:
+#		'''
+#		ABSTRACT
+#		'''
+#		pass
+#
+		
+	
 
 	#================================
 	# Get_LocalTangentAngle [MirrorPlane]
@@ -919,6 +1035,8 @@ class OpticsNumerical(Optics):
 		Str+= TabIndex * '\t' + 'AngleGrazing:= %0.2e rad\n' % (np.rad2deg(self.AngleGrazing))
 
 		return
+	
+	
 
  	#=================
 class OpticsPlane(OpticsNumerical, CodeGenerator):
@@ -993,8 +1111,7 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 		
 		# BUILDING
 		if tl.CheckArg([L, AngleGrazing]):
-			self._L = L
-# 			self._AngleGrazingNominal = AngleGrazing
+			self.L = L
 			self.AngleGrazingNominal = AngleGrazing
 			self.SetXYAngle_Centre(XYLab_Centre, AngleIn)
 		else:
@@ -1027,12 +1144,13 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 #		Debug.Print('si cazzo =========================')
 
 
-	#================================
-	#  PROP EXTENSION: XYCentre
-	#================================
-	def XYCentre(self,value):
-		super.XYCentre = value
-		self._UpdateParameters_XYStartEnd()
+#	#================================
+#	#  PROP EXTENSION: XYCentre
+#	#================================
+#	@property
+#	def XYCentre(self,value):
+#		super.XYCentre = value
+#		self._UpdateParameters_XYStartEnd()
 
 	#==============================
 	#  PROP: L
@@ -1045,20 +1163,30 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 		self._L= value
 		self._UpdateParameters_XYStartEnd()
 
-
-
 	#================================
-	#  PROP: AngleInputLabNominal
+	#  PROP: AngleGrazingNominal
 	#================================
 	@property
-	def AngleInputLabNominal(self):
-		'''
-		Angle (in the Lab reference) of the incident beam.
-		Computed using: AngleLab and AngleGrazingNominal
-		Depends on Mirror type.
+	def AngleGrazingNominal(self):
+		return self._AngleGrazingNominal
+	@AngleGrazingNominal.setter
+	def AngleGrazingNominal(self,x):
+		self._AngleGrazingNominal = x
 
-		'''
-		return self.AngleLab - np.pi/2 - self.AngleGrazingNominal
+
+#	#================================
+#	#  PROP: AngleInputLabNominal
+#	#================================
+#	@property
+#	def AngleInputLabNominal(self):
+#		'''
+#		Angle (in the Lab reference) of the incident beam.
+#		
+#		COMPUTED USING: AngleNorm and AngleGrazingNominal
+#		Depends on Mirror type.
+#
+#		'''
+#		return self.AngleNorm - np.pi/2 - self.AngleGrazingNominal
 
 #	#================================
 #	#  PROP: AngleGrazing
@@ -1077,22 +1205,14 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 #	def AngleTan(self):
 #		return self._AngleTan
 #
-	#================================
-	#  PROP: AngleNorm
-	#================================
-	@property
-	def AngleNorm(self):
-		return self._AngleNorm
+#	#================================
+#	#  PROP: AngleNorm
+#	#================================
+#	@property
+#	def AngleNorm(self):
+#		return self._AngleNorm
 
-	#================================
-	#  PROP: Line_Tan
-	#================================
-	@property
-	def Line_Tan(self):
-		"""
-		Line object, containing the tangent to the mirror
-		"""
-		return self._Line_Tan
+
 
 	#================================
 	#  PROP: XYStart
@@ -1108,11 +1228,20 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 	def XYEnd(self):
 		return self._XYLab_End
 
-
+	#================================
+	#  PROP: Line_Tan
+	#================================
+	@property
+	def Line_Tan(self):
+		"""
+		Line object, containing the tangent to the mirror
+		"""
+		return self._Line_Tan
+	
  	#================================
 	# GetXY_IdealMirror(N)
 	#================================
-	def GetXY_IdealMirror(self, N=100, ReferenceFrame=None, L=None):
+	def GetXY_IdealProfile(self, N=100, ReferenceFrame=None, L=None):
 		'''
 		Return the coordinates of the ideal mirror in the lab ref frame.
 
@@ -1132,28 +1261,47 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 			y = np.linspace(self.XYStart[1], self.XYEnd[1],N)
 		return x,y
 
-
-	"""
  	#================================
-	# GetXY
+	# GetXY_MeasuredProfile(N)
 	#================================
-	def GetXY(self, N, Options =['ideal'] ):
+	def GetXY_MeasuredProfile(self, N=100, ReferenceFrame=None, L=None):
+		raise NotImplementedError()
+	#================================
+	# GetXY [Mirror]
+	#================================
+	def GetXY(self, N):
 		'''
 		Main User-interface function for getting the x,y points of the mirror
 		in the laboratory reference frame.
 
-		Options can be
-		- 'ideal' : the ideal mirror profile is used (default)
-		- 'perturbation' : instead of the nominal position of the mirror, the position of the mirror computed via  longitudinal, transverse and angular
-		 "perturbations" around the nominal configuration.
-		- 'figure error' : a figure error is added to the mirror profile, if possible
-		- 'roughness' : a roughness profile is added to the mirror profile, if possible
+		Uses the self.ComputationSettings parameters for performing the computation
+
+		Parameters
+		-----
+		N : int
+			Number of samples.
+
+		Uses
+		-----
+		self.ComputationSettings : (class member)
+			See computation settings.
+
 		'''
-		if 'ideal' in Options:
-			return self.GetXY_IdealMirror(N)
+
+
+		if self.ComputationSettings.UseIdeal == True:
+			xLab, yLab = self.GetXY_IdealProfile(N)
 		else:
-			print("Mirror.GetXY: Option set not implemented. \n Options = %s" % str(Options))
-	"""
+			xLab, yLab = self.GetXY_MeasuredProfile(N)
+
+		# Apply small perturbations?
+		if self.ComputationSettings.UseSmallDisplacements:
+			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
+
+		else:
+			pass
+
+		return xLab, yLab
 	#================================
 	# Get_LocalTangentAngle [MirrorPlane]
 	#================================
@@ -1165,14 +1313,13 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, Angle, WhichAngle =  TypeOfAngle.InputNominal, **kwargs ):
 		'''
-		Set the element XYCentre and orientation angle.
-		CHECK CONTROLLARE: non mi ricordo pi?? che cosa siano gli angoli
+		Set XYCentre and orientation angle .
 		'''
 
 		self.XYCentre = XYLab_Centre
 
 		if WhichAngle == TypeOfAngle.Surface:  	 	 	 	# Angle is the Normal to the surface
-			self.AngleLab = Angle
+			self.AngleNormLab = Angle
 
 		elif WhichAngle == TypeOfAngle.InputNominal: 	 	# Angle is the angle of the input beam
 			self.AngleTanLab = Angle + self.AngleGrazingNominal
@@ -1204,9 +1351,16 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 #		XY_a = self._XYLab_Centre + self.L/2 * self.VersorNorm.vNorm
 #		XY_b = self._XYLab_Centre - self.L/2 * self.VersorNorm.vNorm
 
-		XY_a = self.XYCentre + self.L/2 * self.VersorNorm.vNorm
-		XY_b = self.XYCentre - self.L/2 * self.VersorNorm.vNorm
-
+		try:
+			XY_a = self.XYCentre + self.L/2 * self.VersorNorm.vNorm
+			XY_b = self.XYCentre - self.L/2 * self.VersorNorm.vNorm
+		except TypeError:
+			raise WiserException("Type error", 
+						By= "_UpdateParameters_XYStartEnd",
+						Args = [('XYCentre', self.XYCentre),
+								  ('VersorNorm.vNorm',self.VersorNorm.vNorm)])
+		
+						
 		if XY_a[0] < XY_b[1]:
 			self._XYLab_Start = XY_a
 			self._XYLab_End = XY_b
@@ -1232,8 +1386,9 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 	@property
 	def _Line_Tan(self):
 		'''
-		Line np.tan is the line tangent to the mirror surface, viz the equation
-		of the mirror itself
+		Line np.tan is the polynomial whose coefficients
+		describe the tangent to the mirror surface.
+		
 		'''
 		m = np.tan(self.AngleTanLab)
 		q = self.XYCentre[1] - m * self.XYCentre[0]
@@ -1247,13 +1402,13 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 	#================================================
 
 
-	#================================
-	# PROP: GetRayInNominal
-	#================================
-	@property
-	def RayInNominal(self):
-		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
-		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+#	#================================
+#	# PROP: GetRayInNominal
+#	#================================
+#	@property
+#	def RayInNominal(self):
+#		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+#		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
 
 	#================================
 	# PROP: RayOutNominal
@@ -1547,7 +1702,7 @@ def GaussianField(z,r, Lambda, Waist0):
 #	 CLASS: SourceGaussian
 #==============================================================================
 class SourceGaussian(OpticsAnalytical, CodeGenerator):
-	_Behaviour = OPTICS_BEHAVIOUR.Source
+	_Behaviour = OPTICS_BEHAVIOUR.PhotonSource
 	_IsSource = True
 	_TypeStr = 'gauss'
 	_TypeDescr = 'Gaussian Source'
@@ -2313,7 +2468,10 @@ class Segment(OpticsNumerical):
 	#================================
 	#  FUN: __init__
 	#================================
-	def __init__(self, L = None, AngleGrazing = None, XYLab_Centre = [0,0], AngleIn= 0):
+	def __init__(self, L = None, 
+			  AngleGrazing = None, 
+			  XYLab_Centre = [0,0], 
+			  AngleIn= 0):
 		#Mirror.__init__(self)
 		super(OpticsNumerical, self).__init__()
 		'''
@@ -2757,7 +2915,7 @@ class Mirror(OpticsNumerical):
 		XYStart, XYEnd = self._ComputeXYStartXYEnd(L)
 
 		x = np.linspace(XYStart[0], XYEnd[0], N)
-		m = self.AngleLab
+		m = self.AngleNormLab
 		q = XYStart[1] - m*XYStart[0]
 
 		return x,y
@@ -3670,9 +3828,15 @@ class MirrorPlane(Mirror, CodeGenerator):
 	#================================
 	#  PROP EXTENSION: XYCentre
 	#================================
-	def XYCentre(self,value):
-		super.XYCentre = value
-		self._UpdateParameters_XYStartEnd()
+
+	#================================
+	# PROP: XYCentre
+	#================================
+#	@XYCentre.setter
+#	def XYCentre(self,value):
+#		super.XYCentre = value
+#		self._UpdateParameters_XYStartEnd()
+#commented in 2021. Manually call _UpdateParameters_XYStartEnd()
 
 	#==============================
 	#  PROP: L
@@ -3687,18 +3851,18 @@ class MirrorPlane(Mirror, CodeGenerator):
 
 
 
-	#================================
-	#  PROP: AngleInputLabNominal
-	#================================
-	@property
-	def AngleInputLabNominal(self):
-		'''
-		Angle (in the Lab reference) of the incident beam.
-		Computed using: AngleLab and AngleGrazingNominal
-		Depends on Mirror type.
-
-		'''
-		return self.AngleLab - np.pi/2 - self.AngleGrazingNominal
+#	#================================
+#	#  PROP: AngleInputLabNominal [MirrorPlane]
+#	#================================
+#	@property
+#	def AngleInputLabNominal(self):
+#		'''
+#		Angle (in the Lab reference) of the incident beam.
+#		Computed using: AngleNorm and AngleGrazingNominal
+#		Depends on Mirror type.
+#
+#		'''
+#		return self.AngleNorm - np.pi/2 - self.AngleGrazingNominal
 
 #	#================================
 #	#  PROP: AngleGrazing
@@ -3717,12 +3881,12 @@ class MirrorPlane(Mirror, CodeGenerator):
 #	def AngleTan(self):
 #		return self._AngleTan
 #
-	#================================
-	#  PROP: AngleNorm
-	#================================
-	@property
-	def AngleNorm(self):
-		return self._AngleNorm
+#	#================================
+#	#  PROP: AngleNorm
+#	#================================
+#	@property
+#	def AngleNorm(self):
+#		return self._AngleNorm
 
 	#================================
 	#  PROP: Line_Tan
@@ -3812,7 +3976,7 @@ class MirrorPlane(Mirror, CodeGenerator):
 		self.XYCentre = XYLab_Centre
 
 		if WhichAngle == TypeOfAngle.Surface:  	 	 	 	# Angle is the Normal to the surface
-			self.AngleLab = Angle
+			self.AngleNormLab = Angle
 
 		elif WhichAngle == TypeOfAngle.InputNominal: 	 	# Angle is the angle of the input beam
 			self.AngleTanLab = Angle + self.AngleGrazingNominal
@@ -3896,10 +4060,15 @@ class MirrorPlane(Mirror, CodeGenerator):
 		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
 
 	#================================
-	# PROP: RayOutNominal
+	# PROP: RayOutNominal [MirrorPlane]
 	#================================
 	@property
 	def RayOutNominal(self):
+		'''
+		- Use AngleInputLabNominal, VersorNorm 
+		- apply the reflection law
+		- return the output wavevector
+		'''
 		V = tl.UnitVector(Angle = self.AngleInputLabNominal)
 		v_ref = tl.UnitVectorReflect(V.v, self.VersorNorm.v)
 		return tl.Ray(vx = v_ref[0], vy = v_ref[1], XYOrigin = self.XYCentre)
@@ -6650,7 +6819,12 @@ class Detector(MirrorPlane):
 						('AngleGrazing','Grazing Angle')),
 					  ]
 
-	def __init__(self, L=None, AngleGrazing= np.pi/2, XYLab_Centre=[0,0], AngleIn=0, **kwargs):
+	def __init__(self, 
+			  L=None, 
+			  AngleGrazing= np.pi/2,
+			   XYLab_Centre=[0,0],
+			    AngleIn=0,
+				 **kwargs):
 		# UseAsReference = False => Make detector transparent by default
 		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)
 #		super().__init__(**kwargs)
@@ -6883,18 +7057,6 @@ class Slits(OpticsNumerical, CodeGenerator):
 		self._UpdateParameters_XYStartEnd()
 
 	# ================================
-	#  PROP: AngleInputLabNominal
-	# ================================
-	@property
-	def AngleInputLabNominal(self):
-		'''
-		Angle (in the Lab reference) of the incident beam.
-		Computed using: AngleLab and AngleGrazingNominal
-		Depends on Mirror type.
-		'''
-		return self.AngleLab - np.pi / 2 - self.AngleGrazingNominal
-
-	# ================================
 	#  PROP: AngleNorm
 	# ================================
 	@property
@@ -6946,7 +7108,7 @@ class Slits(OpticsNumerical, CodeGenerator):
 		self.XYCentre = XYLab_Centre
 
 		if WhichAngle == TypeOfAngle.Surface:  # Angle is the Normal to the surface
-			self.AngleLab = Angle
+			self.AngleNormLab = Angle
 
 		elif WhichAngle == TypeOfAngle.InputNominal:  # Angle is the angle of the input beam
 			self.AngleTanLab = Angle + self.AngleGrazingNominal
@@ -7074,7 +7236,204 @@ class OPTICS_TYPE:
 	
 
 #OpticsPropDisplayer.GetDisplay(fm1_v.CoreOptics)
+
+class SourceVirtual(OpticsAnalytical,CodeGenerator):
+	'''
+	The Virtual Source is used toghether with SourceWavefront,
+	
+	SourceVirtual just provides a reference system for SourceWavefront.
+	
+	'''
+
+	_Behaviour = OPTICS_BEHAVIOUR.CoordinateOrigin
+	_IsSource = True
+	_TypeStr = 'virtual src'
+	_TypeDescr = 'Virtual Source'
+	_IsAnalytic = False
+	
+	# ================================
+	#  FUN: __init__
+	# ================================
+	def __init__(self,  
+			  AnglePropagation=0,
+			  XYOrigin = [0,0],
+			  **kwargs):
 		
+		CodeGenerator.__init__(self,[ ('AnglePropagation', 'AnglePropagation'),'XYOrigin'])
+		OpticsAnalytical.__init__(self,
+				  Orientation = OPTICS_ORIENTATION.ISOTROPIC,
+				  **kwargs)  # No roughness, no small displacements, no figure error from super
+	
+	
+		# Store the variables
+		if tl.CheckArg([AnglePropagation, AnglePropagation]):
+			self._AngleGrazingNominal =  np.pi/2. - AnglePropagation
+			self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
+			self._AnglePropagation = AnglePropagation
+		else:
+			tl.ErrMsg.InvalidInputSet
+
+		self.UseAsReference = True
+
+ 	#================================
+	# SetXYAngle_Centre [MirrorPlane]
+	#================================
+	def SetXYAngle_Centre(self, XYLab_Centre, AnglePropagation, **kwargs ):
+		'''
+		Set XYCentre and orientation angle .
+		
+		'''
+		self.XYCentre = np.array(XYLab_Centre)
+		self.AngleNormLab = AnglePropagation
+
+	def SyncComputationDataOfParentContainer(self):
+		'''
+		Manually fills the ComputationData of the container
+		'''
+		
+	#================================================
+	#	 RayOutNominal
+	#================================================
+	@property
+	def RayOutNominal(self):
+		'''
+		Use XYCentre, AnglePropagation
+		Return the propagation wavevector.
+		'''
+		return tl.Ray(XYOrigin = self.XYCentre, Angle = self._AnglePropagation)
+
+
+	def __str__(self):
+		PropList = ['AnglePropagation', 'XYOrigin']
+		List = [PropName + ':= ' + str(getattr(self,PropName)) for PropName in PropList]
+		return ('Virtual source\n' + 20 * '-' + '\n'+ '\n'.join(List) + '\n' + 20 * '-' + '\n')
+
+#==============================================================================
+#	 CLASS: SourceNumeric
+#==============================================================================
+class SourceWavefront(OpticsPlane, CodeGenerator):
+	'''
+	
+	Implements a numeric source.
+	
+	It is designed to be used together with SourceVirtual
+
+	
+	Design Notes:
+	-----
+		
+	SourceNumeric inherits Slits. This has no physical meaning, of course.
+	In principle, optics such as MirrorPlane, Slits, Source should inherit
+	from an hypothetical parent class PlaneOptics. 
+
+	However this requires a lot of maintenance.
+		
+	'''
+	_Behaviour = OPTICS_BEHAVIOUR.Source
+	_IsSource = True
+	_TypeStr = 'num src'
+	_TypeDescr = 'Numerical source'
+	_IsAnalytic = False
+	# ================================
+	#  FUN: __init__ [SourceWavefront]
+	# ================================
+	def __init__(self, 
+			  L = None,
+			  AnglePropagation=0,
+			  Field = None,
+			  XYOrigin = [0,0],
+			  Lambda = None, 
+			  **kwargs):
+		
+		'''
+		Numeric source
+		
+		Parameters
+		------
+		Lambda : float
+			wavelength (meters)
+			
+		L : float
+			size of the provided field (meters)
+			
+		Field : array(complex)
+			sampled input field.
+			
+		AnglePropagation : float (rad)
+			Angle of propagation w.r.t. the lab reference frame. 
+			Defaulted to 0.
+        '''
+		
+		# BUILDING
+		if tl.CheckArg([Lambda, L, Field, AnglePropagation]):
+			CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
+			OpticsPlane.__init__(self,
+			   L   = L,
+			   AngleGrazing  = -(np.pi/2. - AnglePropagation), #(1)
+			   XYLab_Centre = XYOrigin,
+			   AngleIn  = 0, #why should I knowthis?
+			   **kwargs)
+			   #(1)  if -(pi/2-0) => versor norm = [1,0], wavefront like
+			   #	if (pi/2 -0) => versor norm = [-1,0], detectorlike
+			N = int(len(Field))
+			if N == 0:
+				raise WiserException("The input field of Optics.SourceNumeric has zero length!")
+			else:
+				Field = Field + 0j # forces conversion to complex
+				self._Lambda = Lambda				
+				self._FieldNSamples = N
+				self._Field = Field
+			
+		else:
+			tl.ErrMsg.InvalidInputSet
+
+		self.UseAsReference = False
+
+	def __str__(self):
+		PropList = ['Lambda', 'L', 'FieldNSamples', 'AnglePropagation']
+		List = [PropName + ':= ' + str(getattr(self,PropName)) for PropName in PropList]
+		return ('Gaussian source\n' + 20 * '-' + '\n'+ '\n'.join(List) + '\n' + 20 * '-' + '\n')
+	
+
+
+  
+	@property
+	def Lambda(self):
+		return self._Lambda
+	@property
+	def Field(self):
+		return self._Field
+	@property
+	def FieldNSamples(self):
+		return self._FieldNSamples
+	@property
+	def Lambda(self):
+		return self._Lambda
+		
+
+	
+	def GetInitComputationData(self):
+		'''
+		Returns the ComputationData to put in the Container OpticalElement.
+		
+		This must be done after that the Foundation.OpticalElement has been created.
+		'''
+		ComputationData = DataContainer()
+		
+		ComputationData.Lambda = self.Lambda
+		ComputationData.Field = self._Field
+		ComputationData.Intensity = (self._Field)**2
+		ComputationData.NSamples = self.FieldNSamples
+		
+		(x,y) = self.GetXY(self.FieldNSamples)
+		ComputationData.X = x
+		ComputationData.Y = y
+		ComputationData.S = rm.xy_to_s(x,y)
+		ComputationData.Action = "Field manually inputed by the user."
+		ComputationData.Name = ''
+		
+		return ComputationData
+	
 #==============================================================================
 #	 CLASS: SourceNumeric
 #==============================================================================
@@ -7112,7 +7471,8 @@ class SourceNumerical(Slits, CodeGenerator):
 	def __init__(self, Lambda, 
 			  L,
 			  AnglePropagation=0,
-			  Field = None,  
+			  Field = None,
+			  OffsetFromReferenceSource = 0,  
 			  XYOrigin = [0,0],
 			  **kwargs):
 		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
@@ -7134,6 +7494,16 @@ class SourceNumerical(Slits, CodeGenerator):
 		AnglePropagation : float (rad)
 			Angle of propagation w.r.t. the lab reference frame. 
 			Defaulted to 0.
+			
+		VirtualOffset : float (m)
+			Default to 0.
+			This is an offset used to compute the distances, and it is introduce
+			to compensate the fact that the 
+			Example:
+				the "numerical source" is set at (x,y) = (0,0) and an optical element
+				is set at (x,y) = (0,10).
+				
+				If
 			
 
         '''
@@ -7188,6 +7558,7 @@ class SourceNumerical(Slits, CodeGenerator):
 		This must be done after that the Foundation.OpticalElement has been created.
 		'''
 		ComputationData = DataContainer()
+		
 		ComputationData.Lambda = self.Lambda
 		ComputationData.Field = self._Field
 		ComputationData.Intensity = (self._Field)**2
