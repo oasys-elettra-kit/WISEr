@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
-
-import imp
+# from importlib.machinery import SourceFileLoader
+# import types
+from importlib.machinery import SourceFileLoader
 import os
 import subprocess
 
@@ -11,7 +12,7 @@ except AttributeError:
 
 NAME = 'LibWiser'
 
-VERSION = '0.9.12'
+VERSION = '0.10.1'
 ISRELEASED = True
 
 DESCRIPTION = 'Wiser kernel library'
@@ -25,12 +26,12 @@ MAINTAINER = 'Michele Manfredda'
 MAINTAINER_EMAIL = 'michele.manfredda@elettra.eu'
 LICENSE = 'GPLv3'
 
-KEYWORDS = (
+KEYWORDS = [
     'wavefront propagation',
     'simulation'
-)
+]
 
-CLASSIFIERS = (
+CLASSIFIERS = [
     'Development Status :: 4 - Beta',
     'Environment :: Console',
     'Environment :: Plugins',
@@ -39,7 +40,7 @@ CLASSIFIERS = (
     'Intended Audience :: Education',
     'Intended Audience :: Science/Research',
     'Intended Audience :: Developers'
-)
+]
 
 INSTALL_REQUIRES = (
     'setuptools',
@@ -103,7 +104,9 @@ if not release:
         GIT_REVISION = git_version()
     elif os.path.exists('LibWiser/version.py'):
         # must be a source distribution, use existing version file
-        version = imp.load_source("LibWiser.version", "LibWiser/version.py")
+        version = SourceFileLoader("LibWiser.version", "LibWiser/version.py").load_module()
+
+        # version = SourceFileLoader("LibWiser.version", "LibWiser/version.py")
         GIT_REVISION = version.git_revision
     else:
         GIT_REVISION = "Unknown"
