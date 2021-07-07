@@ -630,9 +630,7 @@ def HuygensIntegral_1d_Kernel(wl, Ea, xa, ya, xb, yb):
     The computation is performed on the elements
     xb(bStart) --> xb(bEnd) and yb(bStart) --> yb(bEnd)
     """
-
     k = 2. * np.pi / wl
-
     bStart = 0
     # bEnd = prod(int64(xb.shape))
     bEnd = 1.
