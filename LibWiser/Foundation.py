@@ -808,9 +808,13 @@ class OpticalElement(TreeItem, CodeGenerator):
 			#		NameParent, self.Name, NameChildren, self.XYCentre[0], self.XYCentre[1])
 			#
 
+
 			DistanceFromParent = self.GetDistanceFromParent(False,False)
 #			print(self.GeneralDistanceFromParent(Reference=False))
 			print(DistanceFromParent)
+
+			# print(self.GeneralDistanceFromParent(Reference=False))
+
 			Str = '[%s] ---- *[%s]*----[%s]' % (NameParent, self.Name, NameChildren)
 			
 			Str = '*[%s]*' % self.Name
