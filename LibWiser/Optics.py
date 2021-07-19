@@ -7259,7 +7259,9 @@ class SourceVirtual(OpticsAnalytical,CodeGenerator):
 			  XYOrigin = [0,0],
 			  **kwargs):
 		
-		CodeGenerator.__init__(self,[ ('AnglePropagation', 'AnglePropagation'),'XYOrigin'])
+		CodeGenerator.__init__(self,
+						 [ ('AnglePropagation', 'AnglePropagation'),
+							('XYOrigin', 'XYCentre')])
 		OpticsAnalytical.__init__(self,
 				  Orientation = OPTICS_ORIENTATION.ISOTROPIC,
 				  **kwargs)  # No roughness, no small displacements, no figure error from super
@@ -7269,14 +7271,14 @@ class SourceVirtual(OpticsAnalytical,CodeGenerator):
 		if tl.CheckArg([AnglePropagation, AnglePropagation]):
 			self._AngleGrazingNominal =  np.pi/2. - AnglePropagation
 			self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
-			self._AnglePropagation = AnglePropagation
+			self.AnglePropagation = AnglePropagation
 		else:
 			tl.ErrMsg.InvalidInputSet
 
 		self.UseAsReference = True
 
  	#================================
-	# SetXYAngle_Centre [MirrorPlane]
+	# SetXYAngle_Centre [SourceVirtual]
 	#================================
 	def SetXYAngle_Centre(self, XYLab_Centre, AnglePropagation, **kwargs ):
 		'''
@@ -7290,17 +7292,37 @@ class SourceVirtual(OpticsAnalytical,CodeGenerator):
 		'''
 		Manually fills the ComputationData of the container
 		'''
+
+ 	#================================
+	# AnglePropagation [SourceVirtual] ALIAS
+	#================================		
+	@property
+	def AnglePropagation(self):
+		return self.AngleNormLab
+	@AnglePropagation.setter
+	def AnglePropagation(self,x):
+		self.AngleNormLab = x
+ 	#================================
+	# XYOrigin [SourceVirtual] ALIAS
+	#================================	
+	@property
+	def XYOrigin(self):
+		return self.XYCentre
+	@XYOrigin.setter
+	def XYOrigin(self,x):
+		self.XYCentre= x		
 		
-	#================================================
+	
+	#==============================================================
 	#	 RayOutNominal
-	#================================================
+	#==============================================================
 	@property
 	def RayOutNominal(self):
 		'''
 		Use XYCentre, AnglePropagation
 		Return the propagation wavevector.
 		'''
-		return tl.Ray(XYOrigin = self.XYCentre, Angle = self._AnglePropagation)
+		return tl.Ray(XYOrigin = self.XYCentre, Angle = self.AnglePropagation)
 
 
 	def __str__(self):
@@ -7387,7 +7409,18 @@ class SourceWavefront(OpticsPlane, CodeGenerator):
 		else:
 			tl.ErrMsg.InvalidInputSet
 
-		self.UseAsReference = False
+		self.UseAsReference = True
+		'''
+		Design Note:
+			UseAsReference is better = True if the widget within oasys is a unique one that wraps the virtual
+			source and the wavefront: the user "forgets" the inner structure. If she uses "distance from source",
+			there is no ambiguity. If she uses "distance from previous", there is good chance that she
+			means the distance from the source anyway, and notthe distance from the wavefront plane.
+			
+			UseAsReference is bette = True also if two separate widgets are used.
+			
+		
+		'''
 
 	def __str__(self):
 		PropList = ['Lambda', 'L', 'FieldNSamples', 'AnglePropagation']

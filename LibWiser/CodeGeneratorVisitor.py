@@ -57,7 +57,7 @@ class CodeGenerator():
 		RootAttrName = RootAttrName if RootAttrName is not None else ShortClassName
 		# Writes the line (e.g.)
 		# PositioningDirectives = Foundation.PositioningDirectives(\n
-		s = N*'\t' + "%s =%s(\n" %(RootAttrName, LongClassName)
+		s = N*'\t' + "%s =%s(" %(RootAttrName, LongClassName)
 		
 		for AttrName in self._CodeGeneratorAttributes:
 			
@@ -67,7 +67,11 @@ class CodeGenerator():
 				# self is the parent object, which is expected to contain the attributes
 				# that we want to store.
 			except:
-				raise Exception("Error in InitCodeGenerator.GenerateCode applied to %s. Attribute '%s' not found. Alias :%s. Attr= %s " % ( str(s), AttrName, AliasName, str(Attr)))
+				raise Exception('''
+					Error in InitCodeGenerator.GenerateCode applied to %s.
+					 Attribute Name '%s' not found. Attribute Alias:%s.
+					 How to solve: revise LibWiser code. ''' 
+					 %  ( str(s), AttrName, AliasName))
 				return s
 					
 			if hasattr(Attr,'GenerateCode'):
