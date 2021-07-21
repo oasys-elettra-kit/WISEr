@@ -12,7 +12,7 @@ except AttributeError:
 
 NAME = 'LibWiser'
 
-VERSION = '0.10.1'
+VERSION = '0.12.2'
 ISRELEASED = True
 
 DESCRIPTION = 'Wiser kernel library'
@@ -122,7 +122,6 @@ if not release:
                        'isrelease': str(ISRELEASED)})
     finally:
         a.close()
-
 
 PACKAGES = find_packages(exclude=('*.tests', '*.tests.*', 'tests.*', 'tests'))
 
