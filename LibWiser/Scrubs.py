@@ -9,6 +9,8 @@ Still to define if it will be kept
 from LibWiser.Errors import WiserException
 from enum import Enum as StandardEnum
 from pathlib import Path as MakePath
+
+_NewPythonNameCounter = 1
 #==============================================================================
 #  Class Enum
 #==============================================================================
@@ -180,15 +182,33 @@ def IsValidPythonName(x):
 		return True
 	except:
 		return False	
+
 #==============================================================================
-#  FUN: MergeDictionaries
+#  FUN: MakeValidPythonName
 #==============================================================================	
-def IsValidPythonName(x):
-	try:
-		exec('%s = 42' % x)
-		return True
-	except:
-		return False
+def MakeValidPythonName(x, Prefix = 'Item'):
+	'''
+	Modifies the string o that it can be used as a python variable name.
+	
+	- replace white spaces
+	- add "Item" if starts with number
+	- Generate a totally new name, if the previous fail
+	
+	'''
+	global _NewPythonNameCounter
+	x = x.replace(' ','_')
+	
+	if IsValidPythonName(x):
+		pass
+		
+	else:
+		xx = '%s_%s' % (Prefix,x)
+		if IsValidPythonName(xx):
+			x = xx
+		else:
+			_NewPythonNameCounter +=1
+			x = '%s_%02d' % (Prefix,_NewPythonNameCounter)	
+	return x
 #==============================================================================
 #  FUN: UpdateDictionary
 #==============================================================================	
@@ -433,6 +453,12 @@ class DataContainer():
 		
 		return Dict
 	pass
+
+	def _SaveToH5(self, FileName, RootGroupName = 'DataContainer'):
+		from LibWiser.ToolLib import FileIO
+		SaveToH5 = FileIO.SaveToH5
+		SaveToH5(FileName, [(RootGroupName, self)])
+		return None 
 
 a = DataContainer(x=1)
 
