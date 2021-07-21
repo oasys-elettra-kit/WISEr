@@ -64,7 +64,10 @@ class ComputationResults(LibWiser.Scrubs.DataContainer):
 			return abs(self.Field)**2
 		except:
 			return None
-
+	@Intensity.setter
+	def Intensity(self,x):
+		raise WiserException(r'''The intensity is automatically computed from the Field, 
+						   and it can not be set. This is a programming error ''')
 	#============================
 	# PROP Hew
 	#============================
@@ -1651,7 +1654,7 @@ class BeamlineElements(Tree):
 		
 		
 	#================================================
-	#  PROP: Source
+	#  PROP: Source [BeamlineElements]
 	#================================================
 	@property
 	def Source(self):
@@ -1667,6 +1670,7 @@ class BeamlineElements(Tree):
 			else:
 				return None
 		return None
+	
 	@property
 	def MainLambda(self):
 		'''
@@ -1677,6 +1681,8 @@ class BeamlineElements(Tree):
 		All the sources must have.
 		'''
 		Found= False
+		
+		# Method1) Search for an item which has a 'Lambda' attribute
 		for Item in self.ItemList:
 			try:
 					Lambda = Item.CoreOptics.Lambda
@@ -1688,8 +1694,20 @@ class BeamlineElements(Tree):
 		if Found:
 			return Lambda
 		else:
-			raise WiserException("BeamlineElements.MainLambda could not identify the lambda of the simulation.")
 			
+			 #METHOD2) Search for the first item which has a valid ComputationData.Lambda
+			for Item in self.ItemList:
+				try:
+						Lambda = Item.ComputationData.Lambda
+						Found = True
+						break
+				except:
+					pass				 
+			if Found:
+				return Lambda
+				raise WiserException('''BeamlineElements.MainLambda could not identify 
+								 the lambda of the simulation. BeamlineElements.Name =%s''' %
+								 self.Name)
 	#================================================
 	#  PROP: Source
 	#================================================
@@ -1718,48 +1736,51 @@ class BeamlineElements(Tree):
 	#================================================
 	#  PROP: Lambda
 	#================================================
+#	@property
+#	def Lambda(self):
+#		'''
+#		Return the wavelength of the simulation.
+#		There are different cases.
+#		1) the source is analytical => Lambda is stored in its properties
+#		2) the source is any kind of OpticsNumericalobject (e.g. a mirror)
+#			=> Lambda is stored in the ComputationData
+#		3) The source is a VirtualSource, which means that there must be another
+#			optical element delivering the light. For the moment, I assume
+#			that such an element is a SourceWavefront object.
+#		'''
+#		
+#		ClassOfTheSource = type(self.Source.CoreOptics)
+#		
+#		#1) the source is analytical		
+#		if issubclass(ClassOfTheSource, LibWiser.Optics.SourceAnalytical):
+#			# The source is analytical, so it directly has the info on the lambda
+#			Lambda = Source.CoreOptics.Lambda
+#		#2) The source is a generic numericaloptics element
+#		elif (issubclass(ClassOfTheSource, LibWiser.Optics.SourceNumerical) 
+#				 and not (ClassOfTheSource  == LibWiser.Optics.SourceVirtual)):
+#			Lambda = Source.ComputationData.Lambda
+#			
+#		# The "source" is a virtual source
+#		elif ClassOfTheSource  == LibWiser.Optics.SourceVirtual:
+#			# Check that there is at least  one child (i.e. the SourceWavefront)
+#			try:
+#				Child = self.Source.GetChildren()[0]
+#			except:
+#				raise WiserException('''The Virtual Source itself does not contain 
+#						 infos about the wavelength. Append a SourceWavefront object 
+#						 to the beamline to specify the wavelength''')
+#			#if ok, try to get the wavelenght from the child,
+#			# that should be a SourceWavefront.
+#			
+#			try:
+#				Lambda = Child.Lambda
+#			except:
+#				raise WiserException("BeamlineElements.Lambda failed. Why? Check the code")
+#				
+#		return Lambda
 	@property
 	def Lambda(self):
-		'''
-		Return the wavelength of the simulation.
-		There are different cases.
-		1) the source is analytical => Lambda is stored in its properties
-		2) the source is any kind of OpticsNumericalobject (e.g. a mirror)
-			=> Lambda is stored in the ComputationData
-		3) The source is a VirtualSource, which means that there must be another
-			optical element delivering the light. For the moment, I assume
-			that such an element is a SourceWavefront object.
-		'''
-		
-		ClassOfTheSource = type(self.Source.CoreOptics)
-		
-		#1) the source is analytical		
-		if issubclass(ClassOfTheSource, LibWiser.Optics.SourceAnalytical):
-			# The source is analytical, so it directly has the info on the lambda
-			Lambda = Source.CoreOptics.Lambda
-		#2) The source is a generic numericaloptics element
-		elif (issubclass(ClassOfTheSource, LibWiser.Optics.SourceNumerical) 
-				 and not (ClassOfTheSource  == LibWiser.Optics.SourceVirtual)):
-			Lambda = Source.ComputationData.Lambda
-			
-		# The "source" is a virtual source
-		elif ClassOfTheSource  == LibWiser.Optics.SourceVirtual:
-			# Check that there is at least  one child (i.e. the SourceWavefront)
-			try:
-				Child = self.Source.GetChildren()[0]
-			except:
-				raise WiserException('''The Virtual Source itself does not contain 
-						 infos about the wavelength. Append a SourceWavefront object 
-						 to the beamline to specify the wavelength''')
-			#if ok, try to get the wavelenght from the child,
-			# that should be a SourceWavefront.
-			
-			try:
-				Lambda = Child.Lambda
-			except:
-				raise WiserException("BeamlineElements.Lambda failed. Why? Check the code")
-				
-		return Lambda
+		return self.MainLambda
 #	#================================================
 #	#  FUN: RefreshPositions
 #	#================================================
@@ -2034,7 +2055,7 @@ class BeamlineElements(Tree):
 			
 			
 	#================================================
-	#  FUN: SetAllNSamples
+	#  FUN: SetAllNSamples [BeamlineElements]
 	#================================================
 	def SetAllNSamples(self,N):
 		'''set the same number of manual sampling for all the optical elements''
@@ -2048,11 +2069,11 @@ class BeamlineElements(Tree):
 	def SetAllUseCustomSampling(self,x : bool):
 		'''set the same number of manual sampling for all the optical elements''
 		''' 
-		for Item in self.ItemList:
+		for i, Item in enumerate(self.ItemList):
 			try:
-				Item.ComputationSettings.UseCustomSampling= x
+				self.ItemList[i].ComputationSettings.UseCustomSampling= x
 			except:
-				pass
+				raise Exception
 	
 	def SetPropertyForAll(self, PropertyName, PropertyValue):
 		for Item in self.ItemList:
@@ -3104,6 +3125,7 @@ class BeamlineElements(Tree):
 							 Labels = Labels)
             
 		plt.grid(True)
+		plt.show()
 
 	def PrintComputationTime(self):
 		print('Computation tim: %0.2f minutes' % self.ComputationMinutes)

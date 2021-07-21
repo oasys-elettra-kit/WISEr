@@ -50,11 +50,18 @@ class CodeGenerator():
 	#===========================================================================	
 	def GenerateCode(self, RootAttrName =None, N=0):
 		'''
-		Valid for any class
+		Valid for any kind of OpticalElement
+		
+		
+		Paramters
+		------
+		RootAttrName : str
+			Is the name of the OpticalElement, eg "RootAttrName = OpticalElement(....)"
 		'''
 		ShortClassName = type(self).__name__  #example:Foundation.PositioningDirectives => PositioningDirectives
 		LongClassName = type(self).__module__ + '.' + ShortClassName
-		RootAttrName = RootAttrName if RootAttrName is not None else ShortClassName
+		RootAttrName = Scrubs.MakeValidPythonName(RootAttrName) if RootAttrName is not None else ShortClassName
+		
 		# Writes the line (e.g.)
 		# PositioningDirectives = Foundation.PositioningDirectives(\n
 		s = N*'\t' + "%s =%s(" %(RootAttrName, LongClassName)
@@ -78,28 +85,60 @@ class CodeGenerator():
 # 					s+= (N+1) * '\t' + "%s = %s" % (RootAttrName, Attr.GenerateCode)
 				s+= Attr.GenerateCode(AliasName, N+1)	
 			else:
+				
+				'''================================================
+				|| HOW TO FORMAT THE DIFFERENT KIND OF ATTRIBUTES
+				||
+				==================================================='''
+				
 				# example:
 				# PlaceWhere = 'centre'
 				# Distance = 1.2
 				#etc...
 				
+				#=================================
+				# Attr
+				#=================================
 				if type(Attr) == str:
 					AttrVal = str(Attr)
 					s+= (N+1) * '\t' + "%s = '%s',\n" % (AliasName, AttrVal)
-				
+				#=================================
+				# None
+				#=================================
 				elif Attr is None:
 					AttrVal = None
-					s+= (N+1) * '\t' + "%s = %s,\n" % (AliasName, AttrVal)						
-				
+					s+= (N+1) * '\t' + "%s = %s,\n" % (AliasName, AttrVal)
+					
+				#=================================
+				# Float
+				#=================================
 				elif type(Attr) is float:
-# 						AttrVal = Units.SmartFormatter((AttrVal, {'prefix': False, 'digits': 6}))
+					AttrVal = Units.SmartFormatter((AttrVal, {'prefix': False, 'digits': 6}))
 					AttrVal = '%0.6e' % Attr
 					s+= (N+1) * '\t' + "%s = %s,\n" % (AliasName, AttrVal)
-
+				#=================================
+				# INT
+				#=================================
 				elif type(Attr) is int:
 					AttrVal = Attr
 					s+= (N+1) * '\t' + "%s = %d,\n" % (AliasName, AttrVal)
-					
+				#=================================
+				# LIST
+				#=================================				
+				elif type(Attr) is list:
+					AttrVal = str(Attr)
+					s+= (N+1) * '\t' + "%s = %d,\n" % (AliasName, AttrVal)
+				#=================================
+				# Numpy Array
+				#=================================				
+				elif type(Attr ) is np.ndarray:
+					AttrVal = str(Attr)
+					AttrVal = AttrVal.replace(' ', ',') 
+					s+= (N+1) * '\t' + "%s = %d,\n" % (AliasName, AttrVal)
+
+				#=================================
+				# UNDEFINED
+				#=================================					
 				else:
 					AttrVal = str(Attr)
 					s+= (N+1) * '\t' + "%s = %s,\n" % (AliasName, AttrVal)

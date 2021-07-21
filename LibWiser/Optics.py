@@ -7455,7 +7455,6 @@ class SourceWavefront(OpticsPlane, CodeGenerator):
 		
 		ComputationData.Lambda = self.Lambda
 		ComputationData.Field = self._Field
-		ComputationData.Intensity = (self._Field)**2
 		ComputationData.NSamples = self.FieldNSamples
 		
 		(x,y) = self.GetXY(self.FieldNSamples)

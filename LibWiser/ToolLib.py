@@ -2416,7 +2416,8 @@ class FileIO:
 	#==============================================
 	# FUN SaveToH5t
 	#==============================================
-	def SaveToH5(FileName='output.hdf5', GroupValueTuples = None,
+	def SaveToH5(FileName='output.hdf5', 
+			  GroupValueTuples = None,
 			   Attributes = None,
 			   ExpandDataContainers = True,
 			   Mode = 'w'):
@@ -2444,6 +2445,15 @@ class FileIO:
 			additional search is performed through them. The final path is given by
 			the specified path + the new found attribute.
 
+
+			Example:
+				
+			A = DataContainer()
+			A.AA = DataContainer()
+			A.pan = 10
+			A.AA.jag = 20
+			FileIO.SaveToH5("d:\\tmp\\DataContainerTest.h5", [('A', A)])			
+			
 			Example:
 			Tuple = ('Temperature', TemperatureInfo)
 			and
@@ -2487,56 +2497,64 @@ class FileIO:
 						Args = [('FileName', FileName)])
 			
 			
-			
-		# loop on each tuple in the form: (Path, Value)
-		# Path is actually referred to as 'group'
-		for i, Tuple in enumerate(PathValueTuples):
-			GroupName = Tuple[0]
-			Value = Tuple[1]
-			try :
-				GroupAttributes = Tuple[2]
-			except:
-				GroupAttributes = None
+		try:	
+		
+			# loop on each tuple in the form: (Path, Value)
+			# Path is actually referred to as 'group'
+			for i, Tuple in enumerate(PathValueTuples):
+				if len(Tuple) !=2:
+					raise WiserException('''The Lenght of a Tuple used while saving HDF files must have
+							 two elements: the group name and the value. This one has wrong size.''',
+							 Args = [('Tuple', Tuple)])
+				GroupName = Tuple[0]
+				Value = Tuple[1]
 				
-				
-
-			# Performs DataContainer expansion
-			if type(Value) == DataContainer and ExpandDataContainers:
-				SubItems = Value._GetSubItems(Preset = 'mathstr')
-
-				# Digest each SubItem and prepare it for being attached to the H5 output
-				for SubItem in SubItems:
-						SubGroupName = GroupName + '/' + SubItem[0]
-						SubValue = SubItem[1]
-						DataFile.create_dataset(SubGroupName, data=SubValue)
-
-
-
-			# Do normal operations
-			else:
-				# This try block handle the case you are trying to modify a field (group) that
-				# already exists.
-				try:
-					del DataFile[GroupName]
+				try :
+					GroupAttributes = Tuple[2]
 				except:
-					pass
-
-				try:
-					Group = DataFile.create_dataset(GroupName, data=Value)
-					if GroupAttributes is not None:
-						try:
-							Group.attrs.update( GroupAttributes)
-						except:
-							raise WiserException("Cant set attributes", Args = [('GroupAttributes', GroupAttributes)] )
-				except TypeError:
-					raise WiserException('''Wrong data type while savinf hdf file''',
-						  Args = [('Value', Value)])
-		if Attributes is not None:
-			Items = list(Attributes.items())
-			for Attr in Items:
-				DataFile.attrs[Attr[0]] = Attr[1]
+					GroupAttributes = None
+					
+					
+	
+				# Performs DataContainer expansion
+				if type(Value) == DataContainer and ExpandDataContainers:
+					SubItems = Value._GetSubItems(Preset = 'mathstr')
+	
+					# Digest each SubItem and prepare it for being attached to the H5 output
+					for SubItem in SubItems:
+							SubGroupName = GroupName + '/' + SubItem[0]
+							SubValue = SubItem[1]
+							DataFile.create_dataset(SubGroupName, data=SubValue)
+	
+	
+	
+				# Do normal operations
+				else:
+					# This try block handle the case you are trying to modify a field (group) that
+					# already exists.
+					try:
+						del DataFile[GroupName]
+					except:
+						pass
+	
+					try:
+						Group = DataFile.create_dataset(GroupName, data=Value)
+						if GroupAttributes is not None:
+							try:
+								Group.attrs.update( GroupAttributes)
+							except:
+								raise WiserException("Cant set attributes", Args = [('GroupAttributes', GroupAttributes)] )
+					except TypeError:
+						raise WiserException('''Wrong data type while savinf hdf file''',
+							  Args = [('Value', Value), ('datatype:', type(Value))])
+			if Attributes is not None:
+				Items = list(Attributes.items())
+				for Attr in Items:
+					DataFile.attrs[Attr[0]] = Attr[1]
+					
+		finally:
 #		DataFile.attrs = Attributes
-		DataFile.close()
+			DataFile.close()
 
 		return None
 
