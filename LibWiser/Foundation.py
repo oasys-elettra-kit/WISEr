@@ -814,7 +814,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 
 			DistanceFromParent = self.GetDistanceFromParent(False,False)
 #			print(self.GeneralDistanceFromParent(Reference=False))
-			print(DistanceFromParent)
+#			print(DistanceFromParent)
 
 			# print(self.GeneralDistanceFromParent(Reference=False))
 
@@ -1648,9 +1648,10 @@ class BeamlineElements(Tree):
 		for Item in ItemList:
 			StrList.append(Item.__disp__())
 			
-		print( 'Name:' + self.Name)
+		print(10 * '=')	
+		print( 'Beamline Name:' + self.Name)
 		print( '\n'.join(StrList))
-				
+		print(10 * '='		
 		
 		
 	#================================================
