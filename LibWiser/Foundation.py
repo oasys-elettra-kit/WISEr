@@ -1652,6 +1652,7 @@ class BeamlineElements(Tree):
 		print( 'Beamline Name:' + self.Name)
 		print( '\n'.join(StrList))
 		print(20 * '=')		
+
 		
 		
 	#================================================
@@ -3477,7 +3478,7 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 			d_k = Optics.Detector(
 								L = DetectorSize,
 								AngleInNominal = np.deg2rad(90) )
-			d_pd = Fundation.PositioningDirectives(
+			d_pd = Foundation.PositioningDirectives(
 								ReferTo = 'upstream',
 								PlaceWhat = 'centre',
 								PlaceWhere = 'downstream focus',
@@ -3490,7 +3491,7 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 			# Assemblamento beamline
 			#------------------------------------------------------------
 			t = None
-			t = Fundation.BeamlineElements()
+			t = Foundation.BeamlineElements()
 			t.Append(FocussingOe)
 			t.Append(d)
 			t.RefreshPositions()
