@@ -12,7 +12,7 @@ except AttributeError:
 
 NAME = 'LibWiser'
 
-VERSION = '0.12.2'
+VERSION = '0.12.6'
 ISRELEASED = True
 
 DESCRIPTION = 'Wiser kernel library'

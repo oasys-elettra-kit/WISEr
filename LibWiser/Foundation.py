@@ -1648,10 +1648,11 @@ class BeamlineElements(Tree):
 		for Item in ItemList:
 			StrList.append(Item.__disp__())
 			
-		print(10 * '=')	
+		print(20 * '=')	
 		print( 'Beamline Name:' + self.Name)
 		print( '\n'.join(StrList))
-		print(10 * '=')
+		print(20 * '=')		
+
 		
 		
 	#================================================
