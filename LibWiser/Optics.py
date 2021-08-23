@@ -469,7 +469,8 @@ class OpticsNumerical(Optics):
 	#================================
 	# EvalField(N)
 	#================================
-	def EvalField(self, x1, y1, Lambda, E0, NPools=1,  Options=['HF']):
+	def EvalField(self, x1, y1, Lambda, E0, NPools=1,  Options=['HF'],
+			   NormalizationType = 0):
 		'''
 		Helper function (forwards)
 		Propagates the field E0 from this optical element (x0,y0) onto the plane
@@ -486,9 +487,19 @@ class OpticsNumerical(Optics):
 		tl.Debug.Print('Evaluating Field: N  = %d (EvalField)' % N, NIndent =3 )
 		tl.Debug.pr('\t\t\tLambda')
 
+		#correction to the normalization
+		# The normalization returned by HuygensIntegral_1d_Kernel is 1/sqrt(lambda)
+		# Here Q is used to add new terms.
+
+		if NormalizationType == 0 :
+			Q = 1
+		elif NormalizationType == 1:
+			Q = self.L * sin(self.AngleGrazingNominal)/N
+
 		#ad hoc correction: multiply by transmission function before propagation
 		E0 = E0 * self.TransmissionFunction(x0,y0)
 		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
+        
 
 		return E1
 

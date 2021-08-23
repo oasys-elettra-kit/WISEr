@@ -6,6 +6,9 @@ Created on Tue Nov 10 23:11:36 2020
 """
 
 import LibWiser.Scrubs as Scrubs
+import LibWiser.Units as Units
+import numpy as np
+SNIPPET_COMMON_IMPORT = '''from LibWiser.EasyGo import* \n'''
 #===========================================================================
 # 	CLASS: CodeGenerator
 #===========================================================================
@@ -113,7 +116,7 @@ class CodeGenerator():
 				# Float
 				#=================================
 				elif type(Attr) is float:
-					AttrVal = Units.SmartFormatter((AttrVal, {'prefix': False, 'digits': 6}))
+					AttrVal = Units.SmartFormatter((Attr, {'prefix': False, 'digits': 6}))
 					AttrVal = '%0.6e' % Attr
 					s+= (N+1) * '\t' + "%s = %s,\n" % (AliasName, AttrVal)
 				#=================================
@@ -151,20 +154,32 @@ class CodeGenerator():
 			s.pop(-1)
 			s= ''.join(s)
 		return s
-	
+#%%===================================================
+#	FUN: GenerateCodeForBeamlineElements		
+#%====================================================
 def GenerateCodeForBeamlineElements(Beamline):
 	CodeStack =[]
+	# Get the list of the elements, in a suitable python format and
+	# convert it to a STRING (that can be executed)
 	ItemNameList = Beamline.ItemNameList
+	ItemNameList = [ Scrubs.MakeValidPythonName(_) for _ in ItemNameList]
+	ItemNameListString = str(ItemNameList).replace("'","") # remove the '
+	
 	BeamlineName = Beamline.Name
 	
 	BeamlineName = BeamlineName  if  Scrubs.IsValidPythonName(BeamlineName) else 'WiserBeamline'
 	
 	for Item in Beamline.ItemList:
+#		MyName = Scrubs.MakeValidPythonName(Item.Name)
 		CodeStack.append(Item.GenerateCode(Item.Name))
 	
-	ItemNameListString = str(ItemNameList).replace("'","")
+	
 	CodeStack.append('%s = BeamlineElements(%s)' %(BeamlineName, ItemNameListString))
 	CodeStack.append('%s.RefreshPositions()' % BeamlineName)
 	CodeBuffer = '\n'.join(CodeStack)
+	
+	#Prepend Libraries
+	
+	CodeBuffer = SNIPPET_COMMON_IMPORT + CodeBuffer
 	return CodeBuffer
 			
