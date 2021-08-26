@@ -1486,7 +1486,7 @@ class SourcePoint(object):
 	#================================================
 	#	 __init__
 	#================================================
-	def __init__(self, Lambda, XYOrigin = [0,0], AnglePropagation = 0 ):
+	def __init__(self, Lambda, XYOrigin = [0,0], AnglePropagation = 0, E0 = 1 ):
 		'''
 		Defines a point source.
 		AnglePropagation is used in order to position the following optical element
@@ -1500,6 +1500,7 @@ class SourcePoint(object):
 		self.Lambda = Lambda
 		self.Name = 'point source @ %0.2fnm' % (self.Lambda *1e9)
 		self.SetXYAngle_Centre(XYOrigin, AnglePropagation)
+		self.E0 = E0
 
 	#================================================
 	#	 __str__
@@ -1507,9 +1508,21 @@ class SourcePoint(object):
 	def __str__(self):
 		PropList = ['Lambda', 'XYCentre','Waist0', 'AnglePropagation']
 		List = [PropName + ':= ' + str(getattr(self,PropName)) for PropName in PropList]
-		return ('Gaussian source\n' + 20 * '-' + '\n'+ '\n'.join(List) + '\n' + 20 * '-' + '\n')
+		return ('Point Source\n' + 20 * '-' + '\n'+ '\n'.join(List) + '\n' + 20 * '-' + '\n')
 
-
+	#================================================
+	#	PORP: E0
+	#================================================
+	@property
+	def E0(self):
+		'''
+		Scale factor multiplying the analytical equation. Typically set to 1
+		'''
+		return self._E0
+	@E0.setter
+	def E0(self, value):
+		self._E0 = value
+		
 	#================================================
 	#	 SetXYAngle_Centre
 	#================================================
@@ -1613,6 +1626,70 @@ class SourcePoint(object):
 		U.Paint(FigureHandle, Length = Length, ArrowWidth = ArrowWidth)
 
 		return FigureHandle
+
+
+#==============================================================================
+#	 CLASS: SourcePlaneWave
+#==============================================================================
+class SourcePlaneWave(SourcePoint):
+	'''
+	Implement a plane wave.
+	
+	Design Notes
+	------
+	Inherits from the point source. There is no particular physical meaning into that. The
+	reason og this is just because the point source was developed earlier, ant it was
+	ready.
+	'''
+	_Behaviour = OPTICS_BEHAVIOUR.Source
+	_IsSource = True
+	_TypeStr = 'planewave'
+	_TypeDescr = 'plane wave'
+	_IsAnalytic = True
+
+
+	#================================================
+	#	 __str__ [SourcePlaneWave]
+	#================================================
+	def __str__(self):
+		PropList = ['Lambda', 'XYCentre', 'AnglePropagation']
+		List = [PropName + ':= ' + str(getattr(self,PropName)) for PropName in PropList]
+		return ('Plane Wave\n' + 20 * '-' + '\n'+ '\n'.join(List) + '\n' + 20 * '-' + '\n')
+
+
+	#================================================
+	#	 EvalField_XYSelf
+	#================================================
+	def EvalField_XYSelf(self,x=np.array(None) , y=np.array(None)):
+		'''
+			x and y are in the source reference frame
+
+			#TODO: add normalization
+
+		'''
+		k = 2. * np.pi / self.Lambda
+		R = np.sqrt(x**2 + y**2)
+		return 1. / R * np.exp(1j * k * R)
+
+
+ 	#================================
+	# EvalField(N)
+	#================================
+	def EvalField(self, x1, y1, Lambda,  NPools=1,  **kwargs):
+		'''
+		Use Equation:
+			E(y) = exp(i*(kx * x + ky * y))
+		where
+		k = 2*pi/lambda
+		kx = k * cos(theta)
+		ky = k * sin(theta) 
+		theta = propagation angle
+		'''
+		k = 2*np.pi/Lambda
+		kx = k * np.cos(self.AnglePropagation)
+		ky = k * np.sin(self.AnglePropagation)
+		E = np.exp(1j* (x1*kx + y1*ky))
+		return E
 
 # ==============================================================================
 # 	 CLASS: SourcePoint

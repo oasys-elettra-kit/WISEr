@@ -18,7 +18,7 @@ import os
 from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
-
+import numpy as np
 
 
 Logger = logging.getLogger()
@@ -2177,6 +2177,54 @@ def VersorRotateLabToSelf(V : Vector, VReference, ReferenceType = 'norm'):
 		
 	return UnitVector(RotVersor(V.v,-Angle))
 	
+#================================================================
+#  AngleBetweenVersors
+#================================================================
+def AngleBetweenVersors(V1 : Vector, V2 : Vector):
+	'''
+		Return the angle comprised between two versors (or vector),
+		in radians
+		
+		
+	'''
+	Angle = np.abs(V1.Angle - V2.Angle)
+	return Angle
+
+
+#================================================================
+#  AngleBetweenPoints
+#================================================================
+def AngleBetweenPoints(Vxy, Axy, Bxy):
+	'''
+	Compute the angle subtended by AB from point V.
+	
+	Parameters:
+		
+			Vxy, Axy, Bxy : are all array like [x,y]
+			
+	Example:
+	-------
+	>>> 
+	Vxy = [0,0]
+	Axy = [1,0]
+	Bxy = [0,1]
+	Angle= AngleBetweenPoints(Vxy, Axy, Bxy)
+	AngleDeg = np.rad2deg(Angle)
+	
+	'''
+	
+	A = UnitVector(vx = Axy[0] - Vxy[0],
+					vy = Axy[1] - Vxy[1])
+
+	B = UnitVector(vx = Bxy[0] - Vxy[0],
+					vy = Bxy[1] - Vxy[1])
+
+
+	return np.abs(A.Angle - B.Angle)
+				
+	
+
+
 
 
 #import matplotlib.pyplot as plt
