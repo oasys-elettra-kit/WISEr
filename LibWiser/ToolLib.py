@@ -2417,6 +2417,9 @@ class FileIO:
 			Line = Line.strip()
 			if Line != '':
 				Tokens = Line.split(Delimiter)
+				if len(Tokens) < 2:
+					raise WiserException("I read only one number, while I expected two. Possible solution: check the delimiter character",
+						  By = "ReadXYFile")
 				x[iLine] = float(Tokens[0])
 				y[iLine] = float(Tokens[1])
 

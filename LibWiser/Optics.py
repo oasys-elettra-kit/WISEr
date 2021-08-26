@@ -3676,8 +3676,11 @@ class Mirror(OpticsNumerical):
 						 YSign = +1 ,
 						 **kwargs):
 		'''
-		This function is a helper function that read a figure error file, then calls the
-		lower lever FigureErrorLoad function
+		Helper function: 
+			1) read a figure error file2
+			2) assign the figure error to self (OpticalElement) by means
+				of low lever FigureErrorLoad function.
+			3) Return the height profile + step
 		
 		Parameters
 		-------------------
@@ -3702,6 +3705,7 @@ class Mirror(OpticsNumerical):
 		XScaling  = XScaleFactor
 		YScaling = YScaleFactor 
 		
+		# FILE TYPE: HEIGHT ONLY {y}
 		if FileType.value == FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY.value:
 			try:
 				Height = ToolLib.FileIO.ReadYFile(PathFile,  SkipLines = SkipLines)
@@ -3710,10 +3714,14 @@ class Mirror(OpticsNumerical):
 			except:
 				raise WiserException('''Error while reading figure error in the format HEIGHT_ONLY. 
 						 Please, check if the file format is correct''')
+		
+		# FILE TYPE: POSITION and HEIGHT {x,y}
 		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT.value:
 			try:
 				
-				x, Height = ToolLib.FileIO.ReadYFile(PathFile, Delimiter = Delimiter, SkipLines = SkipLines)
+				x, Height = ToolLib.FileIO.ReadXYFile(PathFile, 
+										 Delimiter = Delimiter,
+										 SkipLines = SkipLines)
 				x *= XScaling
 	
 				Height *= YScaling * YSign 
@@ -3721,7 +3729,8 @@ class Mirror(OpticsNumerical):
 			except:
 				raise WiserException('''Error while reading figure error in the format POSITION_AND_HEIGHT. 
 						 Please, check if the file format is correct''')
-
+		
+		# FILE TYPE: LTP_JAVA1, {x,y} + decimation=2		
 		elif FileType.value == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1.value:
 			try:
 				x,h, ComputedStep = tl.Metrology.ReadLtpLtpJavaFileA(PathFile,
@@ -3734,7 +3743,8 @@ class Mirror(OpticsNumerical):
 			except:
 				raise WiserException('''Error while reading figure error in the format ELETTRA_LTP_JAVA1. 
 						 Please, check if the file format is correct''')
-				
+		
+		#FILE TYPE: LTP DOS (old)		
 		elif FileType.value  == FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS.value :
 			
 			try:
