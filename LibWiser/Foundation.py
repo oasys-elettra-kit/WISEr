@@ -1955,7 +1955,7 @@ class BeamlineElements(Tree):
 			'''
 			pass
 		# =============================================================================================
-		# REFERENCE = PREVIOUS or SOURCE or DOWNSTREAM
+		# REFERENCE is PREVIOUS or SOURCE (or DOWNSTREAM - notimplemented)
 		# =============================================================================================
 		elif ((Pd.ReferTo == posdir_.ReferTo.UpstreamElement) or (Pd.ReferTo == 'source')):
 

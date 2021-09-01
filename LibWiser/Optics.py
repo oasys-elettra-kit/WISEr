@@ -7013,6 +7013,7 @@ class Slits(OpticsNumerical, CodeGenerator):
 			  AngleGrazing=np.pi/2.,
 			   XYLab_Centre=[0, 0],
 			    AngleIn=0,
+				UseAsReference = True,
 				 **kwargs):
 		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
 		super().__init__(**kwargs)  # No roughness, no small displacements, no figure error from super
@@ -7053,8 +7054,9 @@ class Slits(OpticsNumerical, CodeGenerator):
 		self._FigureErrors = []
 		self._UpdateParameters_Lines()
 		self._UpdateParameters_XYStartEnd()
-		self.UseAsReference = False
-
+#		self.UseAsReference = False
+		self.UseAsReference = UseAsReference #changed to True on 20210831
+		
 	# ================================
 	#  FUN: __str__
 	# ================================
