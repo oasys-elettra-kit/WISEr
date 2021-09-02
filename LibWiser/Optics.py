@@ -18,6 +18,8 @@ import numpy as np
 from abc import abstractmethod
 from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray, DataContainer
 import LibWiser.Exceptions as Exceptions
+
+import warnings
 '''
 
 Conventions:
@@ -880,6 +882,7 @@ class OpticsNumerical(Optics):
 	#	 _Transformation_PolyPropToPolyLab
 	#================================================
 	def _Transformation_PolyPropToPolyLab(self, P):
+		warnings.simplefilter('ignore', np.RankWarning)
 		'''
 		I hate this function. Should have written a better doc.
 		It converts a polynomial P(X) in the X reference frame of the object(self) into
