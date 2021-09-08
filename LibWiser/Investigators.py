@@ -498,7 +498,7 @@ class SourceManipulator():
 						BestFocalShiftList.append(Results.BestDefocus) # a scalar
 						BestHewList.append(Results.BestHew) #tbc
 					else:
-						I = np.abs(Detector.ComputationResults.Field)
+						I = np.abs(Detector.ComputationData.Field)
 
 					ZCollection.append(I) # existing
 

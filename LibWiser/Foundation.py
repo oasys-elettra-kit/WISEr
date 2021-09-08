@@ -17,6 +17,7 @@ from collections import OrderedDict
 import numpy as np
 import copy
 from LibWiser.Scrubs import Enum
+from LibWiser.Units import SmartFormatter
 import time
 import warnings
 
@@ -42,7 +43,7 @@ class INSERT_MODE:
 
 
 #===========================================================================
-# 	STRUCT: ComputationResults
+# 	CLASS: ComputationResults
 #===========================================================================
 class ComputationResults(LibWiser.Scrubs.DataContainer):
 	def __init__(self):
@@ -86,7 +87,36 @@ class ComputationResults(LibWiser.Scrubs.DataContainer):
 		"manually" filled as the input field (i.e. the beginning of a propagation chain).
 		'''
 
+	#============================
+	# PROP FWHM
+	#============================
+	@property
+	def FWHMGaussianFit(self):
+		'''
+		returns the FWHM (from a gaussian fit)
+		'''
 
+		FWHM = Rayman.FullWidthHalfMaximum_1d(self.S, self.Intensity)
+
+		return FWHM 
+
+	#============================
+	# PROP Info
+	#============================
+	@property
+	def Info(self):
+		Dict = dict()
+		Dict["N of Samples"] = str(len(self.S))
+		Dict["lambda"]  = SmartFormatter(self.Lambda, {'unit':'m'})
+		Dict['FWHM (Gauss fit)'] = SmartFormatter(self.FWHMGaussianFit, {'unit':'m'})
+		Dict['HEW'] = SmartFormatter(self.Hew, {'unit':'m'})
+		Dict["Range (longitudinal)"] = "%s <-> %s" % (
+				SmartFormatter(min(self.S), {'unit':'m'}),
+				SmartFormatter(max(self.S), {'unit':'m'})
+				) #% => example: "-130 mm <-> + 130 mm"
+
+		return Dict
+	
 #===========================================================================
 # 	STRUCT: PropagationDirectives
 #===========================================================================
@@ -3697,7 +3727,7 @@ def FocusSweep(oeFocussing,
 	oeFocussing._IsSource = True  # MUSTBE!
 	oeFocussing.PositioningDirectives.ReferTo = 'locked'
 	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
-	NSamples = oeFocussing.ComputationResults.NSamples
+	NSamples = oeFocussing.ComputationData.NSamples
 	if NSamples is None:
 		raise Exception("oeFocussing -> NSamples = <None> in FocusSweep. oeFocussing.Name = <%s>" % oeFocussing.Name)
 	
@@ -3751,13 +3781,13 @@ def FocusSweep(oeFocussing,
 		# -----------------------------------------------------------
 		DeltaS = np.mean(np.diff(d.Results.S))  # Sample spacing on the detector
 
-		ResultList[i] = copy.deepcopy(d.ComputationResults)
-#		I = abs(d.ComputationResults.Field) ** 2
-		A2 = abs(d.ComputationResults.Field) ** 2
+		ResultList[i] = copy.deepcopy(d.ComputationData)
+#		I = abs(d.ComputationData.Field) ** 2
+		A2 = abs(d.ComputationData.Field) ** 2
 		I = A2 / max(A2) # Normalized intensity
 		(Hew, Centre) = rm.HalfEnergyWidth_1d(I, Step=DeltaS, UseCentreOfMass = False) # FocusSweep
 		try:
-			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationResults.S)
+			(a, x0, Sigma) = tl.FitGaussian1d(I, d.ComputationData.S)
 		except:
 			(a, x0, Sigma) = [None, None, None]
 		HewList[i] = Hew
@@ -3907,7 +3937,7 @@ def FocusFind(oeFocussing,
 	oeFocussing._IsSource = True  # MUSTBE!
 	oeFocussing.PositioningDirectives.ReferTo = 'locked'
 	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
-	NSamples = oeFocussing.ComputationResults.NSamples
+	NSamples = oeFocussing.ComputationData.NSamples
 	oeFocussing.ComputationSettings.NSamples = NSamples
 	oeFocussing.ComputationSettings.UseCustomSampling = True
 
@@ -4020,7 +4050,7 @@ def FocusSweep2(oeFocussing,
 	oeFocussing._IsSource = True  # MUSTBE!
 	oeFocussing.PositioningDirectives.ReferTo = 'locked'
 	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
-	NSamples = oeFocussing.ComputationResults.NSamples
+	NSamples = oeFocussing.ComputationData.NSamples
 	oeFocussing.ComputationSettings.NSamples = NSamples
 	oeFocussing.ComputationSettings.UseCustomSampling = True
 
@@ -4124,8 +4154,8 @@ def ZSweep(oeStart, DistanceList, DetectorSize = 50e-6, AngleInNominal = np.deg2
 		#-----------------------------------------------------------
 		DeltaS = np.mean(np.diff(d.Results.S)) # Sample spacing on the detector
 
-		ResultList[i] = copy.deepcopy(d.ComputationResults)
-		(Hew, Centre) = rm.HalfEnergyWidth_1d(abs(d.ComputationResults.Field)**2, Step = DeltaS)
+		ResultList[i] = copy.deepcopy(d.ComputationData)
+		(Hew, Centre) = rm.HalfEnergyWidth_1d(abs(d.ComputationData.Field)**2, Step = DeltaS)
 		HewList[i] = Hew
 
 	return (ResultList, HewList, SigmaList, More)

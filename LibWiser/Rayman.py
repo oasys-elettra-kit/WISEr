@@ -176,6 +176,32 @@ def MatchHeightProfile(MirrorLength, MirrorSamples, Profile, ProfileStep):
 	ProfileNewPadded = AlignAndPadArrays(MirrorSamples, ProfileNew)
 	return ProfileNewPadded
 
+
+def FullWidthHalfMaximum_1d(x,y, UseGaussianFit = True):
+	'''
+	Return the FWHM of a signal.
+	
+	For the moment, it works by performing a Gaussian fit.
+	
+	Parameters
+	----
+	x : array like
+		
+	y : array like
+		
+	UseGaussianFit :
+		True
+	
+	'''
+	from LibWiser.ToolLib import FitGaussian1d
+	
+	if UseGaussianFit:
+		[A,x0,sigma] = FitGaussian1d(y, x , PlotFigure=None)
+	else:
+		raise NotImplementedError('FullWidthHalfMaximum_1d, non gaussian fit used.')
+		
+	return sigma * 2*np.sqrt(2*np.log(2))
+
 def HalfEnergyWidth_1d(X,  UseCentreOfMass = True, Step = 1,  TotalEnergy = None,
                         AlgorithmType = 0):
     '''
@@ -970,23 +996,25 @@ HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
 # 	FUN: HuygensIntegral_1d
 #==============================================================================
 def ComputeSamplingA(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 ):
-    '''
-    Lambda: wavalenght
-    z:distance b|w start and arrival planes
-    L0,L1: lenght of start and arrival planes
-    Theta0, Theta1: orientation of start and arivval planes
-    '''
+	'''
+	Lambda: wavalenght
+	z:distance b|w start and arrival planes
+	L0,L1: lenght of start and arrival planes
+	Theta0, Theta1: orientation of start and arivval planes
+	'''
 
-    Debug.print('Compute sampling',2)
-    Debug.pv('Lambda',3)
-    Debug.pv('z',3)
-    Debug.pv('L0',3)
-    Debug.pv('L1',3)
-    Debug.pv('Theta0',3)
-    Debug.pv('Theta1',3)
-    N = int(OversamplingFactor  * L0 * L1* abs(cos(Theta0 - Theta1)) /Lambda/z)
-    Debug.pv('N',3)
-    return N
+	Debug.print('Compute sampling',2)
+	Debug.pv('Lambda',3)
+	Debug.pv('z',3)
+	Debug.pv('L0',3)
+	Debug.pv('L1',3)
+	Debug.pv('Theta0',3)
+	Debug.pv('Theta1',3)
+	if z==0:
+		raise Exception("z is 0 in ComputeSamplingA. Change the layout!" )
+	N = int(OversamplingFactor  * L0 * L1* abs(cos(Theta0 - Theta1)) /Lambda/z)
+	Debug.pv('N',3)
+	return N
 
 def ComputeSamplingB(Lambda, z, L0, L1,  Alpha0, Alpha1, OversamplingFactor = 1 ):
     '''

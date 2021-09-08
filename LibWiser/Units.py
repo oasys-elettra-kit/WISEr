@@ -227,9 +227,14 @@ def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
 	except:
 		UsePrefix = True
 		
+		
+		
 	tp = type(x)
 	if (tp is float) or (tp is int) or (tp is np.float64):
 		
+		#catch if it is a nana
+		if np.isnan(x):
+			return ('NaN')
 		if UsePrefix:
 			try:
 				return GetFormattedSI(x) + VariableInfo['unit']
