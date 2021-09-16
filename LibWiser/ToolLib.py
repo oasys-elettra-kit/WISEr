@@ -23,6 +23,29 @@ import numpy as np
 
 Logger = logging.getLogger()
 
+
+class MementoDirectives:
+	def __init__(self, AttributeList, RenameDictionaryForInit = {}):
+		'''
+		
+		Parameters
+		-----
+		AttributeList : list
+			List of the attributes that the Memento must save.
+			In principle, they can be base types (e.g. int, float, numpy array)
+			or user defined types.
+			
+			"How to store" the attributes is a matter taken care by... ?
+			
+		RenameDictionaryForInit : dictionary
+			Certain attributes 
+			
+		
+		'''
+		
+		pass
+
+
 def EnsureIsArray(x):
 	if np.isscalar(x):
 		return np.array([x])
