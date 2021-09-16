@@ -4404,7 +4404,7 @@ class MirrorElliptic(Mirror, CodeGenerator):
 		#self._UpdateParametersProp()
 
 	#================================
-	# _ValidateInput_Set2
+	# _ValidateInput_Set2 [MirrorElliptic]
 	#================================
 	def _ValidateInput_Set2(self,f1,f2,Alpha, L):
 		'''
@@ -4418,6 +4418,10 @@ class MirrorElliptic(Mirror, CodeGenerator):
 			|
 
 		'''
+		# Check, for debug purposes
+		#-------------------------------
+		if (f2 == 0) or (f1==0):
+			raise WiserException("f1 and/or f2 are set to 0. This is physically impossible, please check.")
 
 		# Input parameters
 		#-------------------------------

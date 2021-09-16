@@ -46,6 +46,7 @@ class INSERT_MODE:
 # 	CLASS: ComputationResults
 #===========================================================================
 class ComputationResults(LibWiser.Scrubs.DataContainer):
+	_PropList = ['Lambda', 'NSamples', 'Field', 'X', 'Y', 'S', 'Action', 'Name']
 	def __init__(self):
 		self.Lambda = 0         #wavelength used
 		self.NSamples = None
