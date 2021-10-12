@@ -21,6 +21,7 @@ from LibWiser.Units import SmartFormatter
 import time
 import warnings
 
+from LibWiser.Scrubs import DataContainer
 from LibWiser.Optics import TypeOfAngle, OPTICS_ORIENTATION
 from LibWiser.CodeGeneratorVisitor import CodeGenerator
 import LibWiser.CodeGeneratorVisitor as CGVisitor
@@ -45,7 +46,7 @@ class INSERT_MODE:
 #===========================================================================
 # 	CLASS: ComputationResults
 #===========================================================================
-class ComputationResults(LibWiser.Scrubs.DataContainer):
+class ComputationResults(DataContainer):
 	_PropList = ['Lambda', 'NSamples', 'Field', 'X', 'Y', 'S', 'Action', 'Name']
 	def __init__(self):
 		self.Lambda = 0         #wavelength used
@@ -134,7 +135,7 @@ class PropagationInfo(object):
 #===========================================================================
 # 	STRUCT: ComputationSettingsForOpticalElement
 #===========================================================================
-class ComputationSettingsForOpticalElement(object):
+class ComputationSettingsForOpticalElement(DataContainer):
 	class Method:
 		Numerical= 'numerical'
 		Analytical= 'analytical'
@@ -753,7 +754,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 		TreeItem.__init__(self)
 		self._IsSource = IsSource
 		self.PositioningDirectives = PositioningDirectives
-		self._VirtualOffset = VirtualOffset
+		self._VirtualOffset = VirtualOffset # 20210930 Presently used for sources, only. It is a distance which is added to the distance computed by .DistanceFromParent
 		self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
 
 		self.Results = ComputationResults()			# this data field should be discontinued
@@ -1391,7 +1392,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 	
 	def GetDistanceFromParent(self, SameOrientation=False, OnlyReference=False):
 		'''
-		Advanced function, that implements more arguments than GetDistanceFromParent
+		Advanced function, that implements more arguments than the property DistanceFromParent
 	
 		USES: OpticalElement.DistanceFromSource
 		
@@ -2102,11 +2103,14 @@ class BeamlineElements(Tree):
 	def SetAllUseCustomSampling(self,x : bool):
 		'''set the same number of manual sampling for all the optical elements''
 		''' 
+		print('Starting SetAllUseCustomSampling')
+		print('N of items: ' + str(len(self.ItemList)))
 		for i, Item in enumerate(self.ItemList):
-			try:
-				self.ItemList[i].ComputationSettings.UseCustomSampling= x
-			except:
-				raise Exception
+			print(Item.Name)
+			print(Item.ComputationSettings.UseCustomSampling)
+			Item.ComputationSettings.UseCustomSampling= x
+			print(Item.ComputationSettings.UseCustomSampling)
+			print('\n')
 	
 	def SetPropertyForAll(self, PropertyName, PropertyValue):
 		for Item in self.ItemList:
@@ -3531,6 +3535,21 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 			#--------------------------------------------------------------
 			pass
 
+
+#==========================================
+# FUN: GetMaximumViewAngle [OpticalElements]
+#==========================================
+def GetMaximumViewAngle(oe0 : OpticalElement, oe1: OpticalElement) -> float:
+	'''
+	Two-Body function.
+	It extracts the Maximum View Angle at which oe0 "sees" oe1.
+	
+	It works only the the included CoreOptics element are of type: OpticsNumerical.
+	
+	'''
+	return  Optics.GetMaximumViewAngle(oe0.CoreOptics, oe1.CoreOptics)
+
+
 #==========================================
 # FUN: GetNSamples_OpticalElement
 #==========================================
@@ -3589,6 +3608,10 @@ def GetNSamplesTwoBody(Lambda: float,
 									     'GetNSamples_OpticalElement',
 										['oe0 ', 'oe1_name', 'z','L0', 'L1' ,'Theta1','N', 'Lambda'  ])
 		return None
+
+
+
+
 
 #==========================================
 # FUN: GetNSamples_OpticalElement

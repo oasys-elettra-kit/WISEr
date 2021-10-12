@@ -9,6 +9,7 @@ Still to define if it will be kept
 from LibWiser.Errors import WiserException
 from enum import Enum as StandardEnum
 from pathlib import Path as MakePath
+import inspect
 
 _NewPythonNameCounter = 1
 #==============================================================================
@@ -94,20 +95,95 @@ def Exists(var):
 		return False
 	   # Do something.
 
-def SetAttr(x, StrAttr : str, Value):
-	
-	TokList = StrAttr.split('.')
-	if len(TokList) ==1:
-		setattr(x, TokList[0], Value)
-	
-	elif len(TokList)>1:
-		
-		for Tok in TokList:
-			y = getattr(x,Tok)
-			GeldedTokList = '.'.join(TokList[1:])
-			print(GeldedTokList)
-			SetAttr(y,GeldedTokList, Value)
 
+
+		
+def GetAttr(x, StrAttr : str, Separator = '.'):
+	'''
+	Generalised versionof getattr.
+	Support also nesting, in the form
+	
+	>>> D = DataContainer()
+	D.City = DataContainer()
+	D.Divinity = 'Zeus'
+	D.City.Name = 'Rome'
+	D.City.Officers = DataContainer(Major = 'Mr Smith')	
+	a = GetAttr(D,'City.Officers.Major')
+	print(a)
+	or
+	b = GetAttr(D, 'City/Officers/Major', Separator = '/')
+	print(b)
+	'''
+	SubattributeList = StrAttr.split(Separator)
+	
+	CurrentObject = x
+	for i, Subattribute in enumerate(SubattributeList):
+#		print('%d) assigning: %s ' %(i, Subattribute))
+		CurrentObject = getattr(CurrentObject, Subattribute)
+	
+	return CurrentObject	
+
+def SetAttr(x, StrAttr : str, Value, Separator = '.', CreateIfNotExisting = False):
+	'''
+	Normally, nesting is used as
+	getattr(A.AA,'aa')
+	
+	SetAttr allows to write
+	
+	GetAttr(A,'AA.aa')
+	
+	Motivation:
+	-------------------
+	In this way it is possible to handle nested attributes as path, this handling
+	them as string.
+	
+	Example 1 
+	-----
+	>>> A = DataContainer()
+	A.AA = DataContainer()
+	A.AA.aa = 'Venice'	
+	SetAttr(A, 'AA.aa', 'Florence')
+	print(A.AA.aa)
+
+	x = A
+	StrAttr = 'AA.aa'
+	Value = 'Rome'	
+	'''
+	
+
+def GetSuperclassesList(Class  : type, BaseList = []):
+	
+	NewBases = Class.__bases__
+	BaseList.append(list(NewBases))
+	
+	for Base in NewBases:
+		BaseList.append(GetSuperclassesList(Base, BaseList))
+		
+	return BaseList
+		
+
+def GetAttrListOfClassHierarchy(Class : type, Name : str):
+	'''
+	Traverse the class hierarchy looking for a certain attribute, and creates a list
+	containing all the values found.
+	
+	Created for: the memento class. There is the attribute _Memento_AttributeList which
+	is present both in superclasses and subclasses (with different values).
+	
+	'''
+	
+	
+	
+#%%
+	TokList = StrAttr.split(Separator)
+	Attribute = TokList[-1] # the last item of the string is the attribute  
+	
+	StringToSubObject = '.'.join(TokList[:-1]) # [Main].Tok1.Tok2.[Attribute]
+	SubOject = GetAttr(x, StringToSubObject)
+	try:
+		setattr(SubOject, Attribute, Value)
+	except:
+		raise WiserException('Error in SetAttr: you tried to assign an attribute that is not existing. Solution...?') 
 #==============================================================================
 #  FUN: GetTheNotNone
 #==============================================================================
@@ -340,6 +416,12 @@ class DataContainer():
 	#==============================
 	@staticmethod
 	def _GetNonMagicAttributes():
+		'''
+		Return all the attributes which do not start with '_'
+		
+		The attributes starting with '_' will be ignored in printing/storing stuff.
+		
+		'''
 		Attrs = dir(DataContainer)
 		AttrList = []
 		for Attr in Attrs:
@@ -381,6 +463,13 @@ class DataContainer():
 		return a + '\n' + b
 
 
+
+	#==============================
+	#  FUN: Print
+	#==============================
+	def Print(self):
+		print(self)
+		
 	#==============================
 	#  FUN: _GetItems
 	#==============================
@@ -440,8 +529,6 @@ class DataContainer():
 		
 		NOTICE: DataContainer actually has the same functionalities of a dictionary.
 		In most of cases a dictionary can be used instead of DataContainer.
-		
-		
 		
 		'''
 		Attr, Obj = ListAttrRecursive(self, RecursionTypeList = [DataContainer])
@@ -525,7 +612,13 @@ def ListAttr(x,
 		strAttr = [iAttr for iAttr in dir(x) if not iAttr.startswith("__")]
 	# callable attributes are excluded (more common use)
 	else:
-		strAttr = [iAttr for iAttr in dir(x) if not callable(getattr(x,iAttr)) and not iAttr.startswith("__")]
+		strAttr = [] 
+		for iAttr in dir(x):
+			if not  iAttr.startswith("__") and not(callable(getattr(x,iAttr))):
+				strAttr.append(iAttr)
+			else:
+				pass
+		strAttr = [iAttr for iAttr in dir(x) if not iAttr.startswith("__") and not callable(getattr(x,iAttr))  ]
 
 	# The function will return both attribute names and the respective object
 	if ReturnObject:
