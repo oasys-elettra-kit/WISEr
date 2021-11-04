@@ -44,6 +44,7 @@ import numpy as np
 x = np.linspace(-1e-6, 1e-6, 5)
 GetAxisSI(x)
 >>> (array([-1. , -0.5,  0. ,  0.5,  1. ]), 'u')
+change.org
 
 """
 
@@ -183,7 +184,8 @@ def GetEngInfo(x, places = None):
 	# of the corner case of values that are beyond
 	# the range of SI prefixes (i.e. > 'Y').
 	_fmant = float("{mant:{fmt}}".format(mant=mant, fmt=fmt))
-	if _fmant >= 1000 and pow10 != max(self.ENG_PREFIXES):
+#	if _fmant >= 1000 and pow10 != max(self.ENG_PREFIXES):
+	if _fmant >= 1000 and pow10 != MAX_ENG_PREFIX:
 		mant /= 1000
 		pow10 += 3
 		

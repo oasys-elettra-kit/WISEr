@@ -1,7 +1,15 @@
+#%% SUMMARY
 '''
-Line Equation
-:math:`y = m x + q`
-Author michele.manfredda@elettra.eu
+Some of the Core Entities (functions and classes and properties) of this module:
+	
+OpticalElement:
+	GetNSamples	
+	GetNSamples_2Body	fundamental function used for computing the sampling
+
+BeamlineElements:
+	ComputeFieldsMediator	[BeamlineElements]
+	ComputeFields [BeamlineElements]
+	GetSamplingList
 
 '''
 
@@ -902,7 +910,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 			
 		'''
 
-		# Link to default
+		# Apply default value, if needed
 		if UseCustomSampling is None:
 			UseCustomSampling  = self.ComputationSettings.UseCustomSampling
 		
@@ -925,9 +933,27 @@ class OpticalElement(TreeItem, CodeGenerator):
 		
 		return NSamples
 
+	#===========================================
+	# FUN: GetNSamples12
+	#==========================================
+	@staticmethod
+	def GetNSamples12(Lambda: float, oe0 , oe1, Method = None) -> int:
+		'''
+		THIS IS THE FUNCTION REALLY USED TO COMPUTE THE SAMPLING.
+		It uses: Rayman.ComputeSamplingA
+		''' 
+		z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
+		L0 = oe0.CoreOptics.L
+		L1 = oe1.CoreOptics.L
+		Theta0 = oe0.CoreOptics.VersorNorm.Angle
+		Theta1 = oe1.CoreOptics.VersorNorm.Angle
+#		Alpha0 = oe0.CoreOptics.Angle
+		a = oe1.ComputationSettings.OversamplingFactor
+		return rm.ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, 10)
+#		return rm.ComputeSampling(Lambda, z, L0, L1, Alpha0, Alpha1, oe1.ComputationSettings.OversamplingFactor)
 
 	#===========================================
-	# FUN: ComputeSampling_2Body
+	# FUN: GetNSamples_2Body
 	#==========================================
 	@staticmethod
 	def GetNSamples_2Body(Lambda: float, oe0 , oe1) -> int:
@@ -1954,8 +1980,8 @@ class BeamlineElements(Tree):
 		'''
 		Pd = oeY.PositioningDirectives
 		
-		
-		print('Positioning: %s' % oeY.Name)
+#		
+#		print('Positioning: %s' % oeY.Name)
 
 		if oeY.IsSource == False:
 			oeX = oeY.GetParent(SameOrientation=False, OnlyReference=True) # Get XY coordinates from the oeX
@@ -2045,10 +2071,17 @@ class BeamlineElements(Tree):
 					realDistance = oeXSameOrientationCurrent.DistanceFromParent
 					oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 
+
 					while not hasattr(oeXSameOrientationCurrent.CoreOptics, 'f2'):
 						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
 						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
-
+						if oeXSameOrientationCurrent is None:
+							raise WiserException("""
+							   Low level error: the variable oeXSameOrientationCurrent is None. Cause: It is not possible
+							   to find a previous element that matches the positioning directives. COMMON REASON/SOLUTION:
+								   the user is asking a 'Detector' element to set in the focus of the upstream focusing
+								   mirror, but there isn't any focusing mirror upstream.""")
+								
 					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
 					#realDistance: distance from the last element with the same orientation
@@ -2158,6 +2191,7 @@ class BeamlineElements(Tree):
 					 Verbose = True,
 					 ReturnNames  = False):
 		"""
+		Bases on OpticalElement.GetNSamples_2Body
 		Helper function (for debug, not used by the computation engine)
 		
 		Returns a list of K elements, where K is the number of itemns in
@@ -2198,7 +2232,8 @@ class BeamlineElements(Tree):
 			else:
 				NextPropagationChild = OE.GetNextPropagationChild(Orientation = OrientationToCompute)
 				if NextPropagationChild  is not None:
-					NSamples = OE.GetNSamples_2Body(self.Lambda, OE, NextPropagationChild)
+					NSamples = OE.GetNSamples12(self.Lambda, OE, NextPropagationChild, Method = None)
+#					NSamples = OE.GetNSamples_2Body(self.Lambda, OE, NextPropagationChild)
 #					NSamples = GetNSamplesTwoBody(self.Lambda, OE, NextPropagationChild)
 				else:
 					# there is no next element
@@ -2451,6 +2486,7 @@ class BeamlineElements(Tree):
 				Debug.print('\tAction:' + Action)
 			# ----------------------------------------------
 			# case:  The present element is a Wavefront, so it already has a field
+			#  oeLast -->oeThis (Pull Field)
 			# ----------------------------------------------
 			elif (isinstance(oeThis.CoreOptics, LibWiser.Optics.SourceWavefront)):
 				Action = 'no Action (Field already stored in the OpticalElement)'
@@ -2520,6 +2556,7 @@ class BeamlineElements(Tree):
 #						Debug.print('yLast = -- not defined', Ind + 1)
 #						Debug.print('len xThis = %d' % len(xThis), Ind + 1)
 #						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
+						Debug.Print('NSamples =%d' % NSamples, Ind)
 
 					PropInfo.N = 0
 					PropInfo.TotalPath = 0
@@ -2538,6 +2575,7 @@ class BeamlineElements(Tree):
 					#										|=> Propagate =>
 					
 					NSamples = oeThis.GetNSamples(Orientation = Orientation)
+					
 #					NSamples = GetNSamplesTwoBody(Lambda, PropInfo.oeLast, oeThis)
 					# oeLast is a numerical source and we want to preserve the same sampling
 					# If 'Last field' is different from 0
@@ -2560,9 +2598,14 @@ class BeamlineElements(Tree):
 						Debug.print('target object = %s' % oeThis.Name, Ind )
 						Debug.pr('NSamples', Ind + 1)
 
-						# definizione di promemoria
-						# EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
 
+						
+						# Field Propagation:
+						#-----------------------
+						# Remember: E0 -> E1
+						# Oe0.EvalField propagates FROM Oe0 to OE1
+						# def EvalField(self, x1, y1, Lambda, E0, NPools = 3,  Options = ['HF']):
+						
 						oeThis.Results.Field = PropInfo.oeLast.CoreOptics.EvalField(
 							xThis,
 							yThis,
@@ -3539,15 +3582,61 @@ def PositioningDirectives_UpdatePosition(oeY: OpticalElement, oeX: OpticalElemen
 #==========================================
 # FUN: GetMaximumViewAngle [OpticalElements]
 #==========================================
-def GetMaximumViewAngle(oe0 : OpticalElement, oe1: OpticalElement) -> float:
+def GetMaximumViewAngle12(oe1 : OpticalElement, oe2: OpticalElement) -> float:
 	'''
 	Two-Body function.
 	It extracts the Maximum View Angle at which oe0 "sees" oe1.
 	
+	Wrapper for: Optics.GetMaximumViewAngle12
+	
 	It works only the the included CoreOptics element are of type: OpticsNumerical.
 	
 	'''
-	return  Optics.GetMaximumViewAngle(oe0.CoreOptics, oe1.CoreOptics)
+	return  Optics.GetMaximumViewAngle12(oe1.CoreOptics, oe2.CoreOptics)
+
+
+
+#==========================================
+# FUN: GetNSamples1To2()
+#==========================================
+def GetNSamples12(Lambda: float, 
+					   oe1 : OpticalElement, 
+					   oe2: OpticalElement) -> int:
+	'''
+	THIS IS THE FUNCTION REALLY USED TO COMPUTE THE SAMPLING.
+	
+	It uses: Rayman.ComputeSamplingA
+	'''
+	 
+	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
+	L0 = oe0.CoreOptics.L
+	L1 = oe1.CoreOptics.L
+	Theta0 = oe0.CoreOptics.VersorNorm.Angle
+	Theta1 = oe1.CoreOptics.VersorNorm.Angle
+	a = oe1.ComputationSettings.OversamplingFactor
+	return rm.ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, 10)
+
+
+
+
+#===========================================
+# FUN: GetNSamples_2Body
+#==========================================
+@staticmethod
+def GetNSamples_2Body(Lambda: float, oe0 , oe1) -> int:
+	'''
+	THIS IS THE FUNCTION REALLY USED TO COMPUTE THE SAMPLING.
+	It uses: Rayman.ComputeSamplingA
+	''' 
+	z = np.linalg.norm(oe1.CoreOptics.XYCentre - oe0.CoreOptics.XYCentre)
+	L0 = oe0.CoreOptics.L
+	L1 = oe1.CoreOptics.L
+	Theta0 = oe0.CoreOptics.VersorNorm.Angle
+	Theta1 = oe1.CoreOptics.VersorNorm.Angle
+#		Alpha0 = oe0.CoreOptics.Angle
+	a = oe1.ComputationSettings.OversamplingFactor
+	return rm.ComputeSamplingA(Lambda, z, L0, L1, Theta0, Theta1, 10)
+
 
 
 #==========================================
@@ -4188,7 +4277,7 @@ def ZSweep(oeStart, DistanceList, DetectorSize = 50e-6, AngleInNominal = np.deg2
 
 
 
-#%% Corrected Sampling for items with different orientation.
-
+#%% Notes on sampling
+	
 
 #%% Fine

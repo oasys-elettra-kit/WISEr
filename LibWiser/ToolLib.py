@@ -1638,6 +1638,12 @@ class Vector(object):
 	-------------------
 	v : a v = [vx,vy] type
 
+
+	Set of Parameters 4
+	-------------------
+	A : 
+	B : 
+
 	'''
 
 	#================================
@@ -1648,6 +1654,7 @@ class Vector(object):
 				v = None, # [vx,vy] array
 				V = None, # a vector object
 				Angle = None,
+				A = None, B = None,
 				XYOrigin = [0,0], Length = 1, IsUnitVector = False):
 
 		self._IsUnitVector = IsUnitVector
@@ -1660,6 +1667,11 @@ class Vector(object):
 				self._ZeroLength() # _v is assigned
 		elif CheckArg([v]):
 			self.v = v          # _v is assigned
+
+		elif CheckArg([A,B]):
+			vx = B[0] - A[0]
+			vy = B[1] - A[1]
+			self.v = [vx,vy] # _v is assigned
 
 		elif CheckArg([Angle, Length]):
 			if Length >0:
@@ -1688,6 +1700,9 @@ class Vector(object):
 				(self.v[0], self.v[1], (self.Angle * 180/np.pi),
 				self.XYOrigin[0], self.XYOrigin[1]))
 		return StrMsg
+	
+	def __repr__(self):
+		return self.__str__()
 
 # 	#======================
 # 	# FUN: __repr__
@@ -1866,6 +1881,16 @@ class Vector(object):
 		ax.arrow(x0,y0,Length*(x1-x0), Length*(y1-y0),
 				   head_width = ArrowWidth, head_length= ArrowLength,
 								   fc=Color, ec=Color)
+		
+	def Dot(self, V ):
+		'''
+		Implements the dot product between the current vector and the vector V
+		
+		'''
+		
+		return np.dot(self.v, V.v)
+	
+		
 #============================================================================
 #	 CLASS: UnitVector
 #==============================================================================
@@ -1875,8 +1900,9 @@ class UnitVector(Vector):
 			  vy = None,
   				V = None,
 			   Angle = None,
+			   A = None, B = None,
 			    XYOrigin = [0,0]):
-		Vector.__init__(self,  vx = vx, vy= vy, v = v, V = V ,
+		Vector.__init__(self,  vx = vx, vy= vy, v = v, V = V , A = A, B = B,
 				  Angle = Angle, XYOrigin = XYOrigin,
 				  IsUnitVector = True)
 
@@ -2208,11 +2234,24 @@ def AngleBetweenVersors(V1 : Vector, V2 : Vector):
 		Return the angle comprised between two versors (or vector),
 		in radians
 		
+	'''
+	Angle = np.abs(V1.Angle - V2.Angle)
+	return Angle
+
+#================================================================
+#  AngleIncluded
+#================================================================
+def AngleIncluded(V1 : Vector, V2 : Vector):
+	'''
+		Return the angle comprised between two versors (or vector),
+		in radians
 		
 	'''
 	Angle = np.abs(V1.Angle - V2.Angle)
 	return Angle
 
+def Dot(V1 : Vector, V2 : Vector):
+	return np.dot(V1.v, V2.v)
 
 #================================================================
 #  AngleBetweenPoints

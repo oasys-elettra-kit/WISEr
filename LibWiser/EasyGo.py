@@ -10,6 +10,7 @@ import LibWiser.FermiSource as FermiSource
 import LibWiser.WiserImport as lw
 import LibWiser.Optics as Optics
 import LibWiser.Scrubs as Scrubs
+import LibWiser.ToolLibHigh as HiLib
 from LibWiser.Foundation import OpticalElement, BeamlineElements
 from LibWiser.Enums import OPTICS_ORIENTATION
 
