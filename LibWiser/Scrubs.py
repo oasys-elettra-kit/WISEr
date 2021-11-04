@@ -152,7 +152,11 @@ def SetAttr(x, StrAttr : str, Value, Separator = '.', CreateIfNotExisting = Fals
 	
 
 def GetSuperclassesList(Class  : type, BaseList = []):
+	'''
 	
+	obsolete+use type(x).__mro__ instead
+	'''
+	raise Exception("GetSuperclassesLis is obsolete. use .__mro__ instead")
 	NewBases = Class.__bases__
 	BaseList.append(list(NewBases))
 	

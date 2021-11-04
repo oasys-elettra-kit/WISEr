@@ -183,7 +183,8 @@ def GetEngInfo(x, places = None):
 	# of the corner case of values that are beyond
 	# the range of SI prefixes (i.e. > 'Y').
 	_fmant = float("{mant:{fmt}}".format(mant=mant, fmt=fmt))
-	if _fmant >= 1000 and pow10 != max(self.ENG_PREFIXES):
+#	if _fmant >= 1000 and pow10 != max(self.ENG_PREFIXES):
+	if _fmant >= 1000 and pow10 != MAX_ENG_PREFIX:
 		mant /= 1000
 		pow10 += 3
 		

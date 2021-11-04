@@ -992,8 +992,32 @@ def HuygensIntegral_1d_MultiPool(Lambda, Ea, xa, ya, xb, yb, NPools = 1, Verbose
 #==============================================================================
 HuygensIntegral_1d = HuygensIntegral_1d_MultiPool
 
+
 #==============================================================================
-# 	FUN: HuygensIntegral_1d
+# 	ComputeSamplingA
+#==============================================================================
+def ComputeSampling12A(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 ):
+	'''
+	
+	Approach: "Diffraction, half angle, equal N of samples"
+	
+	Lambda: wavalenght
+	z:distance b|w start and arrival planes
+	L0,L1: lenght of start and arrival planes
+	Theta0, Theta1: orientation of start and arivval planes
+	'''
+	
+	if z==0:
+		raise Exception("The distance between optical element is 0: the computation of sampling returns infinity." )
+	
+
+	N = int(OversamplingFactor  * L0 * L1* abs(cos(Theta0 - Theta1)) /Lambda/z)
+	return N
+
+
+
+#==============================================================================
+# 	ComputeSamplingA
 #==============================================================================
 def ComputeSamplingA(Lambda, z, L0, L1,  Theta0, Theta1, OversamplingFactor = 1 ):
 	'''

@@ -980,7 +980,7 @@ class OpticsNumerical(Optics):
 
 		Notice: SmallDisplacements affect the GetXY function
 		'''
-		tl.Debug.Print('Applying small displacements', 3, False)
+#		tl.Debug.Print('Applying small displacements', 3, False)
 #		XYTranslation = self._Transformation_List[0][i]
 #		Rotation = self._Transformation_List[1][i]
 #		RotationCentre = self._Tranisformation_List[2][i]
@@ -996,9 +996,9 @@ class OpticsNumerical(Optics):
 		xNew = xLab + DeltaX
 		yNew = yLab + DeltaY
 
-		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
-		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
-		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
+#		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
+#		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
+#		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
 
 		return(xNew, yNew)
 	#================================================
@@ -3488,6 +3488,28 @@ class Mirror(OpticsNumerical):
 		self.XYEnd  = np.array([XEnd, self.EvalY(XEnd)])
 		self._L = L
 
+
+	#================================
+	# PROP: RayOutReflected [MirrorPlane]
+	#================================
+	@property
+	def RayOutReflected(self):
+		'''
+		Introduced (experimentally) for the sampling with a grating,
+		where the k0 at zero order is required.
+		
+		Returns the reflected beam from the surface.
+		
+		It is not used for positioning: RayOutNominal is used instead.
+		
+		It is copied by MirrorPlane.RayOutNominal
+		'''
+		
+		V = tl.UnitVector(Angle = self.AngleInputLabNominal)
+		v_ref = tl.UnitVectorReflect(V.v, self.VersorNorm.v)
+		return tl.Ray(vx = v_ref[0], vy = v_ref[1], XYOrigin = self.XYCentre)
+
+	
 	#================================
 	# PROP: Roughness
 	#================================
@@ -7746,7 +7768,7 @@ class SourceNumerical(Slits, CodeGenerator):
 #==========================================
 # FUN: GetMaximumViewAngle
 #==========================================
-def GetMaximumViewAngle(Optics0 : OpticsNumerical, Optics1 : OpticsNumerical) -> float:
+def GetMaximumViewAngle12(Optics1 : OpticsNumerical, Optics2 : OpticsNumerical) -> float:
 	'''
 	Two-Body function.
 	It extracts the Maximum View Angle at which oe0 "sees" oe1.
@@ -7756,18 +7778,92 @@ def GetMaximumViewAngle(Optics0 : OpticsNumerical, Optics1 : OpticsNumerical) ->
 	
 	'''
 	try:
-		X0, Y0 = Optics0.GetXY(3)
-		X1, Y1 = Optics1.GetXY(2)
+		X1, Y1 = Optics1.GetXY(3)
+		X2, Y2 = Optics2.GetXY(2)
 	except:
 		raise WiserException ("Error in Getting the View Angle. Maybe the optical element is not numerical and does not have a defined transverse extension.")
 	
-	A = [X1[0], Y1[0]]
-	B = [X1[1], Y1[1]]
+	A = [X2[0], Y2[0]]
+	B = [X2[1], Y2[1]]
 
-	AngleList = [ToolLib.AngleBetweenPoints([X0[i], Y0[i]], A, B ) for i in [0,1,2]]
+	AngleList = [ToolLib.AngleBetweenPoints([X1[i], Y1[i]], A, B ) for i in [0,1,2]]
 	Angle = max(AngleList)
 	
 	return Angle
 	
 	
+#==========================================
+# FUN: GetMaximumViewAngle
+#==========================================
+def GetMaximumGrazingRay(Optics1 : OpticsNumerical, Optics2 : OpticsNumerical) -> float:
+	'''
+	Two-Body function.
+	
+	Given two optical elements, with terminal points A1 B1 A2 B2 it
+	- computes the possible combination of rays: A1-A2, A1-B2, B1-A2, B1-B2,
+		
+	- for each one of the surfaces, returns the ray which is most grazing to the
+	surface
+	 
+	Parameters
+	----
+	Optics1 : NumericalOptics
+		First Optical element
+
+	Optics1 : NumericalOptics
+		Second Optical element
+	
+	Return
+	---------------------------
+	V1 : Ray
+		The k-vector which is mostly grazing w.r.t. the normal of the surface of Optics1
+		
+	V2 : Ray
+		The same as V1, but for Optics2
+	
+	'''
+	
+	
+	try:
+		X1, Y1 = Optics1.GetXY(2)
+		X2, Y2 = Optics2.GetXY(2)
+	except:
+		raise WiserException ("Error in Getting the View Angle. Maybe the optical element is not numerical and does not have a defined transverse extension.")
+	
+	A1 = [X1[0], Y1[0]]
+	B1 = [X1[1], Y1[1]]
+
+	A2 = [X2[0], Y2[0]]
+	B2 = [X2[1], Y2[1]]
+		
+	Va = ToolLib.UnitVector(A = A1, B= A2)
+	Vb = ToolLib.UnitVector(A = A1, B= B2)
+	Vc = ToolLib.UnitVector(A = B1, B= A2)
+	Vd = ToolLib.UnitVector(A = B1, B= B2)
+	
+	N1 = Optics1.VersorNorm
+	N2 = Optics2.VersorNorm
+	
+	T1 = Optics1.VersorTan
+	T2 = Optics2.VersorTan
+	
+	NList = [N1,N2]
+	
+	
+	VList = [Va,Vb,Vc,Vd]
+	
+#	for _ in VList:
+#		print(_)
+#		print('\n')
+	
+	VMaxList= []
+	for N in NList :
+		AngleList = [np.inner(N.v, _.v ) for _ in VList]
+		#Angle os low => the ray is very grazing
+		IndexMax = np.argmin(AngleList) # The maximum grazing angle is the one with minimum value of angle
+		VMaxList.append(VList[IndexMax])
+		
+	return(VMaxList[0], VMaxList[1])
+#	print(VMaxList[0])
+#	print(VMaxList[1])
 	
