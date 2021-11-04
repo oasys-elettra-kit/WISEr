@@ -17,6 +17,34 @@ With SI formatting we denote the use of SI prefixes
 The logic is contained in GetEngInfo
 The interface function (To oasys-wiser) is GetAxisSI
 
+Examples
+x = 0.1e-9
+
+GetEngInfo(x)
+>>> {'SIMant': 1.0, 'SIPow10': -9, 'SIPrefix': 'n', 'EngMant': 1.0, 'EngPow10': -9}
+
+
+GetFormattedEng(x)
+>>> '1e-9'
+
+GetFormattedSI(x)
+>>> '1 n'
+
+
+
+SmartFormatter(x)
+>>> '1 n'
+
+
+SmartFormatter(x, {'unit' : 'm'})
+>>> '1 nm'
+
+
+import numpy as np
+x = np.linspace(-1e-6, 1e-6, 5)
+GetAxisSI(x)
+>>> (array([-1. , -0.5,  0. ,  0.5,  1. ]), 'u')
+
 """
 
 

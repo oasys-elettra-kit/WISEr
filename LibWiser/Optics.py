@@ -233,7 +233,7 @@ class Optics(LogBuffer):
 	#=================================================
 	#CLASS (INTERNAL):  _ComputationSettings [Optics]
 	#=================================================
-	class _ComputationSettings:
+	class _ComputationSettings(DataContainer):
 		#===============================
 		#	 CLASS: __init__[ComputationSettings]
 		#===============================
@@ -350,6 +350,16 @@ class Optics(LogBuffer):
 		except:
 			return 'unnamed'
 
+	#================================================
+	#	PROP: SmallDisplacements
+	#================================================
+	@property
+	def SmallDisplacements(self):
+		return self._SmallDisplacementsValue 
+	@SmallDisplacements.setter
+	def SmallDisplacements(self, Value):
+		self._SmallDisplacementsValue  = Value
+		
 	@UseAsReference.setter
 	def UseAsReference(self, Value):
 		self._UseAsReference = Value
@@ -384,7 +394,19 @@ class Optics(LogBuffer):
 		'''
 		ABSTRACT
 		'''
-		raise NotImplementedError("RayOutNominal is not implemented")	
+		raise NotImplementedError("RayOutNominal is not implemented")
+		
+ 	#================================
+	# RayOutReal
+	#================================
+	@property
+	def RayOutReal(self) -> tl.Ray:
+		'''
+		It adds to RayOutNominal the variation introduced by small displacement.
+		
+		'''
+		return self.RayOutNominal.Rotate(self.SmallDisplacements.Rotation)
+	
 #==============================================================================
 #	 CLASS ABSTRACT: Analytical Optics
 #==============================================================================
@@ -7722,3 +7744,33 @@ class SourceNumerical(Slits, CodeGenerator):
 #		self.S = None   #the sampled points along the OE longitudinal axis
 #		self.Action = None
 #		self.Name = ''
+
+
+#==========================================
+# FUN: GetMaximumViewAngle
+#==========================================
+def GetMaximumViewAngle(Optics0 : OpticsNumerical, Optics1 : OpticsNumerical) -> float:
+	'''
+	Two-Body function.
+	It extracts the Maximum View Angle at which oe0 "sees" oe1.
+	MaximumViewAngle = <maximum angle subtended by oe1 from oe0> - <angle of RealRayOut>
+	
+	It works only the the included CoreOptics element are of type: OpticsNumerical.
+	
+	'''
+	try:
+		X0, Y0 = Optics0.GetXY(3)
+		X1, Y1 = Optics1.GetXY(2)
+	except:
+		raise WiserException ("Error in Getting the View Angle. Maybe the optical element is not numerical and does not have a defined transverse extension.")
+	
+	A = [X1[0], Y1[0]]
+	B = [X1[1], Y1[1]]
+
+	AngleList = [ToolLib.AngleBetweenPoints([X0[i], Y0[i]], A, B ) for i in [0,1,2]]
+	Angle = max(AngleList)
+	
+	return Angle
+	
+	
+	
