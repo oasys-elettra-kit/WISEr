@@ -45,7 +45,7 @@ Dealing with subobj1 can be done in two ways:
 	
 	
 '''
-class CodeGenerator():
+class CodeGenerator_NEW_WIP():
 	
 	
 #	def __init__(self, Target, Arguments, Attributes, ClassName = None):
@@ -321,7 +321,7 @@ class CodeGenerator():
 #===========================================================================
 # 	CLASS: CodeGenerator
 #===========================================================================
-class CodeGenerator2():
+class CodeGenerator():
 	'''
 	If this class is inherited by a parent class, it provides the parent class the GenerateCode method,
 	which automatize the generation of initialization code.

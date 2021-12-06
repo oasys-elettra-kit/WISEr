@@ -978,7 +978,12 @@ class OpticsNumerical(Optics):
 		'''
 		xLab, yLab : the (x,y) points of the optical element in the lab reference.
 
-		Notice: SmallDisplacements affect the GetXY function
+		Notes: 
+		- In the very first version, Transverse and Longitudinal displacements are referred to input ray.	
+		- SmallDisplacements affect the GetXY function
+		- This is the code that handles the "small displacements" for OpticsNumerical.
+		Somewhere else there is the one for OpticsAnalytical. I don't remember where, right now.
+		
 		'''
 #		tl.Debug.Print('Applying small displacements', 3, False)
 #		XYTranslation = self._Transformation_List[0][i]
@@ -993,12 +998,19 @@ class OpticsNumerical(Optics):
 		DeltaY = self.SmallDisplacements.Long * np.sin(np.pi - self.RayInNominal.Angle + self.SmallDisplacements.Rotation)
 
 		xNew,yNew = tl.RotXY(xLab, yLab, self.SmallDisplacements.Rotation, self.XYCentre)
-		xNew = xLab + DeltaX
-		yNew = yLab + DeltaY
-
-#		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
-#		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
-#		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
+		xNew = xNew + DeltaX
+		yNew = yNew + DeltaY
+		
+		#--- Debug lines
+		try:
+			Name = self.ParentContainer.Name
+		except:
+			Name = 'unnamed'
+			
+		tl.Debug.Print('\t\tApplying small displacements (! to %s)' % Name)
+		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
+		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
+		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
 
 		return(xNew, yNew)
 	#================================================
@@ -1330,7 +1342,7 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
-
+			raise Exception('Manual esception put by MM on 6.12.2021 just to track when this code is run.')
 		else:
 			pass
 
@@ -2735,7 +2747,7 @@ class Segment(OpticsNumerical):
 		return x,y
 
  	#================================
-	# GetXY
+	# GetXY (segment)
 	#================================
 	def GetXY(self, N, Options =['ideal'] ):
 		return self.GetXY_Segment(N)
@@ -3442,7 +3454,6 @@ class Mirror(OpticsNumerical):
 		-----
 		N : int
 			Number of samples.
-
 		Uses
 		-----
 		self.ComputationSettings : (class member)
@@ -3458,13 +3469,13 @@ class Mirror(OpticsNumerical):
 
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
+			xLabNew, yLabNew = self._ApplySmallDisplacements(xLab, yLab)
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
 
 		else:
 			pass
 
 		return xLab, yLab
-#			print("1 Mirror.GetXY: Option set not implemented. \n Options = %s" % str(Options))
 
 #	#================================
 #	# VersorTan
@@ -4061,6 +4072,11 @@ class MirrorPlane(Mirror, CodeGenerator):
 	def GetXY_IdealMirror(self, N=100, ReferenceFrame=None, L=None):
 		'''
 		Return the coordinates of the ideal mirror in the lab ref frame.
+		
+		WARNING:
+			_ApplySmallDisplacements happens AFTER this function, 
+			in a normal command chain. So GetXY_IdealMirror is always
+			WITHOUT SmallDisplacements
 
 		Return
 		--------------------
@@ -4231,7 +4247,7 @@ class MirrorPlane(Mirror, CodeGenerator):
 		# Paint the mirror
 		Fig = plt.figure(FigureHandle)
 		FigureHandle = Fig.number
-		x_mir, y_mir = self.GetXY_IdealMirror(N)
+		x_mir, y_mir = self.GetXY(N)
 		plt.plot(x_mir, y_mir, Color + '.')
 		# mark the mirror centre
 		plt.plot(self.XYCentre[0], self.XYCentre[1], Color + 'x')
@@ -7151,24 +7167,20 @@ class Slits(OpticsNumerical, CodeGenerator):
 		return x, y
 
 	# ================================
-	# GetXY
+	# GetXY [Slits]
 	# ================================
 	def GetXY(self, N):
 		'''
-		Main User-interface function for getting the x,y points of the mirror
-		in the laboratory reference frame.
-		Uses the self.ComputationSettings parameters for performing the computation parameters
-		-----
-		N : int
-			Number of samples.
-
-		Uses
-		-----
-		self.ComputationSettings : (class member)
-			See computation settings.
+			Short-circuit to Mirror.GetXY.
+			
+			Notes:
+				There is NO need to write again the code (all the ckass should be inherited
+				from Mirror).
 		'''
-		xLab, yLab = self.GetXY_IdealMirror(N)
-		return xLab, yLab
+#		xLab, yLab = self.GetXY_IdealMirror(N)
+#		return xLab, yLab
+		return Mirror.GetXY(self,N)
+		
 
 	# ================================
 	# _SetMirrorCoordinates
