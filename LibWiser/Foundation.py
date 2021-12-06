@@ -2593,12 +2593,13 @@ class BeamlineElements(Tree):
 						oeThis.Results.Field = []
 						Debug.pr('NSamples', Ind + 1)
 					else:
-						Debug.print('Computing field (Numeric)', Ind)
-						Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
-						Debug.print('target object = %s' % oeThis.Name, Ind )
-						Debug.pr('NSamples', Ind + 1)
-
-
+						#Commented on Dec 2021 coz it seems to me
+						#that it overlaps with the code just after this
+						
+#						Debug.print('Computing field (Numeric)', Ind)
+#						Debug.print('Source object = %s' % PropInfo.oeLast.Name, Ind )
+#						Debug.print('Target object = %s' % oeThis.Name, Ind )
+#						Debug.pr('NSamples', Ind + 1)
 						
 						# Field Propagation:
 						#-----------------------
@@ -2623,8 +2624,8 @@ class BeamlineElements(Tree):
 #						Debug.print('len yThis = %d' % len(yThis), Ind + 1)
 
 					Debug.print('Computing field (Numeric)', Ind)
-					Debug.print('source object = %s' % PropInfo.oeLast.Name, Ind )
-					Debug.print('target object = %s' % oeThis.Name, Ind )
+					Debug.print('Source object = %s' % PropInfo.oeLast.Name, Ind )
+					Debug.print('Target object = %s' % oeThis.Name, Ind )
 					Debug.Print('NSamples =%d' % NSamples, Ind)
 
 					Debug.Print('More info', NIndent = Ind )

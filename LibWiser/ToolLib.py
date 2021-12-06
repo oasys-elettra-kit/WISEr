@@ -1833,6 +1833,7 @@ class Vector(object):
 		>>> UnitVector.vAngle +=  Angle
 		'''
 		self.vAngle = self.vAngle + Angle
+		return self
 
 
 	#======================
