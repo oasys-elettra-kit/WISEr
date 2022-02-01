@@ -1,0 +1,33 @@
+digraph "classes" {
+charset="utf-8"
+rankdir=BT
+"0" [label="{BeamlineElements|ComputationMinutes\lComputationSettings\lLambda\lLightSource\lMainLambda\lSource\l|ApplyPositioningDirectives(oeY)\lComputeFields(oeStart, oeEnd, Dummy, Verbose)\lComputeFieldsAdvanced(oeStart, oeEnd, Dummy, Verbose)\lComputeFieldsMediator(oeStart, oeEnd, Dummy, Verbose, Orientation)\lGenerateCode()\lGetDistance(oeStart, oeEnd)\lGetElementList(oeStart, oeEnd, Orientation, Ignore)\lGetElementToPropagateList(oeStart, oeEnd, Orientation)\lGetOpticalPath(oeStart, oeEnd)\lGetSamplingList(Orientation, UseCustomSampling, Verbose, ReturnNames)\lGetSamplingList2(Orientation, Verbose)\lGetSamplingListAuto(Orientation, Verbose, ReturnNames)\lGetSubBeamline(Orientation)\lGetSubBeamlineCopy(Orientation)\lPaint(hFig, Length, ArrowWidth, N, OrientationAny, Labels)\lPaintMiniatures(Length, ArrowWidth)\lPlotIntensity(StartFigureIndex, Label, Normalization)\lPrint(Orientation, ApplyIgnore)\lPrintComputationTime()\lRefreshPositions()\lSetAllNSamples(N)\lSetAllUseCustomSampling(x)\lSetIgnoreList(ElementList, Ignore)\lSetPropertyForAll(PropertyName, PropertyValue)\l}", shape="record"];
+"1" [label="{ComputationResults|Action : NoneType\lFWHMGaussianFit\lField : NoneType\lHew\lInfo\lIntensity\lLambda : int\lNSamples : NoneType\lName : str\lS : NoneType\lX : NoneType\lY : NoneType\l|}", shape="record"];
+"2" [label="{ComputationSettingsForOpticalElement|Ignore : bool\lNSamples\lNSamples : int\lOversamplingFactor : int\lUseCustomSampling : bool\l|}", shape="record"];
+"3" [label="{INSERT_MODE|After : int\lBefore : int\lFork : int\l|}", shape="record"];
+"4" [label="{MakePositioningDirectives|\l|Absolute(XYCentre, Angle)\lAtFocus(GrazingAngle)\lEmpty()\lReferToPrevious(Distance, GrazingAngle, PlaceWhat, PlaceWhere)\l}", shape="record"];
+"5" [label="{Method|AnaltyticalSource : str\lAnalytical : str\lIgnore : str\lNumerical : str\l|}", shape="record"];
+"6" [label="{Method|AnaltyticalSource : str\lAnalytical : str\lIgnore : str\lNumerical : str\l|}", shape="record"];
+"7" [label="{More|BestDefocus : NoneType\lBestHew : NoneType\lDist : ndarray\lXYCentre : ndarray\l|}", shape="record"];
+"8" [label="{More|Dist : ndarray\lXYCentre : ndarray\l|}", shape="record"];
+"9" [label="{MoreInfo|IgnoredElements : list\l|}", shape="record"];
+"10" [label="{OpticalElement|ComputationData\lComputationResults\lComputationSettings\lCoreOptics : NoneType\lCoreOpticsElement\lDistanceFromParent\lDistanceFromSource\lIsSource\lName : NoneType\lPositioningDirectives\lPositioningDirectives : NoneType\lPropagationData\lRayIn : NoneType\lRayOut : NoneType\lRayOutNominal\lResults\lXYCentre\l|GeneralDistanceFromParent(Orientation, Reference)\lGetChild(Orientation, UseAsReference, Ignore, ChildBranch)\lGetDistanceFromParent(SameOrientation, OnlyReference)\lGetDistanceFromSource()\lGetNSamples(Orientation, UseCustomSampling)\lGetNSamples_2Body(Lambda, oe0, oe1)\lGetNextPropagationChild(Orientation)\lGetParent(SameOrientation, OnlyReference)\lGetXY(N)\lPaint(hFig)\lPlotFigureError(FigureIndex, Label, FigureErrorIndex, TitleDecorator, PlotIntensity)\lPlotIntensity(FigureIndex, Label, Normalization, SetPeakAtZero, ManualIntensity)\l}", shape="record"];
+"11" [label="{PositioningDirectives|Angle : int, NoneType\lAtFocus : bool\lDistance : float\lGrazingAngle : int, NoneType\lIsAbsolute : bool\lPlaceWhat : str\lPlaceWhere : str\lReferTo : str\lUseFollowing : bool\lUsePrevious : bool\lWhat : str\lWhere : str\lWhichAngle : str\lXYCentre : NoneType, list\l|}", shape="record"];
+"12" [label="{PropInfo|N : int\lTotalPath : int\loeLast : NoneType\l|}", shape="record"];
+"13" [label="{PropagationInfo|Ignore : bool\l|}", shape="record"];
+"14" [label="{ReferTo|AbsoluteReference : str\lDoNotMove : str\lDownstreamElement : str\lLocked : str\lSource : str\lUpstreamElement : str\l|}", shape="record"];
+"15" [label="{Results|\l|}", shape="record"];
+"16" [label="{Tree|FirstItem\lFirstItem\lItemList\lItemNameList\lLastItem\lNItems\lName\l|Append(NewItem, posdirective, NewName, AppendAllIfList)\lGetFromTo(FromItem, ToItem)\lInsert(NewItem, ExistingName, Mode, NewName)\lRemove(KeyOrItem)\l}", shape="record"];
+"17" [label="{TreeItem|Children : list\lDonwstreamItemList\lName\lName : NoneType\lParent : NoneType\lParentContainer\lUpstreamItemList\l|}", shape="record"];
+"18" [label="{What|Centre : str\lDownstreamFocus : str\lUpstreamFocus : str\l|}", shape="record"];
+"19" [label="{Where|Centre : str\lDownstreamFocus : str\lUpstreamFocus : str\l|}", shape="record"];
+"20" [label="{WhichAngle|AxisOfTheSelfReferenceFrame : str\lFirstArmOfEllipticMirror : str\lSecondArmOfEllipticMirror : str\l|}", shape="record"];
+"21" [label="{_ClassComputationSettings|AllowRepeatedNames : bool\lCollectiveCustomSampling\lNComputations\lNFigureErrorsPerOpticalElement : int\lNPools : int\lNRoughnessPerOpticalElement : int\lOrientationToCompute : list\lParentContainer\lUseFigureError : bool\lUseRoughness : bool\liComputation\liFigureError : int\liRoughness : int\l|}", shape="record"];
+"0" -> "16" [arrowhead="empty", arrowtail="none"];
+"10" -> "17" [arrowhead="empty", arrowtail="none"];
+"1" -> "10" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="Results", style="solid"];
+"1" -> "10" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="PropagationData", style="solid"];
+"2" -> "10" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="_ComputationSettings", style="solid"];
+"21" -> "0" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="ComputationSettings", style="solid"];
+"21" -> "0" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="ComputationSettings", style="solid"];
+}

@@ -757,6 +757,17 @@ class OpticsNumerical(Optics):
 	def AngleInputNominal(self):
 		raise ValueError('AngleInGrazingNominal can not be set.')
 
+
+	#================================
+	#  PROP: AngleInputNominalGrazing
+	#================================
+	@property
+	def AngleGrazingOutputNominal(self) -> float:
+		"""
+		The output angle (nominal), expressd from the surface (grazing)
+		"""
+		return self.RayOutNominal.Angle - self.VersorTan.Angle
+
 #	#================================
 #	# PROP: VersorLab
 #	#================================
