@@ -148,7 +148,7 @@ fm_v= OpticalElement(
 
 # figure error
 _ = fm_v
-FileFigureErrorKbv =  PathMetrologyFermi /"LDM KAOS2019 KBH" / "Scan_Motor5_56_res.dat"
+FileFigureErrorKbv =  PathMetrologyFermi /"Best/ldm_kbv_(mm,nm).txt"
 
 _.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbv,
 									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1,
@@ -173,7 +173,7 @@ fm_h = OpticalElement(
 													ReferTo = 'source'))
 # figure error
 _ = fm_h
-FileFigureErrorKbh = PathMetrologyFermi /"LDM KAOS2019 KBH" / "Scan_Motor5_56_res.dat"
+FileFigureErrorKbh = PathMetrologyFermi / "Best/ldm_kbv_(mm,nm).txt"
 _.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbh,
 									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1,
 									  YSign = +1)

@@ -1685,8 +1685,9 @@ class BeamlineElements(Tree):
 	#================================================
     #   FUN: __str__ [BeamlineElements]
     #================================================
-	def Print(self, Orientation = OPTICS_ORIENTATION.ANY, 
-		   ApplyIgnore = True ):
+	def Print(self, 
+		   Orientation = OPTICS_ORIENTATION.ANY, 
+		   ApplyIgnore = False ):
 		'''
 		The same as print(BeamlineElements), but can choos the orientation to print
 		and some other flags
@@ -1694,6 +1695,13 @@ class BeamlineElements(Tree):
 		ApplyIgnore : {bool|None}
 			If False => show alla the elements
 			If True => show the elements with (Ignore = False) [so, it "ignores the element to be ignored"]
+		
+		NOTICE:
+			Originally ApplyIgnore was defaulted to True.
+			The problem is that IF this happens, the relative distance dZ sounds weird
+			(it turns to be still referred to the ingored element, which however does not
+			appear in the list...)
+			So now I default ApplyIgnore to False :)
 		'''
 		
 		
@@ -2076,12 +2084,12 @@ class BeamlineElements(Tree):
 						realDistance = oeXSameOrientationCurrent.DistanceFromParent + realDistance
 						oeXSameOrientationCurrent = oeXSameOrientationCurrent.GetParent(SameOrientation=True, OnlyReference=True)
 						if oeXSameOrientationCurrent is None:
-							raise WiserException("""
-							   Low level error: the variable oeXSameOrientationCurrent is None. Cause: It is not possible
-							   to find a previous element that matches the positioning directives. COMMON REASON/SOLUTION:
-								   the user is asking a 'Detector' element to set in the focus of the upstream focusing
-								   mirror, but there isn't any focusing mirror upstream.""")
-								
+							raise WiserException("LibWiser error\n" \
+							"DESCRIPTION: It is not possible to find a previous element that matches the positioning directives.\n\n" \
+							"POSSIBLE SOLUTION: the user wants to place a 'Detector' element in the focus of the upstream focusing " \
+								   " mirror, but WISER could not find any focusing mirror just upstream. To fix this, try to change" \
+								   " the positioning directives of the 'Detector'\n\n" \
+							"ERROR MESSAGE: : the variable oeXSameOrientationCurrent is None.")	
 					realDistance = oeXSameOrientationCurrent.CoreOptics.f2 - realDistance
 
 					#realDistance: distance from the last element with the same orientation
@@ -3009,10 +3017,12 @@ class BeamlineElements(Tree):
 
 			if Item.Name in NameList:
 				repeated_name = Item.Name
-				raise WiserException('''Foundation.BeamlineElements => has repeated
-						 Names. The beamline elements should have different
-						 names in scripting. If you want to disable this warning,
-						 switch BeamlineElements.ComputationSettings.AllowRepeatedNames''',
+				raise WiserException('''Some Optical elements have REPEATED  NAMES\n\n''' \
+						 'This is not a problem while using WISER in OASYS, but it might generate some issue if you ' \
+						 'are using python scripting to manipulate the widgets.\n\n'
+						 'If you want to disable this warning:\n'
+						 'from Python: set BeamlineElements.ComputationSettings.AllowRepeatedNames to False\n' \
+						 'from Osys: ... to be completed...',
 						  Args = ['repeated_name'])
 			else:
 				NameList.append(Item.Name)
@@ -3843,7 +3853,7 @@ def FocusSweep(oeFocussing,
 	oeFocussing.CoreOptics.Orientation = Optics.OPTICS_ORIENTATION.ANY
 	NSamples = oeFocussing.ComputationData.NSamples
 	if NSamples is None:
-		raise Exception("oeFocussing -> NSamples = <None> in FocusSweep. oeFocussing.Name = <%s>" % oeFocussing.Name)
+		raise Exception("Appranetly, on the focussing element called '%s' the number of samples is 0, so there is no field. COMMON ERROR: you propagated in the wrong direction." % oeFocussing.Name)
 	
 	oeFocussing.ComputationSettings.NSamples = NSamples
 	oeFocussing.ComputationSettings.UseCustomSampling = True

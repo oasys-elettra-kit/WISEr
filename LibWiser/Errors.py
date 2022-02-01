@@ -23,7 +23,7 @@ class SmartException(Exception):
 		
 			message to display
 			
-		Args : List of Tuples
+		Args : List of name-value Tuples
 		
 			List of two-element tuples in the form [(name1, value1), (name2, value2),...]
 			used to display more info.

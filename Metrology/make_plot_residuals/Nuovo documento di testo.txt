@@ -1,2 +1,0 @@
-usare file
-D:\Topics\Simulazioni KB Diproi\caustica_spostamento_sorgente.py

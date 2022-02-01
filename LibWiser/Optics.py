@@ -448,7 +448,15 @@ class OpticsNumerical(Optics):
 			self.UseSmallDisplacements = True
 			self.UseRoughness = False
 			self.UseFigureError = False
-
+			self.ErrMsg1 = '''You are using an attribute of Optics.ComputationSettings. 
+				Use the same attribute of OpticalElement.ComputationSettings, instead'''
+#		@property
+#		def UseFigureError(self):
+#			raise Exception(self.ErrMsg1)
+#		@UseFigureError.setter
+#		def UseFigureError(self,x):
+#			raise Exception(self.ErrMsg1)
+#			
 			# attributi ereditati dal ComputationSettings di OpticalElement
 #			self.Ignore = Ignore
 #			self.NSamples = 2002
@@ -3231,14 +3239,20 @@ class Mirror(OpticsNumerical):
 			FigureErrorStep= self.FigureErrorSteps[iFigureError] # scalar, the x step
 			
 			# Make the profile of the same sampling and physical size of the mirror
-			print(self.L)
+#			print(self.L)
 #			hFigErr, FigureErrorStepNew = self._MatchHeightProfile(MirrorSamples = N, 
 #								   Profile = FigureError ,
 #								   ProfileStep = FigureErrorStep)
 
-	
+			print(N)
 			hFigErrS, hFigErr, = self.FigureError_GetProfileAligned(iFigureError, N)
-
+			
+#			hFigErr = np.zeros(N) # addedo on 2022.24.01. Why not needed before?
+		else:
+			tmp1= len(self._FigureErrors)
+			
+			raise WiserException('len(self._FigureErrors) = %0d' %tmp1) 
+						
 		# 3) aggiungo la roughness (se richiesto, rigenero il noise pattern)
 		#-----------------------------------------------------------------
 		if self.ComputationSettings.UseRoughness == True:
@@ -3449,6 +3463,7 @@ class Mirror(OpticsNumerical):
 		in the laboratory reference frame.
 
 		Uses the self.ComputationSettings parameters for performing the computation
+
 
 		Parameters
 		-----
@@ -3729,6 +3744,7 @@ class Mirror(OpticsNumerical):
 						 XScaleFactor = 1e-3,
 						 YScaleFactor = 1,
 						 YSign = +1 ,
+						 AutoZeroAverage = True,
 						 **kwargs):
 		'''
 		Helper function: 
@@ -3736,6 +3752,9 @@ class Mirror(OpticsNumerical):
 			2) assign the figure error to self (OpticalElement) by means
 				of low lever FigureErrorLoad function.
 			3) Return the height profile + step
+		
+		NOTICE: By default, the height profile is set to its zero average, that is
+		height = raw_height - mean(raw_height)
 		
 		Parameters
 		-------------------
@@ -3753,6 +3772,10 @@ class Mirror(OpticsNumerical):
 			
 			-ELETTRA_LTP_DOS:
 			needs <PathFile>
+			
+		X,Y ScaleFactor : float
+			A scale factor of 1e-3 means that the input is mm,
+			A scale factor of 1e-9 means that the input is nm,etc
 			
 		'''
 		
@@ -3834,6 +3857,9 @@ class Mirror(OpticsNumerical):
 		# update the parent object
 		#-----------------------------------------------------------------------
 		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
+		if AutoZeroAverage:
+			Height = Height - np.mean(Height)
+			
 		self.FigureErrorLoad(h = Height,
 							   Step = Step,
 							   AmplitudeScaling = 1,
