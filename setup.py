@@ -12,7 +12,7 @@ except AttributeError:
 
 NAME = 'LibWiser'
 
-VERSION = '0.12.10'
+VERSION = '0.12.14'
 ISRELEASED = True
 
 DESCRIPTION = 'Wiser kernel library'
@@ -47,8 +47,7 @@ INSTALL_REQUIRES = (
     'numpy',
     'scipy',
     'engineering_notation',
-    'numba',
-    'pathlib'
+    'numba'
 )
 
 SETUP_REQUIRES = (
