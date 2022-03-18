@@ -2616,13 +2616,13 @@ class FileIO:
 			# loop on each tuple in the form: (Path, Value)
 			# Path is actually referred to as 'group'
 			for i, Tuple in enumerate(PathValueTuples):
-				if len(Tuple) !=2:
+				if len(Tuple) > 3:
 					raise WiserException('''The Lenght of a Tuple used while saving HDF files must have
-							 two elements: the group name and the value. This one has wrong size.''',
+							 two elements: the group name and the value. This one has wrong size: %d ''' % len(Tuple),
 							 Args = [('Tuple', Tuple)])
+				#---- Unpack the tuple	
 				GroupName = Tuple[0]
 				Value = Tuple[1]
-				
 				try :
 					GroupAttributes = Tuple[2]
 				except:

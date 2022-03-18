@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from abc import abstractmethod
-from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray, DataContainer
+from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray, DataContainer, FrozenClass
 import LibWiser.Exceptions as Exceptions
 '''
 
@@ -206,7 +206,7 @@ class Optics(LogBuffer):
 	#================================================================
 	#CLASS (INTERNAL):  _ClassSmallDisplacements
 	#================================================================
-	class _SmallDisplacements:
+	class _SmallDisplacements(FrozenClass):
 		'''
 		Contains the info about displacements in X,Y and Angle which are applied when
 		calling the GetXY function (if the option "UseSmallDisplacements" is selected).
@@ -226,6 +226,7 @@ class Optics(LogBuffer):
 			self.Rotation = 0.0
 			self.Long= 0.0
 			self.Trans= 0.0
+			self._freeze()
 
 
 	#=================================================
@@ -1026,7 +1027,7 @@ class OpticsNumerical(Optics):
 		except:
 			Name = 'unnamed'
 			
-		tl.Debug.Print('\t\tApplying small displacements (! to %s)' % Name)
+		tl.Debug.Print('\t\tApplying small displacements (to %s)' % Name)
 		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
 		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
 		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
@@ -1866,7 +1867,6 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 # 		super().__init__(**kwargs)
 		OpticsAnalytical.__init__(self,**kwargs)
 		CodeGenerator.__init__(self,['Lambda', 'Waist0','M2', 'AnglePropagation','Orientation'])
-		
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
 		self.M2 = M2  # quality factor
@@ -2087,14 +2087,18 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		'''
 
 		#@todo completare i displacements
-
+		
 		if self.ComputationSettings.UseSmallDisplacements:
+			print('\t\tApplying Small displacement (while evaluating Field of %s)' % self.Name)		
+			print('\t\t\tRotation: %0.2e rad' % self.SmallDisplacements.Rotation)
 			DeltaTheta = self.SmallDisplacements.Rotation
 			DeltaLong = self.SmallDisplacements.Long
+			DeltaTrans = self.SmallDisplacements.Trans
 		else:
+			print('\t\tNOTApplying Small displacement (while evaluating Field of %s)' % self.Name)
 			DeltaTheta = 0
 			DeltaLong = 0
-
+			DeltaTrans  = 0 
 		# Ruoto il piano x,y di Theta attorno all'origina della gaussiana
 		myOrigin = self.XYOrigin
 		# myTheta = -self.ThetaPropagation
@@ -2103,7 +2107,7 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		yg = yg - myOrigin[1]
 
 
-		return self.EvalField_XYSelf(zg - DeltaLong ,yg)
+		return self.EvalField_XYSelf(zg - DeltaLong ,yg - DeltaTrans)
 
 
 
@@ -3475,7 +3479,8 @@ class Mirror(OpticsNumerical):
 
 		Uses the self.ComputationSettings parameters for performing the computation
 
-
+		Apply SMALLDISPLACEMENTS, if needed
+		
 		Parameters
 		-----
 		N : int
@@ -3495,8 +3500,10 @@ class Mirror(OpticsNumerical):
 
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
-			xLabNew, yLabNew = self._ApplySmallDisplacements(xLab, yLab)
+			#			xLabNew, yLabNew = self._ApplySmallDisplacements(xLab, yLab)
+			#commented on 2022.03.18
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
+			pass
 
 		else:
 			pass
@@ -7030,6 +7037,58 @@ class Detector(MirrorPlane):
 		
 		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
 		self.UseAsReference = False
+
+##==============================================================================
+##	 CLASS: PhaseSpheric
+##==============================================================================
+#class PhaseSpheric(MirrorPlane):
+#	'''
+#	Add the phase of a sphere over a transverse plane.
+#	The plane must be conveniently large, otherwise it will introduce diffraction effects.
+#	
+#	Design note
+#	-----
+#	Inheriting from MirrorPlane is a patch: the best way would be using
+#	the Segment. This will never happen as I have no time :-)
+#	'''
+#	
+#	_TypeStr = 'PhS'
+#	_CommonInputSets = [(('L','Length' ),
+#						('AngleGrazing','Grazing Angle')),
+#					  ]
+#
+#	def __init__(self, 
+#			  L=None, 
+#			  AngleGrazing= np.pi/2,
+#			   XYLab_Centre=[0,0],
+#			   AngleIn=0,
+#				 **kwargs):
+#		
+#		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)
+##		super().__init__(**kwargs)
+#		
+#		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
+#		self.UseAsReference = True # => The optical element is NOT transparent
+#	
+#	#================================
+#	# PROP: GetRayInNominal
+#	#================================
+#	@property
+#	def RayInNominal(self):
+#		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+#		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+#
+#	#================================
+#	# PROP: RayOutNominal [MirrorPlane]
+#	#================================
+#	@property
+#	def RayOutNominal(self):
+#		'''
+#		Is the same as RayInNominal.
+#		To be change if a tilt is added
+#		'''
+#		return self.RayInNominal
+#	
 		
 #==============================================================================
 #	 CLASS ABSTRACT: OpticsEfficiency
