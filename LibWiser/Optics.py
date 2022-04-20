@@ -522,12 +522,20 @@ class OpticsNumerical(Optics):
 		# The normalization returned by HuygensIntegral_1d_Kernel is 1/sqrt(lambda)
 		# Here Q is used to add new terms.
 
+		if E0 is None:
+			ErrorMsg = '''Error: The field is None on the optical element <%s>.
+					OpticalElement.Ignore = %s''' % (self.Name, str(self.ComputationSettings.Ignore))
+								 
+			raise WiserException(ErrorMsg,	By = "OpticalElement.EvalField")
+
 		if NormalizationType == 0 :
 			Q = 1
 		elif NormalizationType == 1:
 			Q = self.L * sin(self.AngleGrazingNominal)/N
 
 		#ad hoc correction: multiply by transmission function before propagation
+		
+		
 		E0 = E0 * self.TransmissionFunction(x0,y0)
 		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
         
@@ -1362,7 +1370,8 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
-			raise Exception('Manual esception put by MM on 6.12.2021 just to track when this code is run.')
+			#@todo: Strange! what is this?
+			#raise Exception('Manual esception put by MM on 6.12.2021 just to track when this code is run.')
 		else:
 			pass
 
@@ -5954,6 +5963,27 @@ class GratingMono(MirrorPlane):
 		
 		return  RayOutLab 
 
+	#================================
+	# GetRayOutAtOrder
+	#================================
+	def GetRayAtOrder(self, Order = 0):
+		'''
+		return the output ray at a given order 
+		'''
+		# Incidence => measured wrt normal
+		# Grazing => measured wrt surface
+		# Incidence = pi/2 - Grazing
+		# theta_m = arcsin(theta_i - m*lambda/d)
+		
+		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal
+		IncidenceThetaM = np.arcsin( np.sin(AngleIncidenceNominal) -  Order  * self.Lambda / self.GroovePitch)
+		GrazingThetaM = np.pi/2 - IncidenceThetaM
+		
+		RayOutSelf = ToolLib.UnitVector(Angle = GrazingThetaM)
+		
+		RayOutLab = ToolLib.VersorRotateSelfToLab(RayOutSelf, self.VersorTan, 'tan')
+		
+		return  RayOutLab
 
 	#================================
 	# FUN: GetGrooveProfile(N) [GratingMono]

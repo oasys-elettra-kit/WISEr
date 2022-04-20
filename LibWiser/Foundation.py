@@ -1518,9 +1518,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 			raise Exception("I attempted to plot the Intensity of %s, but I found no data." % self.Name)
 			
 		if x is None or y is None:
-			
 			return None
-		
 		
 		if Normalization =='int':
 			NN = sum(y)
@@ -2476,12 +2474,14 @@ class BeamlineElements(Tree):
 			Debug.Print('Compute Fields %d/%d' %( ioeThis+1	, NoeList), NIndent = 0, Header = True)
 
 			Debug.Print('\tProcessing:\t'  + oeThis.Name)
+			_ = PropInfo.oeLast.Name if ioeThis > 0 else 'nothing before'
+			Debug.Print('\Previous:\t'  + _)
 			# ----------------------------------------------
 			# case: the present element is the Source
 			# ----------------------------------------------
 			if oeThis.IsSource == True:
 				# if oeThis.CoreOptics._Behaviour == 'source' : # This was the first way to do it
-				Action = 'no Action'
+				Action = 'no Action (IsSource=True)'
 				Debug.print('\tAction:' + Action)
 				pass
 			# ----------------------------------------------
@@ -2663,9 +2663,9 @@ class BeamlineElements(Tree):
 				# ----------------------------------------------
 				# ITERATE TO THE NEXT Computing field => PropInfo
 				# ----------------------------------------------
-				PropInfo.oeLast = oeThis
-				PropInfo.TotalPath = 0
-				PropInfo.N = 0
+			PropInfo.oeLast = oeThis
+			PropInfo.TotalPath = 0
+			PropInfo.N = 0
 			Debug.Print('END OF COMPUTATION' , NIndent = 0, Header = True)
 		return oeList
 
