@@ -331,7 +331,7 @@ class FrozenClass(object):
     __isfrozen = False
     def __setattr__(self, key, value):
         if self.__isfrozen and not hasattr(self, key):
-            raise TypeError( "%r is a frozen class" % self )
+            raise TypeError( "%r is a frozen class and the attribute %s  does not exist." % (self, key) )
         object.__setattr__(self, key, value)
 
     def _freeze(self):
@@ -757,4 +757,81 @@ def ListClassObjects(myClass, strOwnerClass = ''):
     return objAttr
 
 
+
+#==============================================================================
+#  FUN: ImportFromPath
+#==============================================================================
+def ImportFromPath(ModulePath, ModuleName = None):
+	'''
+	Import a python module from its path.
+	
+	Created to be used by: LoadLayoutFile
+	
+	'''
+	import importlib.util
+	spec = importlib.util.spec_from_file_location(ModuleName, ModulePath)
+	foo = importlib.util.module_from_spec(spec)
+	spec.loader.exec_module(foo)
+	return foo
+
+#==============================================================================
+#  FUN: LoadLayoutFile
+#==============================================================================
+def LoadLayoutFile(PathToLayoutFile,
+				   AttrBeamline = 'Beamline',
+				   AttrSettings= 'DefaultSettings',
+				   Dict = True):
+	'''
+	Load a python file which is supposed to contain the layout of a beamline.
+	
+	The beamline is contained in an attribute whose name is  defined in AttrBeamline.
+	Similarly, default settings (whenever present) are contained in an attribute whose name
+	is defined in AttrSettings
+	
+	Parameters
+	------
+	PathToLayoutFile : str
+		fully qualified path to .py file. Example: "/house/bedroom/bed.py.
+	
+	AttrBeamline : str
+		The name of the attribute containig the beamline. If the function can't load this will return
+		an error.
+		
+	AttrSettings : str
+		the name of the attribute containing the default settings, if any.
+		
+		
+	Dict : bool
+		If true, return a dict. If false, return a CLASS
+		
+	Return
+	-----
+	Either a dictionary or a class.
+	
+	'''
+	PathToLayoutFile = MakePath(PathToLayoutFile)
+	# extract the file name (with no extension) from the full path
+	ModuleName = PathToLayoutFile.name[0:-len(PathToLayoutFile.suffix)]
+	Module = ImportFromPath(PathToLayoutFile,ModuleName)
+	
+	try:
+		Beamline = getattr(Module, AttrBeamline)
+	except:
+		raise Exception("Beamline not found while loading a configuration file. ")
+		Beamline = None
+		
+	try:
+		DefaultSettings = getattr(Module, AttrSettings)
+	except:
+		DefaultSettings = None
+	
+	if ReturnDict == True:	
+		Ans = {'Beamline' : Beamline, 
+				'DefaultSettings' : DefaultSettings}
+	else:
+		Ans = DataContainer()
+		Ans.Beamline = Beamline
+		Ans.DefaultSettings = DefaultSettings
+	return Ans
+	
 #SetAttr(a, 'b.c.d',  11)

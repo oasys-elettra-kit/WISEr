@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from abc import abstractmethod
-from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray, DataContainer
+from LibWiser.Scrubs import Enum, LogBuffer, GetTheNotNone, IsValidArray, DataContainer, FrozenClass
 import LibWiser.Exceptions as Exceptions
 
 import warnings
@@ -208,7 +208,7 @@ class Optics(LogBuffer):
 	#================================================================
 	#CLASS (INTERNAL):  _ClassSmallDisplacements
 	#================================================================
-	class _SmallDisplacements:
+	class _SmallDisplacements(FrozenClass):
 		'''
 		Contains the info about displacements in X,Y and Angle which are applied when
 		calling the GetXY function (if the option "UseSmallDisplacements" is selected).
@@ -228,6 +228,7 @@ class Optics(LogBuffer):
 			self.Rotation = 0.0
 			self.Long= 0.0
 			self.Trans= 0.0
+			self._freeze()
 
 
 	#=================================================
@@ -450,7 +451,15 @@ class OpticsNumerical(Optics):
 			self.UseSmallDisplacements = True
 			self.UseRoughness = False
 			self.UseFigureError = False
-
+			self.ErrMsg1 = '''You are using an attribute of Optics.ComputationSettings. 
+				Use the same attribute of OpticalElement.ComputationSettings, instead'''
+#		@property
+#		def UseFigureError(self):
+#			raise Exception(self.ErrMsg1)
+#		@UseFigureError.setter
+#		def UseFigureError(self,x):
+#			raise Exception(self.ErrMsg1)
+#			
 			# attributi ereditati dal ComputationSettings di OpticalElement
 #			self.Ignore = Ignore
 #			self.NSamples = 2002
@@ -515,12 +524,20 @@ class OpticsNumerical(Optics):
 		# The normalization returned by HuygensIntegral_1d_Kernel is 1/sqrt(lambda)
 		# Here Q is used to add new terms.
 
+		if E0 is None:
+			ErrorMsg = '''Error: The field is None on the optical element <%s>.
+					OpticalElement.Ignore = %s''' % (self.Name, str(self.ComputationSettings.Ignore))
+								 
+			raise WiserException(ErrorMsg,	By = "OpticalElement.EvalField")
+
 		if NormalizationType == 0 :
 			Q = 1
 		elif NormalizationType == 1:
 			Q = self.L * sin(self.AngleGrazingNominal)/N
 
 		#ad hoc correction: multiply by transmission function before propagation
+		
+		
 		E0 = E0 * self.TransmissionFunction(x0,y0)
 		E1 = rm.HuygensIntegral_1d_Kernel(Lambda, E0, x0, y0, x1, y1)
         
@@ -750,6 +767,17 @@ class OpticsNumerical(Optics):
 	@AngleInputNominal.setter
 	def AngleInputNominal(self):
 		raise ValueError('AngleInGrazingNominal can not be set.')
+
+
+	#================================
+	#  PROP: AngleInputNominalGrazing
+	#================================
+	@property
+	def AngleGrazingOutputNominal(self) -> float:
+		"""
+		The output angle (nominal), expressd from the surface (grazing)
+		"""
+		return self.RayOutNominal.Angle - self.VersorTan.Angle
 
 #	#================================
 #	# PROP: VersorLab
@@ -1010,7 +1038,7 @@ class OpticsNumerical(Optics):
 		except:
 			Name = 'unnamed'
 			
-		tl.Debug.Print('\t\tApplying small displacements (! to %s)' % Name)
+		tl.Debug.Print('\t\tApplying small displacements (to %s)' % Name)
 		tl.Debug.Print('\t\t\tDeltaX = %0.2f' % DeltaX)
 		tl.Debug.Print('\t\t\tDeltaY = %0.2f' % DeltaY)
 		tl.Debug.Print('\t\t\tRotation =%0.1e' % self.SmallDisplacements.Rotation)
@@ -1345,7 +1373,8 @@ class OpticsPlane(OpticsNumerical, CodeGenerator):
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
-			raise Exception('Manual esception put by MM on 6.12.2021 just to track when this code is run.')
+			#@todo: Strange! what is this?
+			#raise Exception('Manual esception put by MM on 6.12.2021 just to track when this code is run.')
 		else:
 			pass
 
@@ -1850,7 +1879,6 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 # 		super().__init__(**kwargs)
 		OpticsAnalytical.__init__(self,**kwargs)
 		CodeGenerator.__init__(self,['Lambda', 'Waist0','M2', 'AnglePropagation','Orientation'])
-		
 		self.Lambda = Lambda
 		self.Waist0 = Waist0
 		self.M2 = M2  # quality factor
@@ -2071,14 +2099,18 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		'''
 
 		#@todo completare i displacements
-
+		
 		if self.ComputationSettings.UseSmallDisplacements:
+			print('\t\tApplying Small displacement (while evaluating Field of %s)' % self.Name)		
+			print('\t\t\tRotation: %0.2e rad' % self.SmallDisplacements.Rotation)
 			DeltaTheta = self.SmallDisplacements.Rotation
 			DeltaLong = self.SmallDisplacements.Long
+			DeltaTrans = self.SmallDisplacements.Trans
 		else:
+			print('\t\tNOTApplying Small displacement (while evaluating Field of %s)' % self.Name)
 			DeltaTheta = 0
 			DeltaLong = 0
-
+			DeltaTrans  = 0 
 		# Ruoto il piano x,y di Theta attorno all'origina della gaussiana
 		myOrigin = self.XYOrigin
 		# myTheta = -self.ThetaPropagation
@@ -2087,7 +2119,7 @@ class SourceGaussian(OpticsAnalytical, CodeGenerator):
 		yg = yg - myOrigin[1]
 
 
-		return self.EvalField_XYSelf(zg - DeltaLong ,yg)
+		return self.EvalField_XYSelf(zg - DeltaLong ,yg - DeltaTrans)
 
 
 
@@ -3234,14 +3266,20 @@ class Mirror(OpticsNumerical):
 			FigureErrorStep= self.FigureErrorSteps[iFigureError] # scalar, the x step
 			
 			# Make the profile of the same sampling and physical size of the mirror
-			print(self.L)
+#			print(self.L)
 #			hFigErr, FigureErrorStepNew = self._MatchHeightProfile(MirrorSamples = N, 
 #								   Profile = FigureError ,
 #								   ProfileStep = FigureErrorStep)
 
-	
+			print(N)
 			hFigErrS, hFigErr, = self.FigureError_GetProfileAligned(iFigureError, N)
-
+			
+#			hFigErr = np.zeros(N) # addedo on 2022.24.01. Why not needed before?
+		else:
+			tmp1= len(self._FigureErrors)
+			
+			raise WiserException('len(self._FigureErrors) = %0d' %tmp1) 
+						
 		# 3) aggiungo la roughness (se richiesto, rigenero il noise pattern)
 		#-----------------------------------------------------------------
 		if self.ComputationSettings.UseRoughness == True:
@@ -3453,6 +3491,8 @@ class Mirror(OpticsNumerical):
 
 		Uses the self.ComputationSettings parameters for performing the computation
 
+		Apply SMALLDISPLACEMENTS, if needed
+		
 		Parameters
 		-----
 		N : int
@@ -3472,8 +3512,10 @@ class Mirror(OpticsNumerical):
 
 		# Apply small perturbations?
 		if self.ComputationSettings.UseSmallDisplacements:
-			xLabNew, yLabNew = self._ApplySmallDisplacements(xLab, yLab)
+			#			xLabNew, yLabNew = self._ApplySmallDisplacements(xLab, yLab)
+			#commented on 2022.03.18
 			xLab, yLab = self._ApplySmallDisplacements(xLab, yLab)
+			pass
 
 		else:
 			pass
@@ -3732,6 +3774,7 @@ class Mirror(OpticsNumerical):
 						 XScaleFactor = 1e-3,
 						 YScaleFactor = 1,
 						 YSign = +1 ,
+						 AutoZeroAverage = True,
 						 **kwargs):
 		'''
 		Helper function: 
@@ -3739,6 +3782,9 @@ class Mirror(OpticsNumerical):
 			2) assign the figure error to self (OpticalElement) by means
 				of low lever FigureErrorLoad function.
 			3) Return the height profile + step
+		
+		NOTICE: By default, the height profile is set to its zero average, that is
+		height = raw_height - mean(raw_height)
 		
 		Parameters
 		-------------------
@@ -3756,6 +3802,10 @@ class Mirror(OpticsNumerical):
 			
 			-ELETTRA_LTP_DOS:
 			needs <PathFile>
+			
+		X,Y ScaleFactor : float
+			A scale factor of 1e-3 means that the input is mm,
+			A scale factor of 1e-9 means that the input is nm,etc
 			
 		'''
 		
@@ -3837,6 +3887,9 @@ class Mirror(OpticsNumerical):
 		# update the parent object
 		#-----------------------------------------------------------------------
 		AmplitudeSign = np.sign(YScaling) # this is clumsy but was added after "colpo di fulmine" in optics
+		if AutoZeroAverage:
+			Height = Height - np.mean(Height)
+			
 		self.FigureErrorLoad(h = Height,
 							   Step = Step,
 							   AmplitudeScaling = 1,
@@ -5913,6 +5966,27 @@ class GratingMono(MirrorPlane):
 		
 		return  RayOutLab 
 
+	#================================
+	# GetRayOutAtOrder
+	#================================
+	def GetRayAtOrder(self, Order = 0):
+		'''
+		return the output ray at a given order 
+		'''
+		# Incidence => measured wrt normal
+		# Grazing => measured wrt surface
+		# Incidence = pi/2 - Grazing
+		# theta_m = arcsin(theta_i - m*lambda/d)
+		
+		AngleIncidenceNominal  = np.pi/2 - self.AngleGrazingNominal
+		IncidenceThetaM = np.arcsin( np.sin(AngleIncidenceNominal) -  Order  * self.Lambda / self.GroovePitch)
+		GrazingThetaM = np.pi/2 - IncidenceThetaM
+		
+		RayOutSelf = ToolLib.UnitVector(Angle = GrazingThetaM)
+		
+		RayOutLab = ToolLib.VersorRotateSelfToLab(RayOutSelf, self.VersorTan, 'tan')
+		
+		return  RayOutLab
 
 	#================================
 	# FUN: GetGrooveProfile(N) [GratingMono]
@@ -6996,6 +7070,58 @@ class Detector(MirrorPlane):
 		
 		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
 		self.UseAsReference = False
+
+##==============================================================================
+##	 CLASS: PhaseSpheric
+##==============================================================================
+#class PhaseSpheric(MirrorPlane):
+#	'''
+#	Add the phase of a sphere over a transverse plane.
+#	The plane must be conveniently large, otherwise it will introduce diffraction effects.
+#	
+#	Design note
+#	-----
+#	Inheriting from MirrorPlane is a patch: the best way would be using
+#	the Segment. This will never happen as I have no time :-)
+#	'''
+#	
+#	_TypeStr = 'PhS'
+#	_CommonInputSets = [(('L','Length' ),
+#						('AngleGrazing','Grazing Angle')),
+#					  ]
+#
+#	def __init__(self, 
+#			  L=None, 
+#			  AngleGrazing= np.pi/2,
+#			   XYLab_Centre=[0,0],
+#			   AngleIn=0,
+#				 **kwargs):
+#		
+#		MirrorPlane.__init__(self, L, AngleGrazing, XYLab_Centre, AngleIn, **kwargs)
+##		super().__init__(**kwargs)
+#		
+#		CodeGenerator.__init__(self,['L', ('AngleGrazingNominal', 'AngleGrazing'),'Orientation'])
+#		self.UseAsReference = True # => The optical element is NOT transparent
+#	
+#	#================================
+#	# PROP: GetRayInNominal
+#	#================================
+#	@property
+#	def RayInNominal(self):
+#		v = tl.UnitVector(Angle = self.AngleInputLabNominal).v
+#		return tl.Ray(vx = v[0], vy = v[1], XYOrigin = self.XYCentre)
+#
+#	#================================
+#	# PROP: RayOutNominal [MirrorPlane]
+#	#================================
+#	@property
+#	def RayOutNominal(self):
+#		'''
+#		Is the same as RayInNominal.
+#		To be change if a tilt is added
+#		'''
+#		return self.RayInNominal
+#	
 		
 #==============================================================================
 #	 CLASS ABSTRACT: OpticsEfficiency

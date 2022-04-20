@@ -2,8 +2,8 @@
 """
 Hi-level Tool Library.
 
-It uses the type and functions created elsewhere in LibWiser and has not a clear 
-distinction of types.
+It uses the type and functions created elsewhere in LibWiser which merge together different
+data types. 
 
 
 Created on Tue Oct 19 11:53:02 2021
@@ -98,7 +98,7 @@ def GetMaximumGrazingRayCentred(Optics1 : OpticsNumerical, Optics2 : OpticsNumer
 	'''
 	Two-Body function.
 	
-	Given two optical elements, with central point C1 ant terminal points A2,B2
+	Given two optical elements, with central point C1 and terminal points A2,B2
 	- computes the possible combination of rays: C1-A2, C1-B2 and return the one which is
 	most tilted w.r.t the surface
 		

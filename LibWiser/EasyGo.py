@@ -20,9 +20,13 @@ from LibWiser.ToolLib import CommonPlots
 SmartPlot = CommonPlots.SmartPlot
 
 from time import time
-from LibWiser.Scrubs import UpdateDictionary
+from LibWiser.Scrubs import UpdateDictionary, LoadLayoutFile
 
 import LibWiser.Enums as Enums
 HORIZONTAL = Enums.OPTICS_ORIENTATION.HORIZONTAL
 VERTICAL = Enums.OPTICS_ORIENTATION.VERTICAL
 ANY = Enums.OPTICS_ORIENTATION.ANY
+
+PathMetrologyFermi = lw.Paths.MetrologyFermi
+
+from LibWiser.FermiSource import F2Items
