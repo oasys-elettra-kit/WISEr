@@ -13,6 +13,7 @@ import LibWiser.Scrubs as Scrubs
 import LibWiser.ToolLibHigh as HiLib
 from LibWiser.Foundation import OpticalElement, BeamlineElements
 from LibWiser.Enums import OPTICS_ORIENTATION
+from enum import Enum
 
 from LibWiser.Exceptions import WiserException
 

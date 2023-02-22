@@ -324,9 +324,10 @@ class CodeGenerator_NEW_WIP():
 class CodeGenerator():
 	'''
 	If this class is inherited by a parent class, it provides the parent class the GenerateCode method,
-	which automatize the generation of initialization code.
+	which automatizes the generation of initialization code.
 	
-	For doing so, GenerateCode parses the attributes contained in _InitCodeGeneratorAttributes
+	For doing so, GenerateCode parses the attributes contained in _InitCodeGeneratorAttributes- This 
+    must be an attribute of the parent class.
 	
 	For each attribute in the list, if the GenerateCode is available (i.e. the attribute is a class), then
 	GenerateCodeis called. Else, the variable is converted to a string in the smartest way possible:
@@ -346,6 +347,9 @@ class CodeGenerator():
 		the name of the parameter used in the init function are different. This -up to now- happens
 		only with CoreOptics/CoreOpticsElement... but has to be handled :-)
 	
+        
+        :func:`Foundation.OpticalElement.CoreOpticsElement`
+    
 		AttrName -> The name of the attribute 
 		AliasName -> The name that appears in __init__(...)
 	

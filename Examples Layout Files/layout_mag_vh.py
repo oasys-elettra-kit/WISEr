@@ -4,37 +4,43 @@ from LibWiser.FermiSource import F2Items
 Layout = F2Items
 
 PathMetrologyFermi = lw.Paths.MetrologyFermi
-import Layouts as LL
 
-LL.Enums
+PathMetrology = MakePath('D:\Topics\WISER\Repository GIT\Metrology\FERMI\Best')
+class FigErrorEnum:
+	LDM_KBV = PathMetrology / 'ldm_kbv_(mm,nm).txt'
+	LDM_KBH = PathMetrology / 'ldm_kbh_(mm,nm).txt'
+	DPI_KBV = PathMetrology / 'dpi_kbv_(mm,nm).txt'
+	DPI_KBH = PathMetrology / 'dpi_kbh_(mm,nm).txt'	
+	
+	
 
-
-#Scrubs.ImportFromPath('./LayoutLib.py', 'LayoutLib')
 #%% DEFAULT SETTINGS: You can change parameter here or in a similar <Settings> dictionary
 #%=============================================================================
-BeamlineName = 'LDM'
+BeamlineName = 'MAG'
 SettingsDefault = {
-			'--- Layout Modifiers ---' : '',
-			'FelSource' : 1,
-			'Lambda' : 2e-9,
-			'Waist0' : 180e-6,
-			'DetectorSize' : 100e-6,
+			'--- Computation settings---' : '',
 			'NSamples' : 10002,
-			'DetectorDefocus' : 0,
 			'OrientationToPropagate' : [Enums.OPTICS_ORIENTATION.VERTICAL],
-			'ElementsToIgnore' : ['pm2a','presto'],
+			'ElementsToIgnore' : [],
 			
-			'---  Layout Macros ---' : '',
+			'--- Source settings---':'',
+			'FelSource' : 2,
+			'Waist0' : 106e-6,
+			'Lambda' : 2e-9,
+			
+			'--- Detector settings---':'',
+			'DetectorSize' : 100e-6,
+			'DetectorDefocus' : 0,
+			
+			'---  Macro  settings---' : '',
 			'UseFigureError' : False,
 			'UseFigureErrorOnFocusing' : False,
 			'UseFigureErrorOnTransport' : False,
 			'UseTransport' : True,
 			'UseCustomSampling' : True,
 			'UseSlits' : True,
-			'SlitsH' : 10e-3,
-			'SlitsV' : 10e-3,
-			'FigureErrorOnFocusingH' : LL.EnumFigErrors.LDM_KBH.value,
-			'FigureErrorOnFocusingV' : LL.EnumFigErrors.LDM_KBV.value
+			'FigureErrorOnFocusingH' : FigErrorEnum.LDM_KBH,
+			'FigureErrorOnFocusingV' : FigErrorEnum.LDM_KBV
 			}
 
 #=============================================================================
@@ -57,11 +63,6 @@ if S['FelSource'] == 1:
 elif S['FelSource'] == 2:
 	SourceOffset = 0 
 
-FileFigureErrorKbv = S['FigureErrorOnFocusingV']
-FileFigureErrorKbh = S['FigureErrorOnFocusingH']
-
-#FileFigureErrorKbv =  PathMetrologyFermi /"LDM KAOS2019 KBH" / "Scan_Motor5_56_res.dat"
-#FileFigureErrorKbh = PathMetrologyFermi /"LDM KAOS2019 KBH" / "Scan_Motor5_56_res.dat"
 #%% LAYOUT: creating Foundation.Optical element objects
 #%=============================================================================
 
@@ -81,11 +82,13 @@ s = OpticalElement(
 					Angle = 0)
 			)
 
-#
+
+
+
 ##---PMA (H)
 ##------------------------------------------------------------
-#pm1a = OpticalElement(
-#				Name = 'pm1a',
+#pm2a = OpticalElement(
+#				Name = 'pm2a',
 #				CoreOpticsElement = Optics.MirrorPlane(
 #						L = 0.4,
 #						AngleGrazing = Layout.pm2a.GrazingAngle,
@@ -94,49 +97,30 @@ s = OpticalElement(
 #						ReferTo = 'source',
 #						PlaceWhat = 'centre',
 #						PlaceWhere = 'centre',
-#						Distance = Layout.pm1a.z)
+#						Distance = Layout.pm2a.z + SourceOffset)
 #							)
 #_ = pm2a
 #_.CoreOptics.FigureErrorLoadFromFile(PathMetrologyFermi /  "PM2A" / "PM2A_I06.SLP",
 #									 FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS)
-
-
-#---PMA (H)
-#------------------------------------------------------------
-pm2a = OpticalElement(
-				Name = 'pm2a',
-				CoreOpticsElement = Optics.MirrorPlane(
-						L = 0.4,
-						AngleGrazing = Layout.pm2a.GrazingAngle,
-						Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL),
-				PositioningDirectives = Foundation.PositioningDirectives(
-						ReferTo = 'source',
-						PlaceWhat = 'centre',
-						PlaceWhere = 'centre',
-						Distance = Layout.pm2a.z + SourceOffset)
-							)
-_ = pm2a
-_.CoreOptics.FigureErrorLoadFromFile(PathMetrologyFermi /  "PM2A" / "PM2A_I06.SLP",
-									 FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_DOS)
-
-#---presto (h)
-#------------------------------------------------------------
-presto = OpticalElement(
-				Name = 'presto',
-				CoreOpticsElement = Optics.MirrorPlane(
-						L = 0.4,
-						AngleGrazing = Layout.presto.GrazingAngle,
-						Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL),
-				PositioningDirectives = Foundation.PositioningDirectives(
-						ReferTo = 'source',
-						PlaceWhat = 'centre',
-						PlaceWhere = 'centre',
-						Distance = Layout.presto.z + + SourceOffset)
-							)
-				
-_ = presto
-#-figure error
-FileName = MakePath('D:\Topics\WISEr\Examples 2020\Test grating\HE_FigureError_Step=1mm.txt')
+#
+##---presto (h)
+##------------------------------------------------------------
+#presto = OpticalElement(
+#				Name = 'presto',
+#				CoreOpticsElement = Optics.MirrorPlane(
+#						L = 0.4,
+#						AngleGrazing = Layout.presto.GrazingAngle,
+#						Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL),
+#				PositioningDirectives = Foundation.PositioningDirectives(
+#						ReferTo = 'source',
+#						PlaceWhat = 'centre',
+#						PlaceWhere = 'centre',
+#						Distance = Layout.presto.z + + SourceOffset)
+#							)
+#				
+#_ = presto
+##-figure error
+#FileName = MakePath('D:\Topics\WISEr\Examples 2020\Test grating\HE_FigureError_Step=1mm.txt')
 #_.CoreOptics.FigureErrorLoadFromFile(FileName ,
 #							 FileType = Enums.FIGURE_ERROR_FILE_FORMAT.HEIGHT_ONLY,
 #							 Step = 1e-3,
@@ -144,66 +128,76 @@ FileName = MakePath('D:\Topics\WISEr\Examples 2020\Test grating\HE_FigureError_S
 #							  	 YScaleFactor = -1e-3) # units of the file (minus to invert the figure error))
 
 
-#---fm_v
-#------------------------------------------------------------
-f1v = Layout.ldm_kbv.f1 + SourceOffset
-f2v = Layout.ldm_kbv.f2
+
+#--- aliases
+f1v = 77.9329
+f2v = 1.3
+
 Mv = f1v / f2v
-fm_v= OpticalElement(
-				Name = 'fm_v',
-				CoreOpticsElement = Optics.MirrorElliptic(
-													L = 0.4,
-													f1 = f1v,
-													f2 = f2v,
-													Alpha = Layout.ldm_kbv.GrazingAngle,
-													Orientation = Optics.OPTICS_ORIENTATION.VERTICAL),
-				PositioningDirectives = Foundation.PositioningDirectives(
-													PlaceWhat = 'upstream focus',
-													PlaceWhere = 'centre',
-													ReferTo = 'source'))
 
-# figure error
-_ = fm_v
-#_.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbv,
-#									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1,
-#									  YSign = +1)
-_.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbv,
-									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT,
-									  XScaleFactor = 1e-3,
-									  YScaleFactor = 1e-9,
-									  YSign = +1)
-
-#--- fm_h
-#=================================================================================
-f1h = Layout.ldm_kbh.f1 + SourceOffset
-f2h = Layout.ldm_kbh.f2
+f1h = 72.4427
+f2h = 6.79
 Mh = f1h / f2h
+GrazingAngle = np.deg2rad(2)
+
+#---fm_h
+#------------------------------------------------------------
 fm_h = OpticalElement(
 				Name = 'fm_h',
 				CoreOpticsElement = Optics.MirrorElliptic(
 													L = 0.4,
 													f1 = f1h,
 													f2 = f2h,
-													Alpha = Layout.ldm_kbh.GrazingAngle,
+													Alpha = GrazingAngle,
 													Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL),
 				PositioningDirectives = Foundation.PositioningDirectives(
 													PlaceWhat = 'upstream focus',
 													PlaceWhere = 'centre',
 													ReferTo = 'source'))
 _ = fm_h
+# figure error
+FileFigureErrorKbh = S['FigureErrorOnFocusingH']
 _.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbh,
 									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT,
 									  XScaleFactor = 1e-3,
 									  YScaleFactor = 1e-9,
 									  YSign = +1)
 
+#---fm_v
+fm_v= OpticalElement(
+				Name = 'fm_v',
+				CoreOpticsElement = Optics.MirrorElliptic(
+													L = 0.4,
+													f1 = f1v,
+													f2 = f2v,
+													Alpha = GrazingAngle,
+													Orientation = Optics.OPTICS_ORIENTATION.VERTICAL),
+				PositioningDirectives = Foundation.PositioningDirectives(
+													PlaceWhat = 'upstream focus',
+													PlaceWhere = 'centre',
+													ReferTo = 'source'))
+_ = fm_v
+# figure error
+
+#FileFigureErrorKbv =  PathMetrologyFermi /"LDM KAOS2019 KBH" / "Scan_Motor5_56_res.dat"
+FileFigureErrorKbv = S['FigureErrorOnFocusingV']
+_.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbv,
+									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT,
+									  XScaleFactor = 1e-3,
+									  YScaleFactor = 1e-9,
+									  YSign = +1)
+
+
+
+
 #---slits_v
 #------------------------------------------------------------
 alpha = np.pi/4
+
 slits_v = OpticalElement(
 				Name = 'slits_v',
 				CoreOpticsElement = Optics.Slits(
-													L = S['SlitsV'],
+													L = 13e-3,
 													Orientation = Optics.OPTICS_ORIENTATION.VERTICAL),
 				PositioningDirectives = Foundation.PositioningDirectives(
 													PlaceWhat = 'centre',
@@ -216,7 +210,7 @@ slits_v = OpticalElement(
 slits_h = OpticalElement(
 				Name = 'slits_h',
 				CoreOpticsElement = Optics.Slits(
-													L = S['SlitsH'],
+													L = 15e-3,
 													Orientation = Optics.OPTICS_ORIENTATION.HORIZONTAL),
 				PositioningDirectives = Foundation.PositioningDirectives(
 													PlaceWhat = 'centre',
@@ -258,15 +252,12 @@ Beamline = Foundation.BeamlineElements()
 
 Beamline.Append(s)
 
-#Beamline.Append(pm2a)
-
-#Beamline.Append(presto)
-if S['UseSlits']:
-	Beamline.Append(slits_v)
-	Beamline.Append(slits_h)
+#if S['UseSlits']:
+#	Beamline.Append(slits_v)
+#	Beamline.Append(slits_h)
 #	pass
-Beamline.Append(fm_v)
 Beamline.Append(fm_h)
+Beamline.Append(fm_v)
 Beamline.Append(det_h)
 Beamline.Append(det_v)
 Beamline.RefreshPositions()
@@ -284,8 +275,6 @@ print(Beamline) #
 
 # Use Figure error?
 #-----------------------------------------------------------------------------------------------
-for Item in [pm2a,presto]:
-	Item.CoreOptics.ComputationSettings.UseFigureError = S['UseFigureErrorOnTransport']
 for Item in [fm_v, fm_h]:
 	Item.CoreOptics.ComputationSettings.UseFigureError = S['UseFigureErrorOnFocusing']
 	
@@ -295,21 +284,12 @@ for Item in Beamline.ItemList:
 	Item.ComputationSettings.NSamples = NSamples
 
 #-- Ignore?
-for Item in [pm2a,presto]:
-	Item.ComputationSettings.Ignore = True
-
-# Elements to ignore?
-#-----------------------------------------------------------------------------------------------
-#Beamline.SetIgnoreList(S['ElementsToIgnore'], True)
-#pm2a.ComputationSettings.Ignore = True
-#presto.ComputationSettings.Ignore = True
-
-#slits_v.ComputationSettings.Ignore = False
-#slits_h.ComputationSettings.Ignore = True
-#kb_v.ComputationSettings.Ignore = False
-#fm_h.ComputationSettings.Ignore = False
-#Detector_v.ComputationSettings.Ignore = False
-#Detector_h.ComputationSettings.Ignore = False
+for ItemName in SettingsDefault['ElementsToIgnore']:
+	try:
+		Item = Beamline[ItemName]
+		Item.ComputationSettings.Ignore = True
+	except:
+		pass
 #%% Settings: UseFigureError
 #==========================================================
 try:

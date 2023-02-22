@@ -238,6 +238,7 @@ class Optics(LogBuffer):
 		#===============================
 		def __init__(self, Ignore = False):
 			self.UseSmallDisplacements = True
+			self.Ignore = Ignore
 
 		#===============================
 		#	 CLASS: __str__
@@ -523,9 +524,12 @@ class OpticsNumerical(Optics):
 		# Here Q is used to add new terms.
 
 		if E0 is None:
-			ErrorMsg = '''Error: The field is None on the optical element <%s>.
-					OpticalElement.Ignore = %s''' % (self.Name, str(self.ComputationSettings.Ignore))
-								 
+#			ErrorMsg = '''Error: The field is None on the optical element <%s>.
+#					OpticalElement.Ignore = %s''' % (self.Name, str(self.ComputationSettings.Ignore))
+			ErrorMsg = "Error: The field is None on the optical element <%s>. Check if Ignore = True" % self.Name
+			print("=> self.ComputationSettings.Ignore = " + str(self.ComputationSettings.Ignore))					 
+			print("=> self.Name = " + str(self.Name))
+			print("=>" + self.__repr__())
 			raise WiserException(ErrorMsg,	By = "OpticalElement.EvalField")
 
 		if NormalizationType == 0 :

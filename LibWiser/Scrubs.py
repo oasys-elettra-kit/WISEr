@@ -761,7 +761,7 @@ def ListClassObjects(myClass, strOwnerClass = ''):
 #==============================================================================
 #  FUN: ImportFromPath
 #==============================================================================
-def ImportFromPath(ModulePath, ModuleName = None):
+def ImportFromPath(ModulePath, ModuleName = 'mymodule'):
 	'''
 	Import a python module from its path.
 	
@@ -779,14 +779,15 @@ def ImportFromPath(ModulePath, ModuleName = None):
 #==============================================================================
 def LoadLayoutFile(PathToLayoutFile,
 				   AttrBeamline = 'Beamline',
-				   AttrSettings= 'DefaultSettings',
-				   Dict = True):
+				   AttrSettings= 'SettingsDefault',
+				   ReturnMode = 0):
 	'''
 	Load a python file which is supposed to contain the layout of a beamline.
+	Such a module is expected to contain:
+		- An attribute containing the beamline object, whose name is defined in AttrBeamline
+		- An attribute containing the dictionary of settings, whose name is defined in AttrSettings
+		
 	
-	The beamline is contained in an attribute whose name is  defined in AttrBeamline.
-	Similarly, default settings (whenever present) are contained in an attribute whose name
-	is defined in AttrSettings
 	
 	Parameters
 	------
@@ -801,8 +802,10 @@ def LoadLayoutFile(PathToLayoutFile,
 		the name of the attribute containing the default settings, if any.
 		
 		
-	Dict : bool
-		If true, return a dict. If false, return a CLASS
+	ReturnMode: int {-1,0,1}
+		-1: Return a class
+		0: return two variables
+		1: Return a dict
 		
 	Return
 	-----
@@ -823,15 +826,22 @@ def LoadLayoutFile(PathToLayoutFile,
 	try:
 		DefaultSettings = getattr(Module, AttrSettings)
 	except:
+		raise Exception("Settings not found while loading a configuration file. ")
 		DefaultSettings = None
 	
-	if ReturnDict == True:	
-		Ans = {'Beamline' : Beamline, 
-				'DefaultSettings' : DefaultSettings}
-	else:
+	if ReturnMode == 0:
+		return Beamline, DefaultSettings		
+	
+	elif ReturnMode ==-1:
 		Ans = DataContainer()
 		Ans.Beamline = Beamline
 		Ans.DefaultSettings = DefaultSettings
-	return Ans
+		return Ans		
+	elif ReturnMode ==1:
+		return {'Beamline' : Beamline, 
+				'DefaultSettings' : DefaultSettings}
+	else:
+		raise Exception('stocazzzo')		
+
 	
 #SetAttr(a, 'b.c.d',  11)

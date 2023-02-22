@@ -244,7 +244,7 @@ def GetFormattedEng(x, places = None):
 
 def SmartFormatter(x, VariableInfo = {'unit' : '', 'prefix':True,'digits':6}):
 	'''
-	Attempts a smart formatting of x.
+	Attempts a smart formatting of x (a scalar)
 	It returns
 	- EngNumber(x) if x is a float, i.e. 0.00015 => 150um
 	- A smart formatting if x is decorated with VariableInfo object [not deeple implemented yet]
@@ -301,6 +301,7 @@ def GetAxisSI(x):
 
 
 # this class is kept for backcompatibility: e.g. used in  ReadLtp2File
+# Its usage is now deprecated
 class Units:
 	SiPrefixes = PrefixLookup
 	@staticmethod

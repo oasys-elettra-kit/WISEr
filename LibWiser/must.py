@@ -64,7 +64,11 @@ def DataWrite (FileName, Data, Format = '%0.2f'):
 	np.savetxt(datafile_id, data, fmt)
 	#here the ascii file is populated.
 	datafile_id.close()
-
+def GridMinor():
+	ax = plt.gca()
+	g1 = ax.grid(b=True, which='major', color='k', linestyle='-', linewidth=0.5)
+	g2 = ax.grid(b=True, which='minor', color='k', linestyle='-', linewidth=0.2)
+	ax.minorticks_on()
 ##========================================================
 ##	FUN: ReadYFile
 ##========================================================

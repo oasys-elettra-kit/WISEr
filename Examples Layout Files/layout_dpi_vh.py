@@ -8,14 +8,14 @@ PathMetrologyFermi = lw.Paths.MetrologyFermi
 
 #%% DEFAULT SETTINGS: You can change parameter here or in a similar <Settings> dictionary
 #%=============================================================================
-BeamlineName = 'LDM'
+BeamlineName = 'DPI'
 SettingsDefault = {
 			'FelSource' : 1,
 			'Lambda' : 2e-9,
 			'Waist0' : 180e-6,
 			'SourceAngle' : 0,
 			'DetectorSize' : 100e-6,
-			'NSamples' : 10002,
+			'NSamples' : 6e3,
 			'DetectorDefocus' : 0,
 			'UseFigureError' : False,
 			'UseFigureErrorOnFocusing' : False,
@@ -276,23 +276,28 @@ Beamline.ComputationSettings.OrientationToCompute = S['OrientationToPropagate']
 print(Beamline) #
 
 
-
+#Beamline.SetAllNSamples(S['NSamples'])
+#Beamline.SetAllUseCustomSampling(True)
 # Use Figure error?
 #-----------------------------------------------------------------------------------------------
 for Item in [pm2a,presto]:
 	Item.CoreOptics.ComputationSettings.UseFigureError = S['UseFigureErrorOnTransport']
+	
 for Item in [fm_v, fm_h]:
 	Item.CoreOptics.ComputationSettings.UseFigureError = S['UseFigureErrorOnFocusing']
 	
-#--- Set the Sampling
-for Item in Beamline.ItemList:
-	Item.ComputationSettings.UseCustomSampling = S['UseCustomSampling']
-	Item.ComputationSettings.NSamples = NSamples
+
 
 #-- Ignore?
 for Item in [pm2a,presto]:
 	Item.ComputationSettings.Ignore = True
+#%%	
+#--- Set the Sampling
 
+for Item in Beamline.ItemList:
+	Item.ComputationSettings.UseCustomSampling = S['UseCustomSampling']
+	Item.ComputationSettings.NSamples = NSamples
+#Beamline.ComputationSettings.CollectiveCustomSampling = True
 
 #%% Settings: UseFigureError
 #==========================================================
@@ -307,4 +312,3 @@ except:
 	raise Exception("You got erros in the last lines of Kernel Investigator function. Remember to comment them!")
 
 #%% TEST
-Beamline.ComputationSettings.CollectiveCustomSampling = False
