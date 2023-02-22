@@ -227,6 +227,11 @@ class PositioningDirectives(CodeGenerator):
 			  WhichAngle = 'axis',
 			  *kwargs):
 		'''
+		By default, the distance of an optical element is specified frome the source.
+		So, the easiest thing you can write is
+		PositioningDirectives(Distance = 50),
+		meaning that the optical element will be placed at 50m downstream the source.
+		
 		[TODO] : means that the stuff still does not work.
 
 		Parameters
@@ -750,6 +755,7 @@ class OpticalElement(TreeItem, CodeGenerator):
 				  IsSource = False, # IsSource denotes the
 				  PositioningDirectives = None,
 				  ComputationSettings = None,
+				  DistanceFromSource = None,
 				  VirtualOffset = 0,
 					*kwargs):
 		# The baroque notation I used for 'CoreOptics' is because the name of the
@@ -761,8 +767,28 @@ class OpticalElement(TreeItem, CodeGenerator):
 		OpticalElement._LastInstance = 130
 		TreeItem.__init__(self)
 		self._IsSource = IsSource
-		self.PositioningDirectives = PositioningDirectives
+		
+		# Handling shortcut for Positioning directives.
+		# i.e.: instead of the full positioning directives, the user can
+		# pass the DistanceFromSource only
+		if PositioningDirectives is not None:
+			self.PositioningDirectives = PositioningDirectives
+			
+		elif PositioningDirectives  is None and DistanceFromSource > 0:
+ 			# defaulting the PositioningDirectives referenced from source
+ 			self.PositioningDirectives = Foundation.PositioningDirectives(
+ 							ReferTo = 'source', 
+ 							PlaceWhat = 'centre',
+ 							PlaceWhere = 'centre',
+ 							Distance = DistanceFromSource)
+		elif PositioningDirectives is None and DistanceFromSource == 0 and IsSource == True:
+			self.PositioningDirectives = Foundation.PositioningDirectives(
+									ReferTo = 'absolute',
+									XYCentre = [0,0],
+									Angle = 0)
+			
 		self._VirtualOffset = VirtualOffset # 20210930 Presently used for sources, only. It is a distance which is added to the distance computed by .DistanceFromParent
+
 		self._ComputationSettings = ComputationSettings if ComputationSettings != None else ComputationSettingsForOpticalElement()
 
 		self.Results = ComputationResults()			# this data field should be discontinued
@@ -1055,6 +1081,13 @@ class OpticalElement(TreeItem, CodeGenerator):
 	#	GetXY(tunnel)
 	#================================================
 	def GetXY(self, N):
+		'''
+		Return
+		-----
+		x : array of x coordinates
+		
+		y : array of y coordinates
+		'''
 		return self.CoreOptics.GetXY(N)
 
 	#================================================

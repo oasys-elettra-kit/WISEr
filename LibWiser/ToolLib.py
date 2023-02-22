@@ -19,7 +19,7 @@ from scipy.signal import square
 from pathlib import Path as MakePath
 import LibWiser.Paths as Paths
 import numpy as np
-
+import matplotlib.ticker as ticker
 
 Logger = logging.getLogger()
 
@@ -2551,8 +2551,11 @@ class FileIO:
 		FileName : string
 			filename of the hdf5 output
 
-		PathValueTuples : list of tuples
+		GroupValueTuples : list of tuples
 			List of tuples in the form (String to path, value)
+			
+		Attribute : dictionary
+			Group attributes of root (common to all the datasets)
 
 		TryToExpandDataClasses : bool
 			If true, Values of type 'type' are treated as data containers and an
@@ -2664,8 +2667,10 @@ class FileIO:
 			if Attributes is not None:
 				Items = list(Attributes.items())
 				for Attr in Items:
-					DataFile.attrs[Attr[0]] = Attr[1]
-					
+					try:
+						DataFile.attrs[Attr[0]] = Attr[1]
+					except:
+						pass
 		finally:
 #		DataFile.attrs = Attributes
 			DataFile.close()
@@ -2675,7 +2680,6 @@ class FileIO:
 	SaveToH5t = SaveToH5
 
 class CommonPlots:
-
 
 	def SmartPlot(
 				   x, 
@@ -2801,7 +2805,7 @@ class CommonPlots:
 							   **kwargs ):
 		'''
 		Helper function. Plots the Radiation (either Intensity or the absolute value
-		of the field) at a given OpticalElement.
+		of the field, as specified by Type) at a given OpticalElement.
 		The functions IntensityAtOpticalElement and FieldAtOpticalElement are also
 		available as well.
 
@@ -2825,7 +2829,7 @@ class CommonPlots:
 
 		'''
 		# get x axis
-		x = OptElement.Results.S
+		x = OptElement.ComputationData.S
 		if x is None:
 			print('Data not found in OpticalElement.Results.S. OpticalElement Name = %s' % OptElement.Name)
 			return None
@@ -2833,12 +2837,13 @@ class CommonPlots:
 		plt.figure(FigureIndex, **kwargs)
 
 		# Unit Conversion
-		if XUnitPrefix is None:
-			XUnitPrefix = Units.Units.GetSiUnitScale(x)
-		XUnitScale = Units.Units.SiPrefixes[XUnitPrefix]
+		#@todo commented on 2023.02.12
+# 		if XUnitPrefix is None:
+# 			XUnitPrefix = Units.Units.GetSiUnitScale(x)
+# 		XUnitScale = Units.Units.SiPrefixes[XUnitPrefix]
 
-
-		x = OptElement.Results.S / XUnitScale
+# 		x = OptElement.ComputationData.S / XUnitScale
+		x = OptElement.ComputationData.S		
 		A  = abs(OptElement.ComputationData.Field)
 		I = A**2
 
@@ -2871,6 +2876,12 @@ class CommonPlots:
 
 		# --- plot x,y
 		plt.plot(x,y, label = LabelStr)
+		ax = plt.gca()
+		formatter = ticker.ScalarFormatter()
+		formatter.set_powerlimits((-2, 2))  # show values from 1e-6 to 1e6
+		formatter.set_scientific(True)  # use scientific notation
+		formatter.set_useOffset(False)  # don't use an offset
+		ax.xaxis.set_major_formatter(formatter)
 		plt.legend()
 #			plt.legend()
 		
@@ -2900,7 +2911,7 @@ class CommonPlots:
 							   XUnitPrefix = XUnitPrefix ,
 							   Normalize = Normalize,
 							   FigureIndex = FigureIndex,
-							   Type = 'i',
+							   Type = 'i',  # intensity
 							   AppendToTitle = AppendToTitle,
 							   Label = Label,
 							   **kwargs )

@@ -10,21 +10,37 @@ PathMetrologyFermi = lw.Paths.MetrologyFermi
 #%=============================================================================
 BeamlineName = 'LDM'
 SettingsDefault = {
+			'---layout settings for simulation---' : None,
+			'NSamples' : 10002,
+			'UseCustomSampling' : True,
+			'OrientationToPropagate' : [Enums.OPTICS_ORIENTATION.VERTICAL],
+			'ElementsToIgnore' : ['pm2a','presto'],
+			
+			'---layout settings for SOURCE---' : None,
 			'FelSource' : 1,
 			'Lambda' : 2e-9,
-			'Waist0' : 180e-6,
+			'Waist0' : 127e-6,
+
+			'---layout settings for CUSTOM ELEMENTS---' : None,
 			'DetectorSize' : 100e-6,
-			'NSamples' : 10002,
 			'DetectorDefocus' : 0,
-			'UseFigureError' : False,
-			'UseFigureErrorOnFocusing' : False,
+			'UseFigureErrorOnFocusing' : True,
 			'UseFigureErrorOnTransport' : False,
 			'UseTransport' : True,
-			'UseCustomSampling' : True,
 			'UseSlits' : True,
-			'OrientationToPropagate' : [Enums.OPTICS_ORIENTATION.VERTICAL],
-			'ElementsToIgnore' : ['pm2a','presto']
 			}
+
+
+''' for the future, what I want to write
+
+Beamline, DefSettings = Layout.Import(layout_1.py)
+S = DefSettings
+S['ElementToIgnore'] = (2,2,34,32,ssd)
+Beamline = Layout.ApplyNewSettings()
+
+
+
+'''
 
 #=============================================================================
 
@@ -148,10 +164,12 @@ fm_v= OpticalElement(
 
 # figure error
 _ = fm_v
-FileFigureErrorKbv =  PathMetrologyFermi /"Best/ldm_kbv_(mm,nm).txt"
+
 
 _.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbv,
-									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1,
+									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT,
+									   XScaleFactor = 1e-3,
+									    YScaleFactor = 1e-9,
 									  YSign = +1)
 
 #---fm_h
@@ -175,7 +193,9 @@ fm_h = OpticalElement(
 _ = fm_h
 FileFigureErrorKbh = PathMetrologyFermi / "Best/ldm_kbv_(mm,nm).txt"
 _.CoreOptics.FigureErrorLoadFromFile(PathFile = FileFigureErrorKbh,
-									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.ELETTRA_LTP_JAVA1,
+									  FileType = Enums.FIGURE_ERROR_FILE_FORMAT.POSITION_AND_HEIGHT,
+									   XScaleFactor = 1e-3,
+									        YScaleFactor= 1e-9,
 									  YSign = +1)
 
 
@@ -243,7 +263,7 @@ Beamline.Append(s)
 
 #Beamline.Append(pm2a)
 
-Beamline.Append(presto)
+#Beamline.Append(presto)
 if S['UseSlits']:
 	Beamline.Append(slits_v)
 	Beamline.Append(slits_h)
@@ -274,9 +294,12 @@ for Item in [fm_v, fm_h]:
 	
 #--- Set the Sampling
 for Item in Beamline.ItemList:
+	print(Item.ComputationSettings.UseCustomSampling)	
+for Item in Beamline.ItemList:
 	Item.ComputationSettings.UseCustomSampling = S['UseCustomSampling']
 	Item.ComputationSettings.NSamples = NSamples
-
+for Item in Beamline.ItemList:
+	print(Item.ComputationSettings.UseCustomSampling)	
 #-- Ignore?
 for Item in [pm2a,presto]:
 	Item.ComputationSettings.Ignore = True
@@ -300,8 +323,11 @@ try:
 	if 1==0:
 		Beamline.ComputeFields()
 		det_v.PlotIntensity()
+		
 		fm_v.PlotIntensity()
-#		slits_v.PlotIntensity()
+		fm_v.PlotFigureError()
+		
+		fm_h.PlotIntensity()
 except:
 	raise Exception("You got erros in the last lines of Kernel Investigator function. Remember to comment them!")
 

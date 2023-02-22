@@ -99,6 +99,22 @@ class F2Items:
 		GrazingAngleDeg = 2 
 		GrazingAngle = rad(GrazingAngleDeg)		
 		z=f1
+	class mag_kbv:
+		Name = 'mag_kbv'
+		f1 = 77.9329 
+		f2 = 1.3 
+		GrazingAngleDeg = 2 
+		GrazingAngle = rad(GrazingAngleDeg)		
+		z=f1		
+
+	class mag_kbh:
+		Name = 'mag_kbh'
+		f1 = 72.4427
+		f2 = 6.79
+		GrazingAngleDeg = 2 
+		GrazingAngle = rad(GrazingAngleDeg)		
+		z=f1
+
 	class pm2a:
 		z = 41.4427 
 		GrazingAngleDeg = 2.5
